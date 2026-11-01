@@ -807,7 +807,8 @@ c=mix(c,vec3(.2,.55,1.3),gl/max(a+gl,.001));a=max(a,gl);gl_FragColor=vec4(c,a*op
         t && (this.palmHand = e.i));
       let i = this.palmT > 0.3 && this.palmHand >= 0,
         r = this.orb;
-      if (((r.visible = i), i)) {
+      // no estilo esqueleto não há bola 🏠 na mão: o próprio esqueleto fica dourado (veja Ql.skel)
+      if (((r.visible = i && q.handStyle !== "skel"), i)) {
         let s = Ke.slots[this.palmHand],
           o = U.view.tv * 2,
           a = 1;

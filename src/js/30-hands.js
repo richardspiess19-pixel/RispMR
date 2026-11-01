@@ -381,10 +381,12 @@ gl_FragColor=vec4(c,al);}`,
     sk_v = `varying vec3 vN;varying vec3 vP;
 void main(){vec4 mv=modelViewMatrix*instanceMatrix*vec4(position,1.);vN=normalize(normalMatrix*mat3(instanceMatrix)*normal);vP=mv.xyz;gl_Position=projectionMatrix*mv;}`,
     sk_b = `uniform vec3 col;uniform float op;varying vec3 vN;varying vec3 vP;
-void main(){float f=abs(dot(normalize(vN),normalize(-vP)));float k=smoothstep(.1,.8,f);vec3 c=mix(col*.1,col,k)+vec3(pow(f,8.)*1.2);gl_FragColor=vec4(c,mix(.45,.95,k)*op);}`,
+void main(){float f=abs(dot(normalize(vN),normalize(-vP)));float k=smoothstep(.1,.8,f);vec3 c=mix(col*.1,col,k)+vec3(pow(f,8.)*.6);gl_FragColor=vec4(c,mix(.45,.95,k)*op);}`,
     sk_j = `uniform vec3 col;uniform float op;varying vec3 vN;varying vec3 vP;
-void main(){float f=abs(dot(normalize(vN),normalize(-vP)));float k=smoothstep(.0,.85,f);vec3 c=mix(col*.2,mix(col,vec3(2.8),.6),k);gl_FragColor=vec4(c,(.72+.28*k)*op);}`,
-    SKC = [new Tt(0.22, 1.15, 2.5), new Tt(0.42, 1, 2.5)],
+void main(){float f=abs(dot(normalize(vN),normalize(-vP)));float k=smoothstep(.0,.85,f);vec3 c=mix(col*.2,mix(col,vec3(1.5),.55),k);gl_FragColor=vec4(c,(.75+.25*k)*op);}`,
+    SKC = [new Tt(0.3, 0.95, 1.5), new Tt(0.42, 0.88, 1.5)],
+    SKG = new Tt(1.9, 1.35, 0.3),
+    SKW = new Tt(1.6, 1.7, 1.8),
     SKB = [
       [0, 1], [1, 2], [2, 3], [3, 4],
       [0, 5], [5, 6], [6, 7], [7, 8],
@@ -393,17 +395,6 @@ void main(){float f=abs(dot(normalize(vN),normalize(-vP)));float k=smoothstep(.0
       [13, 17], [17, 18], [18, 19], [19, 20],
       [0, 17],
     ],
-    SKP = [0, 1, 5, 9, 13, 17],
-    skRing = () => {
-      let n = document.createElement("canvas");
-      n.width = n.height = 96;
-      let t = n.getContext("2d");
-      (t.beginPath(), t.arc(48, 48, 38, 0, ve), (t.lineWidth = 9), (t.strokeStyle = "#fff"), t.stroke());
-      let e = t.createRadialGradient(48, 48, 0, 48, 48, 34);
-      (e.addColorStop(0, "rgba(255,255,255,.55)"), e.addColorStop(1, "rgba(255,255,255,0)"), (t.fillStyle = e), t.fill());
-      let i = new ln(n);
-      return ((i.colorSpace = Pe), i);
-    },
     Ql = {
       tool: null,
       init() {
@@ -426,30 +417,27 @@ void main(){float f=abs(dot(normalize(vN),normalize(-vP)));float k=smoothstep(.0
           n.add(this.joints, this.bones));
         let bg = new Re(1, 1, 1, 8, 1, !0),
           jg = new tn(1, 14, 10),
-          rt = skRing();
-        this.sk = [0, 1].map(() => {
-          let col = { value: new Tt() },
-            op = { value: 1 },
-            m = (f) =>
-              new Me({ vertexShader: sk_v, fragmentShader: f, uniforms: { col, op }, transparent: !0, depthTest: !1, depthWrite: !1 }),
-            bones = new Pn(bg, m(sk_b), SKB.length),
-            joints = new Pn(jg, m(sk_j), pm),
-            pg = new Ae(),
-            pp = new Float32Array(SKP.length * 3);
-          (pg.setAttribute("position", new Le(pp, 3)), pg.setIndex([0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5]));
-          let palm = new tt(pg, new $e({ color: new Tt(), transparent: !0, opacity: 0.16, side: He, depthTest: !1, depthWrite: !1 })),
-            pinch = new Jn(new Vn({ map: rt, color: new Tt(), transparent: !0, depthTest: !1, depthWrite: !1 }));
-          return (
-            (bones.frustumCulled = joints.frustumCulled = palm.frustumCulled = !1),
-            (palm.renderOrder = 32),
-            (bones.renderOrder = 33),
-            (joints.renderOrder = 34),
-            (pinch.renderOrder = 35),
-            (bones.visible = joints.visible = palm.visible = pinch.visible = !1),
-            n.add(palm, bones, joints, pinch),
-            { col, op, bones, joints, palm, pp, pinch, was: !1, flash: 0 }
-          );
-        });
+          sg = (this.skg = new Wt());
+        (n.add(sg),
+          (this.sk = [0, 1].map(() => {
+            let col = { value: new Tt() },
+              tc = { value: new Tt() },
+              op = { value: 1 },
+              m = (f, u) =>
+                new Me({ vertexShader: sk_v, fragmentShader: f, uniforms: { op, ...u }, transparent: !0, depthTest: !1, depthWrite: !1 }),
+              bones = new Pn(bg, m(sk_b, { col }), SKB.length),
+              joints = new Pn(jg, m(sk_j, { col }), pm),
+              tips = new Pn(jg, m(sk_j, { col: tc }), 2);
+            return (
+              (bones.frustumCulled = joints.frustumCulled = tips.frustumCulled = !1),
+              (bones.renderOrder = 33),
+              (joints.renderOrder = 34),
+              (tips.renderOrder = 35),
+              (bones.visible = joints.visible = tips.visible = !1),
+              sg.add(bones, joints, tips),
+              { col, tc, op, bones, joints, tips, was: !1, flash: 0 }
+            );
+          })));
         let i = new Vn({ map: U.fx.dot(), color: new Tt(0.4, 1.1, 1.8), blending: un, depthTest: !1, transparent: !0 });
         this.tips = [];
         for (let r = 0; r < 10; r++) {
@@ -557,52 +545,53 @@ void main(){float f=abs(dot(normalize(vN),normalize(-vP)));float k=smoothstep(.0
         }),
           (this.glowTips = this.wantTips));
       },
-      // Desenha o esqueleto de cada mão rastreada: 21 juntas, 21 ossos, palma e anel de pinça.
+      // Desenha só o esqueleto de cada mão rastreada: 21 juntas e 21 ossos.
+      // A pinça acende as pontas do polegar e do indicador; com a palma virada (gesto Início) fica dourado.
       skel(n, t, e) {
+        // VR com a câmera: o vídeo é igual nos dois olhos (fica a 60 m). Desenhado a 1 m, o esqueleto
+        // ficava ~26 px para cada lado da mão real em cada olho (aparecia duplo/flutuando).
+        // Afastado 40x (mesmo tamanho aparente) ele cai em cima da mão nos dois olhos.
+        this.skg.scale.setScalar(!U.view.mono && U.world.cur === "cam" && U.world.bg.visible ? 40 : 1);
         Ke.slots.forEach((i, r) => {
           let s = this.sk[r],
             o = n && i.vis > 0.02;
-          if (((s.bones.visible = s.joints.visible = s.palm.visible = o && !i.lite), (s.pinch.visible = !1), !o)) {
+          if (((s.bones.visible = s.joints.visible = o), (s.tips.visible = !1), !o)) {
             s.was = !1;
             return;
           }
-          let a = SKC[i.side === "Right" ? 0 : 1],
+          let a = U.shell && U.shell.palmT > 0.3 && U.shell.palmHand === r ? SKG : SKC[i.side === "Right" ? 0 : 1],
             c = $t(i.vis * 1.2),
             l = Math.max(0.05, i.palm) * e * ns;
-          if ((s.col.value.copy(a), (s.op.value = c), i.lite)) {
-            // rastreio simples por cor da pele: só um ponto no lugar da mão
-            (t(i, 8, zn), (s.pinch.visible = !0), s.pinch.position.copy(zn), s.pinch.scale.setScalar(0.07), (s.pinch.material.opacity = c * 0.8), s.pinch.material.color.copy(a));
+          if ((s.col.value.copy(a), (s.op.value = c), (s.bones.visible = !i.lite), i.lite)) {
+            // rastreio simples por cor da pele: só um ponto onde a mão está
+            (t(i, 8, zn), Zl.compose(zn, va.identity(), td.setScalar(0.03)), s.joints.setMatrixAt(0, Zl), (s.joints.count = 1), (s.joints.instanceMatrix.needsUpdate = !0));
             return;
           }
+          s.joints.count = pm;
           for (let h = 0; h < pm; h++) {
             t(i, h, zn);
-            let u = l * (h === 8 ? 0.068 : h === 0 ? 0.06 : h % 4 === 0 ? 0.052 : 0.042);
+            let u = l * (h === 8 ? 0.06 : h === 0 ? 0.055 : h % 4 === 0 ? 0.048 : 0.04);
             (Zl.compose(zn, va.identity(), td.setScalar(u)), s.joints.setMatrixAt(h, Zl));
           }
           for (let h = 0; h < SKB.length; h++) {
             let [u, d] = SKB[h];
             (t(i, u, zn), t(i, d, is), vm.addVectors(zn, is).multiplyScalar(0.5));
             let f = zn.distanceTo(is),
-              p = l * (h === 20 || u === 0 ? 0.034 : 0.028);
+              p = l * (h === 20 || u === 0 ? 0.026 : 0.022);
             (va.setFromUnitVectors(gm, is.sub(zn).normalize()), Zl.compose(vm, va, td.set(p, f, p)), s.bones.setMatrixAt(h, Zl));
           }
           ((s.joints.instanceMatrix.needsUpdate = s.bones.instanceMatrix.needsUpdate = !0),
-            SKP.forEach((h, u) => {
-              (t(i, h, zn), s.pp.set([zn.x, zn.y, zn.z], u * 3));
-            }),
-            (s.palm.geometry.attributes.position.needsUpdate = !0),
-            s.palm.material.color.copy(a).multiplyScalar(0.55),
-            (s.palm.material.opacity = 0.16 * c));
-          // anel da pinça: aparece quando polegar e indicador se aproximam e pisca ao fechar
-          (i.pinch && !s.was && (s.flash = 1), (s.was = i.pinch), (s.flash = Math.max(0, s.flash - U.dt * 4)));
+            i.pinch && !s.was && (s.flash = 1),
+            (s.was = i.pinch),
+            (s.flash = Math.max(0, s.flash - U.dt * 4)));
           let h = Math.max(i.pinchS || 0, i.pinch ? 1 : 0);
-          if (h > 0.04) {
-            (t(i, 4, zn), t(i, 8, is), zn.add(is).multiplyScalar(0.5));
-            ((s.pinch.visible = !0),
-              s.pinch.position.copy(zn),
-              s.pinch.scale.setScalar(l * (i.pinch ? 0.34 + s.flash * 0.3 : 0.62 - h * 0.25)),
-              (s.pinch.material.opacity = c * (i.pinch ? 1 : h * 0.85)),
-              i.pinch ? s.pinch.material.color.setRGB(2.2, 2.4, 2.6) : s.pinch.material.color.copy(a));
+          if (h > 0.05) {
+            [4, 8].forEach((u, d) => {
+              (t(i, u, zn), Zl.compose(zn, va.identity(), td.setScalar(l * (0.06 + 0.035 * h + 0.04 * s.flash))), s.tips.setMatrixAt(d, Zl));
+            });
+            ((s.tips.visible = !0),
+              (s.tips.instanceMatrix.needsUpdate = !0),
+              s.tc.value.copy(a).lerp(SKW, i.pinch ? 1 : h * 0.6));
           }
         });
       },
@@ -889,28 +878,40 @@ function calib(b, ts, r, ms) {
       const avg = c.cpu / c.nc;
       if (avg <= 40) { cal = null; say('CPU', 'CPU rápida (' + Math.round(avg) + ' ms)'); return; }
       c.phase = 1; c.cpu0 = avg; c.cpu = 0; c.nc = 0;
-      create('GPU').then(x => { if (cal === c) { alt = x; c.phase = 2; c.t0 = performance.now(); } else close(x); })
-        .catch(() => { if (cal === c) { cal = null; say('CPU', 'GPU indisponível'); } });
+      create('GPU').then(x => {
+        if (cal !== c) return close(x);
+        alt = x; c.phase = 2;
+        // compila os shaders da GPU já, num quadro vazio, e não quando a mão aparecer
+        try { alt.detectForVideo(new ImageData(64, 64), ++last); } catch (e) {}
+      }).catch(() => { if (cal === c) { cal = null; say('CPU', 'GPU indisponível'); } });
     }
     return;
   }
   if (c.phase !== 2) return;
+  // A GPU só roda em rajadas de 14 quadros que começam quando a CPU vê uma mão:
+  // sem mão na frente da câmera, o teste não custa nada.
+  if (!c.left) {
+    if (!r.landmarks.length) return;
+    c.left = 14; c.bursts = (c.bursts || 0) + 1; c.first = true;
+  }
+  c.left--;
   let g, gm;
   try { const t = performance.now(); g = alt.detectForVideo(b, ts); gm = performance.now() - t; }
   catch (e) { cal = null; close(alt); alt = null; say('CPU', 'GPU falhou'); return; }
-  if (++c.ng > 1) { // o 1º quadro da GPU inclui compilar os shaders
+  if (!c.first) {
     if (gm > Math.max(2 * c.cpu0, 80)) { cal = null; close(alt); alt = null; say('CPU', 'CPU mais rápida'); return; }
     c.gpu += gm; c.cpu += ms; c.nc++;
   }
+  c.first = false;
   if (r.landmarks.length) { c.hands++; same(r, g) && c.ok++; }
-  // Os dois rodando juntos deixam o rastreio mais lento: desiste cedo se a GPU não compensa.
   if (c.nc >= 3 && c.gpu > c.cpu * .9) { cal = null; close(alt); alt = null; say('CPU', 'CPU mais rápida'); return; }
-  if ((c.hands >= 6 && c.nc >= 12) || c.nc >= 150 || performance.now() - c.t0 > 4000) {
-    const cpu = c.cpu / c.nc, gpu = c.gpu / Math.max(1, c.nc), agree = c.hands ? c.ok / c.hands : 0;
+  if (c.left > 0) return;
+  if (c.hands >= 6) {
+    const cpu = c.cpu / c.nc, gpu = c.gpu / c.nc, agree = c.ok / c.hands;
     cal = null;
-    if (c.hands >= 6 && agree >= .8 && gpu < cpu * .7) { close(lm); lm = alt; alt = null; say('GPU', 'GPU ' + Math.round(gpu) + ' ms x CPU ' + Math.round(cpu) + ' ms'); }
-    else { close(alt); alt = null; say('CPU', c.hands < 6 ? 'GPU não verificada' : agree < .8 ? 'GPU imprecisa (' + Math.round(agree * 100) + '%)' : 'CPU mais rápida'); }
-  }
+    if (agree >= .8 && gpu < cpu * .7) { close(lm); lm = alt; alt = null; say('GPU', 'GPU ' + Math.round(gpu) + ' ms x CPU ' + Math.round(cpu) + ' ms'); }
+    else { close(alt); alt = null; say('CPU', agree < .8 ? 'GPU imprecisa (' + Math.round(agree * 100) + '%)' : 'CPU mais rápida'); }
+  } else if (c.bursts >= 3) { cal = null; close(alt); alt = null; say('CPU', 'GPU não verificada'); }
 }
 self.onmessage = async e => {
   const m = e.data;

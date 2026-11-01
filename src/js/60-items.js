@@ -2505,7 +2505,7 @@ void main(){vec2 p=u;vec2 g=abs(fract(vec2(p.x*n,p.y*8.))-.5);float l=smoothstep
     [
       "🖐️",
       "Botão Início",
-      "Abra a mão com a palma virada para você e pince: o Início aparece em qualquer lugar.",
+      "Vire a palma da mão aberta para você: o esqueleto fica dourado. Aí é só pinçar e o Início aparece.",
       (n) => n.palm,
       "",
     ],

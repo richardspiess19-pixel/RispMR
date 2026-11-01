@@ -83,7 +83,8 @@
       }
     };
     (await t(() => document.documentElement.requestFullscreen()),
-      n === "vr" && (await t(() => screen.orientation.lock("landscape"))),
+      // paisagem nos dois modos: em pé a tela mostra só ~24° na horizontal e as janelas/dock ficam cortados
+      await t(() => screen.orientation.lock("landscape")),
       t(async () => {
         co = await navigator.wakeLock.request("screen");
       }),
@@ -126,7 +127,7 @@
       (U.dt = t),
       U.frame++,
       (U.fps += (1 / Math.max(0.001, t) - U.fps) * 0.05),
-      q.view === "vr" && innerHeight > innerWidth)
+      innerHeight > innerWidth)
     ) {
       Ld.hidden = !1;
       return;
