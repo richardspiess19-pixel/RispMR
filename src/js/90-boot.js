@@ -18,7 +18,10 @@
         facingMode: q.cam,
         width: { ideal: n },
         height: { ideal: t ? n * 0.75 : n * 0.5625 },
-        frameRate: { ideal: 60 },
+        // 30 qps: o dobro de tempo de exposição por quadro = imagem mais clara e menos ruído,
+        // e o celular escolhe o formato 4:3 (a 60 qps ele cai para 16:9 e corta as laterais no VR).
+        // O rastreio roda a ~20-30 leituras/s, então 60 qps não ajudava a detectar.
+        frameRate: { ideal: 30 },
       },
       { facingMode: q.cam },
       !0,
@@ -26,6 +29,7 @@
       try {
         return (
           (hi = await navigator.mediaDevices.getUserMedia({ audio: !1, video: e })),
+          Bd(hi),
           (lo.srcObject = hi),
           await lo.play(),
           hi
@@ -34,6 +38,17 @@
         (console.warn("câmera", i), (hi = null));
       }
     return null;
+  }
+  // Foco, exposição e balanço de branco automáticos e contínuos (mãos a ~40 cm ficam nítidas).
+  function Bd(n) {
+    try {
+      let t = n.getVideoTracks()[0],
+        e = (t.getCapabilities && t.getCapabilities()) || {},
+        i = ["focusMode", "exposureMode", "whiteBalanceMode"]
+          .filter((r) => (e[r] || []).includes("continuous"))
+          .map((r) => ({ [r]: "continuous" }));
+      i.length && t.applyConstraints({ advanced: i }).catch(() => {});
+    } catch {}
   }
   function gh() {
     (hi && hi.getTracks().forEach((n) => n.stop()), (hi = null), (lo.srcObject = null));
@@ -80,6 +95,7 @@
       (De.fadeTo = 1),
       (U.run = !0),
       (Dd = 0),
+      (hdT.seen = performance.now()),
       q.learned ? _i.launch("library") : _i.launch("gestures"));
     let e = await Nd();
     if ((_i.toast(e ? "Carregando rastreio de mãos…" : "Sem câmera: use toque ou mouse"), e && !window.__noTrack)) {
@@ -117,6 +133,8 @@
     }
     ((Ld.hidden = !0),
       hi && (ei.state === "on" ? ei.pump(lo) : ei.state === "fail" && Tm(lo)),
+      Ke.any && (hdT.seen = n),
+      hi && U.frame % 120 === 0 && Hd(),
       ke.update(t),
       Xt.update(t),
       rr.update(t),
@@ -124,6 +142,31 @@
       ee.update(t),
       Ql.update(),
       De.render(t));
+  }
+  // Dicas automáticas: pouca luz na câmera ou nenhuma mão vista há um tempo.
+  var hdC = document.createElement("canvas"),
+    hdX = hdC.getContext("2d", { willReadFrequently: !0 }),
+    hdT = { dark: -1e9, hands: -1e9, seen: 0, n: 0 };
+  ((hdC.width = 16), (hdC.height = 12));
+  function Hd() {
+    if (!lo.videoWidth || ei.state !== "on") return;
+    let n = U.now,
+      t = 0;
+    try {
+      hdX.drawImage(lo, 0, 0, 16, 12);
+      let e = hdX.getImageData(0, 0, 16, 12).data;
+      for (let i = 0; i < e.length; i += 4) t += 0.299 * e[i] + 0.587 * e[i + 1] + 0.114 * e[i + 2];
+      t /= 192;
+    } catch {
+      return;
+    }
+    t < 38 && n - hdT.dark > 6e4
+      ? ((hdT.dark = n), _i.toast("Pouca luz: acenda a luz para as mãos serem reconhecidas"))
+      : n - hdT.seen > 12e3 &&
+        n - hdT.hands > 45e3 &&
+        hdT.n < 2 &&
+        !_i.xp &&
+        ((hdT.hands = n), hdT.n++, _i.toast("Levante as mãos na frente da câmera"));
   }
   addEventListener("resize", () => {
     Ua && U.run && De.layout();
@@ -178,9 +221,19 @@
         "Aparência das mãos",
         "handStyle",
         [
+          ["skel", "Esqueleto (recomendado)"],
           ["real", "Mão real recortada"],
           ["holo", "Holograma"],
           ["off", "Invisível"],
+        ],
+      ],
+      [
+        "Processador do rastreio",
+        "trackDev",
+        [
+          ["auto", "Automático (testa CPU e GPU)"],
+          ["cpu", "CPU"],
+          ["gpu", "GPU"],
         ],
       ],
       [
@@ -224,6 +277,7 @@
         t === "reverb" && W.setRev(q.reverb),
         t === "cam" && hi && (gh(), N0()),
         t === "quality" && Ua && De.setQuality(q.quality),
+        t === "trackDev" && ei.setPref(q.trackDev),
         Ud(),
         Ze(),
         Ua && U.run && De.layout());
@@ -295,6 +349,25 @@
       (await pn.addMedia({ id: Date.now() + t, kind: "music", blob: e, name: e.name, t: Date.now() }), t++);
     Ce("#cm3").textContent = t + " música(s) adicionadas ao Player.";
   };
+  // Menu: mostra o estado do rastreio e já prepara o modelo de mãos, para entrar com as mãos prontas.
+  var hsP = Ce("#hs"),
+    hsT = Ce("#hst"),
+    hsSet = (n, t = "") => {
+      ((hsT.textContent = n), (hsP.className = "pill " + t));
+    };
+  (async () => {
+    if (window.__noTrack) return hsSet("Rastreio de mãos desligado");
+    let n = WebAssembly.validate(v_) ? "vision_wasm_internal" : "vision_wasm_nosimd_internal",
+      t =
+        (await pn.has("hand_landmarker.task")) && (await pn.has(`mp-${nh}-${n}.wasm`)) && (await pn.has(`mp-${nh}-${n}.js`));
+    if (!t && navigator.connection && navigator.connection.saveData)
+      return hsSet("Rastreio de mãos: baixa ~22 MB ao entrar");
+    hsSet(t ? "Preparando rastreio de mãos…" : "Baixando rastreio de mãos…");
+    let e = await ei.init((i) => {
+      U.run || hsSet(i < 1 ? "Baixando rastreio de mãos " + Math.round(i * 100) + "%" : "Preparando rastreio de mãos…");
+    });
+    hsSet(e ? "Rastreio de mãos pronto" : "Sem internet: rastreio simples", e ? "ok" : "err");
+  })();
   window.__risp = {
     R: U,
     S: q,

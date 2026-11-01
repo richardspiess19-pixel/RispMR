@@ -41,7 +41,8 @@
       dwell: !0,
       predict: 1,
       trackW: 512,
-      handStyle: "real",
+      handStyle: "skel",
+      trackDev: "auto",
       quality: "auto",
       headTrack: !0,
       bloom: 1,
@@ -52,11 +53,14 @@
       cb: 102,
       cr: 153,
       tol: 22,
+      v: 2,
     },
     q = { ...jd };
   try {
     Object.assign(q, JSON.parse(localStorage.getItem("rispx") || "{}"));
   } catch {}
+  // v2: mão em esqueleto vira o padrão (quem tinha a "mão real" padrão salva passa a ver o esqueleto).
+  (q.v || 1) < 2 && (q.handStyle === "real" && (q.handStyle = "skel"), (q.v = 2));
   var Ze = () => {
       try {
         localStorage.setItem("rispx", JSON.stringify(q));

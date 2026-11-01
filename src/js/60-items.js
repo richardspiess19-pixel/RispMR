@@ -2169,9 +2169,9 @@ void main(){vec2 p=u;vec2 g=abs(fract(vec2(p.x*n,p.y*8.))-.5);float l=smoothstep
     });
   }
   var y0 = [
-    ["inst", "Instrumentos"],
-    ["app", "Apps"],
-    ["game", "Jogos"],
+    ["inst", "🎵 Instrumentos"],
+    ["app", "🧩 Apps"],
+    ["game", "🎮 Jogos"],
   ];
   ye({
     id: "library",
@@ -2182,41 +2182,57 @@ void main(){vec2 p=u;vec2 g=abs(fract(vec2(p.x*n,p.y*8.))-.5);float l=smoothstep
     w: 1e3,
     h: 640,
     q: 1.45,
+    live: 1,
     init(n) {
-      ((n.tab = 0), (n.page = 0));
+      ((n.tab = 0), (n.page = 0), !U.bat && navigator.getBattery && navigator.getBattery().then((t) => (U.bat = t)).catch(() => {}));
     },
     draw(n, t, e) {
-      n.chips(
-        "tab",
-        24,
-        68,
-        y0.map((c) => c[1]),
-        t.tab,
-        (c) => {
-          ((t.tab = c), (t.page = 0));
-        },
-        { size: 19, h: 50, w: 170 },
-      );
-      let i = ga.filter((c) => c.cat === y0[t.tab][0]),
-        r = 6,
-        s = 18,
-        o = Math.ceil(i.length / s);
-      (i.slice(t.page * s, (t.page + 1) * s).forEach((c, l) => {
-        let d = 24 + (l % r) * 159,
-          f = 130 + ((l / r) | 0) * 166,
-          p = n.z("i" + c.id, d, f, 156, 164, { click: () => U.shell.launch(c.id) });
-        (p && n.card(d + 2, f + 2, 152, 160, 18, !0),
-          n.icon(c, d + 34, f + 12, 88),
-          n.t(c.name, d + 156 / 2, f + 124, c.name.length > 13 ? 15 : 17, "#fff", "center", 600),
-          p && n.t(c.desc ? c.desc.slice(0, 22) : "", d + 156 / 2, f + 147, 12, It.mut, "center", 500));
+      // cabeçalho: hora, mãos vistas agora e bateria
+      let i = new Date(),
+        r = Ke.slots.filter((h) => h.live && !h.lite).length,
+        s = String(i.getHours()).padStart(2, "0") + ":" + String(i.getMinutes()).padStart(2, "0");
+      (n.t(s, e.w - 72, 31, 22, "#fff", "right", 700),
+        n.t(
+          (r ? "🖐️ " + r + (r > 1 ? " mãos" : " mão") : "🖐️ mostre as mãos") + (U.bat ? "  ·  🔋 " + Math.round(U.bat.level * 100) + "%" : ""),
+          e.w - 148,
+          31,
+          16,
+          r ? It.cy : It.mut,
+          "right",
+          550,
+        ),
+        n.chips(
+          "tab",
+          24,
+          72,
+          y0.map((h) => h[1]),
+          t.tab,
+          (h) => {
+            ((t.tab = h), (t.page = 0));
+          },
+          { size: 18, h: 48, w: 180 },
+        ));
+      let o = ga.filter((h) => h.cat === y0[t.tab][0]),
+        a = 6,
+        c = 18,
+        l = Math.ceil(o.length / c);
+      (o.slice(t.page * c, (t.page + 1) * c).forEach((h, u) => {
+        let d = 24 + (u % a) * 159,
+          f = 134 + ((u / a) | 0) * 166,
+          p = n.z("i" + h.id, d, f, 156, 162, { click: () => U.shell.launch(h.id) });
+        (p ? n.card(d + 3, f + 2, 150, 158, 20, !0) : n.rr(d + 3, f + 2, 150, 158, 20).fill("rgba(255,255,255,.035)"),
+          n.icon(h, d + 33, f + 10, 90),
+          n.t(h.name, d + 156 / 2, f + 122, h.name.length > 13 ? 15 : 17, "#fff", "center", 600),
+          p && n.t(h.desc ? h.desc.slice(0, 22) : "", d + 156 / 2, f + 145, 12, It.mut, "center", 500));
       }),
-        o > 1 &&
-          (n.btn("pv", e.w - 150, 72, 56, 44, "‹", () => {
-            t.page = Math.max(0, t.page - 1);
-          }),
-          n.btn("nx", e.w - 86, 72, 56, 44, "›", () => {
-            t.page = Math.min(o - 1, t.page + 1);
-          })));
+        l > 1
+          ? (n.btn("pv", e.w - 150, 74, 56, 44, "‹", () => {
+              t.page = Math.max(0, t.page - 1);
+            }),
+            n.btn("nx", e.w - 86, 74, 56, 44, "›", () => {
+              t.page = Math.min(l - 1, t.page + 1);
+            }))
+          : n.t("Pince para abrir  ·  palma aberta + pinça = Início", e.w - 26, 96, 14, It.mut, "right", 500));
     },
   });
   ye({
@@ -2383,19 +2399,38 @@ void main(){vec2 p=u;vec2 g=abs(fract(vec2(p.x*n,p.y*8.))-.5);float l=smoothstep
             n.sw("dw", r, 214, s, "Clicar segurando o dedo parado", q.dwell, () => {
               ((q.dwell = !q.dwell), Ze());
             }),
-            n.t("Aparência das mãos", i, 300, 17, It.mut, "left", 550),
+            n.t("Aparência das mãos", i, 290, 17, It.mut, "left", 550),
             n.chips(
               "hs",
               i,
-              322,
-              ["Mão real", "Holograma", "Invisível"],
-              ["real", "holo", "off"].indexOf(q.handStyle),
+              312,
+              ["🦴 Esqueleto", "Mão real", "Holograma", "Invisível"],
+              ["skel", "real", "holo", "off"].indexOf(q.handStyle),
               (a) => {
-                ((q.handStyle = ["real", "holo", "off"][a]), Ze());
+                ((q.handStyle = ["skel", "real", "holo", "off"][a]), Ze());
               },
               { size: 16, h: 44 },
             ),
-            n.t("A mão real aparece por cima de tudo, até em cenários virtuais.", i, 392, 15, It.mut, "left", 500))
+            n.t("Processador do rastreio", i, 392, 17, It.mut, "left", 550),
+            n.chips(
+              "td",
+              i,
+              414,
+              ["Automático", "CPU", "GPU"],
+              ["auto", "cpu", "gpu"].indexOf(q.trackDev),
+              (a) => ei.setPref(["auto", "cpu", "gpu"][a]),
+              { size: 16, h: 44 },
+            ),
+            n.t(
+              "Agora: " + (ei.delegate || (ei.state === "fail" ? "cor da pele" : "carregando…")) + (ei.why ? " · " + ei.why : ""),
+              i + 400,
+              436,
+              15,
+              It.mut,
+              "left",
+              500,
+            ),
+            n.t("O esqueleto mostra o que a câmera vê. O anel entre polegar e indicador fecha conforme você pinça.", i, 500, 15, It.mut, "left", 500))
           : (n.t("Perfil do VR", i, 136, 17, It.mut, "left", 550),
             Object.entries(cs).forEach(([a, c], l) =>
               n.btn(
@@ -2455,14 +2490,14 @@ void main(){vec2 p=u;vec2 g=abs(fract(vec2(p.x*n,p.y*8.))-.5);float l=smoothstep
     [
       "👆",
       "Aponte",
-      "Levante a mão e aponte para o botão abaixo. Seu dedo é o cursor.",
+      "Levante a mão na frente da câmera. Quando o esqueleto azul aparecer sobre ela, aponte para o botão: a ponta do indicador é o cursor.",
       (n) => n.hov,
       "Coloque o dedo aqui",
     ],
     [
       "🤏",
       "Pince para clicar",
-      "Encoste o polegar no indicador sobre o botão. É o clique mais rápido.",
+      "Encoste o polegar no indicador sobre o botão. O anel entre os dedos fecha e pisca quando o clique vale.",
       (n) => n.clicked,
       "Pince aqui",
     ],
@@ -2591,7 +2626,7 @@ void main(){vec2 p=u;vec2 g=abs(fract(vec2(p.x*n,p.y*8.))-.5);float l=smoothstep
           ["Quadros por segundo", Math.round(U.fps)],
           ["Leituras de mão por segundo", Math.round(Ke.hz)],
           ["Tempo do modelo", Math.round(ei.ms) + " ms"],
-          ["Motor de mãos", ei.delegate || (ei.state === "fail" ? "Cor da pele" : "—")],
+          ["Motor de mãos", (ei.delegate || (ei.state === "fail" ? "Cor da pele" : "—")) + (ei.why ? " · " + ei.why : "")],
           ["Qualidade", De.tier],
           ["Chamadas de desenho", De.calls],
           ["Bateria", t.bat ? Math.round(t.bat.level * 100) + "%" : "—"],

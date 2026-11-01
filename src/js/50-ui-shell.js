@@ -124,32 +124,52 @@
       }
     },
     hd = {};
+  // Ícone de app: "squircle" com degradê, sombra, reflexo de vidro e borda clara (192 px).
   function dd(n) {
     if (hd[n.id]) return hd[n.id];
     let t = document.createElement("canvas");
-    t.width = t.height = 160;
+    t.width = t.height = 192;
     let e = t.getContext("2d"),
-      [i, r] = n.c || ["#2f6dff", "#0b2a8a"],
-      s = e.createLinearGradient(0, 0, 0, 160);
+      [i, r] = n.c || ["#2f6dff", "#0b2a8a"];
+    e.scale(1.2, 1.2);
+    let s = e.createLinearGradient(0, 8, 0, 152);
     (s.addColorStop(0, i),
       s.addColorStop(1, r),
+      e.save(),
+      (e.shadowColor = "rgba(0,0,0,.5)"),
+      (e.shadowBlur = 9),
+      (e.shadowOffsetY = 4),
       e.beginPath(),
-      e.roundRect(6, 6, 148, 148, 38),
+      e.roundRect(9, 7, 142, 142, 40),
       (e.fillStyle = s),
-      e.fill());
-    let o = e.createLinearGradient(0, 6, 0, 86);
-    return (
-      o.addColorStop(0, "rgba(255,255,255,.34)"),
-      o.addColorStop(1, "rgba(255,255,255,0)"),
-      e.beginPath(),
-      e.roundRect(10, 10, 140, 76, 34),
-      (e.fillStyle = o),
       e.fill(),
-      (e.font = '86px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif'),
+      e.restore());
+    let o = e.createRadialGradient(80, 150, 10, 80, 150, 110);
+    (o.addColorStop(0, "rgba(255,255,255,.16)"),
+      o.addColorStop(1, "rgba(255,255,255,0)"),
+      (e.fillStyle = o),
+      e.fill());
+    let c = e.createLinearGradient(0, 7, 0, 84);
+    return (
+      c.addColorStop(0, "rgba(255,255,255,.42)"),
+      c.addColorStop(1, "rgba(255,255,255,0)"),
+      e.beginPath(),
+      e.roundRect(13, 11, 134, 70, 34),
+      (e.fillStyle = c),
+      e.fill(),
+      e.beginPath(),
+      e.roundRect(10, 8, 140, 140, 39),
+      (e.lineWidth = 2),
+      (e.strokeStyle = "rgba(255,255,255,.3)"),
+      e.stroke(),
+      (e.shadowColor = "rgba(0,0,0,.35)"),
+      (e.shadowBlur = 8),
+      (e.shadowOffsetY = 3),
+      (e.font = '82px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif'),
       (e.textAlign = "center"),
       (e.textBaseline = "middle"),
       (e.fillStyle = "#fff"),
-      e.fillText(n.emoji, 80, 86),
+      e.fillText(n.emoji, 80, 84),
       (hd[n.id] = t)
     );
   }
@@ -222,11 +242,12 @@
     frame() {
       let t = this.kit,
         { w: e, h: i } = this;
-      (t.rr(0, 0, e, i, 26).fill(It.glass),
+      (t.rr(0, 0, e, i, 26).fill(t.lg(0, 0, 0, i, ["rgba(16,28,62,.96)", "rgba(6,11,28,.96)"])),
         t
           .rr(0, 0, e, i, 26)
           .fill(t.lg(0, 0, 0, i * 0.6, ["rgba(120,180,255,.13)", "rgba(255,255,255,0)"]))
-          .stroke("rgba(160,210,255,.26)", 1.6),
+          .stroke("rgba(160,210,255,.3)", 1.8),
+        t.rr(22, 57, e - 44, 1.5, 1).fill(t.lg(22, 0, e - 22, 0, ["rgba(143,227,255,0)", "rgba(143,227,255,.35)", "rgba(143,227,255,0)"])),
         this.movable && this.kit.z("$move", 0, 0, e, 58, { move: !0 }),
         t.t(this.emoji, 24, 31, 24, "#fff", "left"),
         t.t(this.title, this.emoji ? 62 : 24, 31, 21, "#dcecff", "left", 650),
@@ -271,10 +292,24 @@
       "settings",
       "exit",
     ],
-    wa = 0.17,
-    fd = 0.035,
+    // grupos do dock (separador antes destes)
+    DS = new Set(["drums", "scenes", "settings"]),
+    wa = 0.145,
+    fd = 0.026,
     qm = 6,
-    oh = () => -an * U.view.tv * 0.76,
+    // Altura do dock: 0,48 da meia-altura da visão abaixo do centro (~74% da tela; antes 0,76 = 88%).
+    // Mais baixo que isso, ao apontar para ele a palma sai do quadro da câmera e o rastreio perde a mão.
+    oh = () => Math.min(-an * U.view.tv * 0.48, -0.53),
+    dk_v = "varying vec2 vU;void main(){vU=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}",
+    // Barra de vidro em cápsula desenhada por distância (cantos sempre redondos em qualquer largura).
+    dk_f = `uniform vec2 sz;uniform float op;varying vec2 vU;
+float sdb(vec2 p,vec2 b,float r){vec2 q=abs(p)-b+r;return length(max(q,0.))+min(max(q.x,q.y),0.)-r;}
+void main(){vec2 p=(vU-.5)*sz;vec2 b=sz*.5-.04;float d=sdb(p,b,b.y);float aa=fwidth(d)*1.2;float ins=1.-smoothstep(-aa,aa,d);
+float y=clamp(p.y/b.y*.5+.5,0.,1.);vec3 c=mix(vec3(.012,.022,.06),vec3(.07,.12,.25),y*y);
+c+=vec3(.3,.6,1.)*pow(1.-smoothstep(0.,.045,-d),3.)*.35*y;
+float rim=1.-smoothstep(0.,aa*1.5+.0025,abs(d));vec3 rc=mix(vec3(.12,.32,.9),vec3(.75,.95,1.3),y);
+float gl=(1.-ins)*exp(-max(d,0.)*48.)*.5;float a=.82*ins;c=mix(c,rc,rim);a=max(a,rim*.9);
+c=mix(c,vec3(.2,.55,1.3),gl/max(a+gl,.001));a=max(a,gl);gl_FragColor=vec4(c,a*op);}`,
     S_ =
       "varying vec2 u;uniform float p;uniform vec3 c;void main(){vec2 q=u*2.-1.;float r=length(q);float a=atan(q.x,q.y)/6.28318+.5;if(a>p)discard;gl_FragColor=vec4(c,smoothstep(.72,.78,r)*smoothstep(1.,.94,r));}";
   function E_() {
@@ -318,7 +353,7 @@
       t.colorSpace = Pe;
       let e = (this.toastS = new Jn(new Vn({ map: t, transparent: !0, depthTest: !1, opacity: 0 })));
       (e.scale.set(1.5, 0.15, 1),
-        e.position.set(0, 0.56, -1.9),
+        e.position.set(0, 0.72, -1.9),
         (e.renderOrder = 45),
         U.headG.add(e),
         (this.toastAt = -1e9),
@@ -370,45 +405,53 @@
         (this.toastAt = U.now));
     },
     buildDock() {
-      let n = (this.dock = new Wt());
-      (U.sc.add(n), (this.dockIcons = []));
-      let t = document.createElement("canvas");
-      ((t.width = 512), (t.height = 96));
-      let e = t.getContext("2d");
-      (e.beginPath(),
-        e.roundRect(3, 3, 506, 90, 34),
-        (e.fillStyle = "rgba(14,20,40,.76)"),
-        e.fill(),
-        (e.lineWidth = 2.5),
-        (e.strokeStyle = "rgba(255,255,255,.25)"),
-        e.stroke());
-      let i = new ln(t);
-      ((i.colorSpace = Pe),
-        (this.dockBar = new tt(new sn(1, 1), new $e({ map: i, transparent: !0, depthWrite: !1 }))),
+      let n = (this.dock = new Wt()),
+        t = (this.dockT = new Wt());
+      (n.add(t), U.sc.add(n), (this.dockIcons = []), (this.dockSeps = []));
+      ((this.dockBar = new tt(
+        new sn(1, 1),
+        new Me({ vertexShader: dk_v, fragmentShader: dk_f, uniforms: { sz: { value: new st(1, 1) }, op: { value: 1 } }, transparent: !0, depthWrite: !1 }),
+      )),
         (this.dockBar.renderOrder = 18),
-        n.add(this.dockBar));
+        t.add(this.dockBar));
+      // brilho atrás do ícone em foco
+      ((this.dockGlow = new Jn(new Vn({ map: U.fx.dot(), color: new Tt(0.35, 0.9, 2.2), transparent: !0, depthWrite: !1, blending: un }))),
+        (this.dockGlow.renderOrder = 19),
+        (this.dockGlow.visible = !1),
+        t.add(this.dockGlow));
       let r = (this.dockLC = document.createElement("canvas"));
       ((r.width = 512),
-        (r.height = 80),
+        (r.height = 96),
         (this.dockLT = new ln(r)),
         (this.dockLT.colorSpace = Pe),
         (this.dockLabel = new Jn(new Vn({ map: this.dockLT, transparent: !0, depthTest: !1 }))),
-        this.dockLabel.scale.set(0.56, 0.088, 1),
-        (this.dockLabel.renderOrder = 21),
+        this.dockLabel.scale.set(0.5, 0.094, 1),
+        (this.dockLabel.renderOrder = 22),
         (this.dockLabel.visible = !1),
-        n.add(this.dockLabel),
+        t.add(this.dockLabel),
         (this.dockReady = !1));
     },
     dockFill() {
       this.dockReady = !0;
-      let n = new sn(1, 1);
-      for (let t of M_) {
-        let e = Jr[t];
-        if (!e) continue;
-        let i = new ln(dd(e));
-        i.colorSpace = Pe;
-        let r = new tt(n, new $e({ map: i, transparent: !0, depthWrite: !1 }));
-        ((r.renderOrder = 20), this.dock.add(r), this.dockIcons.push({ it: e, m: r, s: wa, ts: wa, hover: 0, a: 0 }));
+      let n = new sn(1, 1),
+        t = new Vn({ map: U.fx.dot(), color: new Tt(0.6, 1.4, 2.4), transparent: !0, depthWrite: !1 }),
+        e = new $e({ color: new Tt(0.7, 0.85, 1), transparent: !0, opacity: 0.22, depthWrite: !1 });
+      for (let i of M_) {
+        let r = Jr[i];
+        if (!r) continue;
+        if (DS.has(i)) {
+          let c = new tt(n, e);
+          ((c.renderOrder = 19), this.dockT.add(c), this.dockSeps.push(c));
+        }
+        let s = new ln(dd(r));
+        s.colorSpace = Pe;
+        let o = new tt(n, new $e({ map: s, transparent: !0, depthWrite: !1 })),
+          a = new Jn(t);
+        ((o.renderOrder = 20),
+          (a.renderOrder = 21),
+          a.scale.setScalar(0.03),
+          this.dockT.add(o, a),
+          this.dockIcons.push({ it: r, m: o, dot: a, sep: DS.has(i), s: wa, ts: wa, hover: 0, a: 0, x: 0, lift: 0, on: 0 }));
       }
     },
     dockHit(n) {
@@ -417,9 +460,10 @@
         e = n.y * t,
         i = Di(Math.atan2(n.x, -n.z) - this.homeYaw),
         r = oh();
-      if (e < r - 0.26 || e > r + 0.3) return null;
+      // faixa justa: não rouba o clique da última fileira das janelas logo acima
+      if (e < r - 0.14 || e > r + 0.15) return null;
       let s = null,
-        o = 0.13;
+        o = 0.075;
       for (let a of this.dockIcons) {
         let c = Math.abs(i - a.a);
         c < o && ((o = c), (s = a));
@@ -438,59 +482,67 @@
         let u = Di(this.homeYawT - this.homeYaw);
         ((this.homeYaw += u * Fe(n, 4)), Math.abs(u) < 0.01 && (this.homeYawT = void 0));
       }
-      let i = -fd,
-        r = null,
-        s = [];
+      let i = this.dockOn,
+        r = oh(),
+        s = [],
+        o = null;
       for (let u of Xt.pointers) {
         let d = Di(Math.atan2(u.dir.x, -u.dir.z) - this.homeYaw),
           f = an / Math.max(1e-4, Math.hypot(u.dir.x, u.dir.z)),
           p = u.dir.y * f;
-        p > oh() - 0.3 && p < oh() + 0.4 && s.push(d);
+        p > r - 0.2 && p < r + 0.2 && s.push(d);
       }
+      // Posições fixas (o dock não "foge" do dedo como no Mac): só o ícone em foco cresce e sobe.
+      let a = -fd;
+      for (let u of this.dockIcons) a += wa + fd + (u.sep ? 0.035 : 0);
+      let c = -a / 2,
+        l = 0;
       for (let u of this.dockIcons) {
+        (u.sep && ((this.dockSeps[l++].position.x = c + 0.0045), (c += 0.035)), (u.x = c + wa / 2), (u.a = Math.atan2(u.x, an)), (c += wa + fd));
         let d = 0;
-        for (let f of s) d = Math.max(d, 1 - Math.min(1, Math.abs(f - u.a) / 0.26));
-        ((u.ts = wa * (1 + 0.75 * d * d)), (u.s += (u.ts - u.s) * Fe(n, 20)), (i += u.s + fd), u.hover && (r = u));
+        for (let p of s) d = Math.max(d, 1 - Math.min(1, Math.abs(p - u.a) / 0.12));
+        let f = this.panels.some((p) => p.it === u.it && !p.closing) || (this.xp && this.xp.it === u.it);
+        ((u.ts = wa * (1 + 0.14 * d * d + (u.hover ? 0.2 : 0))),
+          (u.s += (u.ts - u.s) * Fe(n, 18)),
+          (u.lift += ((u.hover ? 0.035 : 0) - u.lift) * Fe(n, 18)),
+          (u.on += ((f ? 1 : 0) - u.on) * Fe(n, 10)),
+          u.m.position.set(u.x, u.lift + (1 - i) * -0.15, 0.004 + u.lift * 0.5),
+          u.m.scale.setScalar(u.s * i),
+          u.dot.position.set(u.x, -wa / 2 - 0.024, 0.003),
+          (u.dot.material.opacity = u.on * i),
+          (u.dot.visible = u.on > 0.02),
+          u.hover && (o = u));
       }
-      let o = -i / 2,
-        a = this.dockOn,
-        c = Math.cos(this.homeYaw),
-        l = Math.sin(this.homeYaw),
-        h = oh();
-      for (let u of this.dockIcons) {
-        ((o += u.s / 2), (u.a = Math.atan2(o, an)));
-        let d = o,
-          f = -(an - 0.03),
-          p = h + (u.s - wa) * 0.5 + (1 - a) * -0.2;
-        (u.m.position.set(d * c - f * l, p, d * l + f * c),
-          (u.m.rotation.y = -this.homeYaw),
-          u.m.scale.setScalar(u.s * a),
-          (o += u.s / 2 + fd));
-      }
-      if (
-        (this.dockBar.position.set(l * an, h - 0.002, -c * an),
-        (this.dockBar.rotation.y = -this.homeYaw),
-        this.dockBar.scale.set((i + 0.12) * a, (wa + 0.08) * a, 1),
-        r !== this._dl && ((this._dl = r), (this.dockLabel.visible = !!r), r))
-      ) {
-        let u = this.dockLC,
-          d = u.getContext("2d");
-        (d.clearRect(0, 0, 512, 80), (d.font = `650 40px ${Sa}`));
-        let f = d.measureText(r.it.name).width + 44;
-        (d.beginPath(),
-          d.roundRect(256 - f / 2, 8, f, 64, 20),
-          (d.fillStyle = "rgba(14,20,36,.94)"),
-          d.fill(),
-          (d.fillStyle = "#fff"),
-          (d.textAlign = "center"),
-          (d.textBaseline = "middle"),
-          d.fillText(r.it.name, 256, 42),
+      for (let u of this.dockSeps) (u.position.set(u.position.x, 0, 0.002), u.scale.set(0.0035, wa * 0.62 * i, 1));
+      // grupo inclinado para o rosto: o dock fica abaixo dos olhos e "olha" para você
+      (this.dock.rotation.set(0, -this.homeYaw, 0),
+        this.dockT.position.set(0, r, -(an - 0.03)),
+        this.dockT.rotation.set(Math.atan2(r, an), 0, 0));
+      let h = a + 0.16,
+        u0 = wa + 0.075 + 0.08;
+      (this.dockBar.scale.set(h * i, u0 * i, 1), this.dockBar.material.uniforms.sz.value.set(h, u0), (this.dockBar.material.uniforms.op.value = i));
+      if (((this.dockGlow.visible = !!o), o && (this.dockGlow.position.set(o.x, o.lift, 0.001), this.dockGlow.scale.setScalar(o.s * 1.9)), o !== this._dl && ((this._dl = o), (this.dockLabel.visible = !!o), o))) {
+        let d = this.dockLC,
+          f = d.getContext("2d");
+        (f.clearRect(0, 0, 512, 96), (f.font = `650 40px ${Sa}`));
+        let p = Math.min(500, f.measureText(o.it.name).width + 56),
+          x = f.createLinearGradient(0, 10, 0, 86);
+        (x.addColorStop(0, "rgba(28,44,86,.96)"),
+          x.addColorStop(1, "rgba(8,14,32,.96)"),
+          f.beginPath(),
+          f.roundRect(256 - p / 2, 12, p, 70, 35),
+          (f.fillStyle = x),
+          f.fill(),
+          (f.lineWidth = 2.5),
+          (f.strokeStyle = "rgba(143,227,255,.55)"),
+          f.stroke(),
+          (f.fillStyle = "#fff"),
+          (f.textAlign = "center"),
+          (f.textBaseline = "middle"),
+          f.fillText(o.it.name, 256, 48),
           (this.dockLT.needsUpdate = !0));
       }
-      if (r) {
-        let u = r.a + this.homeYaw;
-        this.dockLabel.position.set(Math.sin(u) * (an - 0.05), h + r.s + 0.03, -Math.cos(u) * (an - 0.05));
-      }
+      o && this.dockLabel.position.set(o.x, o.lift + o.s / 2 + 0.07, 0.01);
     },
     openPanel(n) {
       let t = this.panels.find((a) => a.it === n && !a.closing);

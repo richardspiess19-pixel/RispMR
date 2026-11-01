@@ -42,6 +42,10 @@
       get: (n, t = "kv") => pa(t, "readonly", (e) => e.get(n)).catch(() => {}),
       put: (n, t) => pa("kv", "readwrite", (e) => e.put(t, n)).catch(() => {}),
       del: (n, t = "kv") => pa(t, "readwrite", (e) => e.delete(n)).catch(() => {}),
+      has: (n) =>
+        pa("kv", "readonly", (t) => t.count(n))
+          .then((t) => t > 0)
+          .catch(() => !1),
       addMedia: (n) => pa("media", "readwrite", (t) => t.put(n)).catch(() => {}),
       allMedia: () => pa("media", "readonly", (n) => n.getAll()).catch(() => []),
     };
