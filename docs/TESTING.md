@@ -40,5 +40,6 @@ Não executado neste ambiente (sem hardware). Registre os resultados por modelo/
 10. **Foco** — trocar de app com botão pressionado: estados voltam a solto.
 11. **Modo jogo** — Shizuku ligado e permitido, Iniciar emulação, abrir um app de teste de
     controle (ou um jogo com suporte a controle): aparece "VR Box -> Quest (controle virtual)" e o
-    joystick do VR Box move o analógico esquerdo em todas as direções. Na tela Jogo, "Lendo o VR
-    Box no jogo" mostra o número de sinais recebidos.
+    joystick do VR Box move o analógico esquerdo em todas as direções. Na tela Jogo, "Testar o que
+    o jogo recebe" mostra o controle virtual ao vivo (o serviço lê o VR Box mesmo com o app na
+    tela), e depois de jogar aparece quantos sinais do VR Box foram lidos no jogo.

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildMappings, keyDirections, pickStick } from '../../frontend/scripts/views/setup.js';
+import { buildMappings, keyDirections, pickStick, stickFrom, directionsText } from '../../frontend/scripts/views/setup.js';
 
 const fns = { joystick: 'left', trigTop: 'right.trigger', trigBottom: 'right.grip', A: 'right.a', B: 'right.b', C: 'left.x', D: 'left.y', at: 'left.menu' };
 
@@ -32,7 +32,8 @@ test('gamepad mode: both axes (every direction), analog triggers preferred', () 
 
 test('mouse mode and D-pad mode move to every side', () => {
   const mouse = stickRules(buildMappings({ joystick: { kind: 'mouse', source: 'mouse:x' } }, { ...fns, joystick: 'right' }), 'right');
-  assert.deepEqual([mouse.x, mouse.y], [['mouse:x'], ['mouse:y']]);
+  assert.equal(mouse.x[0], 'mouse:x');
+  assert.equal(mouse.y[0], 'mouse:y');
   const dpad = stickRules(buildMappings({ joystick: { kind: 'dpad', source: 'key:DPAD_RIGHT' } }, fns));
   for (const d of ['up', 'down', 'left', 'right']) assert.deepEqual(dpad[d], [`key:DPAD_${d.toUpperCase()}`]);
   assert.deepEqual(dpad.x, ['axis:HAT_X']);
@@ -80,4 +81,51 @@ test('mode of each signal', async () => {
   assert.equal(modeOf('key:DPAD_UP'), 'keyboard');
   assert.equal(modeOf('key:DPAD_UP', 'gamepad'), 'gamepad');
   assert.equal(modeOf('key:BACK', 'gamepad'), 'gamepad');
+});
+
+/** What the setup stores for one push, from a detection like the app sends. */
+const push = (sourceId, value = 1) => stickFrom({ sourceId, value, state: sourceId.startsWith('mouse:') ? 'MOVED' : 'PRESSED', alternatives: sourceId.startsWith('axis:') ? [{ id: sourceId.replace(/:[+-]$/, ''), kind: 'analog' }] : [] });
+const rulesFor = (dirs) =>
+  buildMappings({ joystick: push(...dirs.right), joyLeft: dirs.left && push(...dirs.left), joyUp: dirs.up && push(...dirs.up), joyDown: dirs.down && push(...dirs.down) }, { joystick: 'left' }).filter((r) =>
+    r.target.startsWith('left.stick.'),
+  );
+const has = (rules, rule) => assert.ok(rules.some((r) => r.source === rule.source && r.target === rule.target && Boolean(r.invert) === Boolean(rule.invert)), `${JSON.stringify(rule)} in ${JSON.stringify(rules)}`);
+
+test('four directions on X/Y: two analog axes, nothing inverted', () => {
+  const rules = rulesFor({ right: ['axis:X:+'], left: ['axis:X:-'], up: ['axis:Y:-'], down: ['axis:Y:+'] });
+  has(rules, { source: 'axis:X', target: 'left.stick.x' });
+  has(rules, { source: 'axis:Y', target: 'left.stick.y' });
+});
+
+test('up/down on another axis, upside down: that axis, inverted', () => {
+  const rules = rulesFor({ right: ['axis:X:+'], left: ['axis:X:-'], up: ['axis:RZ:+'], down: ['axis:RZ:-'] });
+  has(rules, { source: 'axis:X', target: 'left.stick.x' });
+  has(rules, { source: 'axis:RZ', target: 'left.stick.y', invert: true });
+  assert.ok(!rules.some((r) => r.source === 'axis:Y'), 'Y is not guessed when up/down were learned');
+});
+
+test('left/right reversed on the device', () => {
+  has(rulesFor({ right: ['axis:X:-'], left: ['axis:X:+'], up: ['axis:Y:-'], down: ['axis:Y:+'] }), { source: 'axis:X', target: 'left.stick.x', invert: true });
+});
+
+test('keys and axes mixed: each direction keeps its own signal', () => {
+  const rules = rulesFor({ right: ['key:MEDIA_NEXT'], left: ['key:MEDIA_PREVIOUS'], up: ['axis:Y:-'], down: ['axis:Y:+'] });
+  has(rules, { source: 'key:MEDIA_NEXT', target: 'left.stick.right' });
+  has(rules, { source: 'key:MEDIA_PREVIOUS', target: 'left.stick.left' });
+  has(rules, { source: 'axis:Y', target: 'left.stick.y' });
+});
+
+test('mouse mode: the sign of each push sets the direction', () => {
+  const rules = rulesFor({ right: ['mouse:x', 12], left: ['mouse:x', -12], up: ['mouse:y', 9], down: ['mouse:y', -9] });
+  has(rules, { source: 'mouse:x', target: 'left.stick.x' });
+  has(rules, { source: 'mouse:y', target: 'left.stick.y', invert: true });
+});
+
+test('one key per direction (keyboard mode)', () => {
+  const rules = rulesFor({ right: ['key:D'], left: ['key:A'], up: ['key:W'], down: ['key:S'] });
+  for (const [k, d] of [['D', 'right'], ['A', 'left'], ['W', 'up'], ['S', 'down']]) has(rules, { source: `key:${k}`, target: `left.stick.${d}` });
+});
+
+test('summary lists every direction', () => {
+  assert.equal(directionsText({ joystick: push('axis:X:+'), joyLeft: push('axis:X:-'), joyUp: null, joyDown: push('axis:Y:+') }), 'Direita ✓ · Esquerda ✓ · Cima — · Baixo ✓');
 });

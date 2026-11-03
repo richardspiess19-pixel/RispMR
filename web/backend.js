@@ -7,7 +7,7 @@
 
 import * as E from './engine.js';
 
-const VERSION = '0.6.0';
+const VERSION = '0.6.1';
 const KM_KEY = 'web:km';
 const STORE = { profiles: 'vrbq.profiles', settings: 'vrbq.settings', identified: 'vrbq.identified' };
 
@@ -846,6 +846,7 @@ export function installWebBackend(win, rawDefaults) {
     'game.update': APP_ONLY,
     'gamepad.permission': APP_ONLY,
     'gamepad.retry': APP_ONLY,
+    'gamepad.test': APP_ONLY,
     'gamepad.openShizuku': APP_ONLY,
 
     'settings.update': (patch) => {

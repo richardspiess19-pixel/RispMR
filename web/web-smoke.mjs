@@ -64,8 +64,11 @@ if (!(await page.getByRole('button', { name: 'Configurar meu VR Box' }).count())
 await page.getByRole('button', { name: 'Configurar meu VR Box' }).click();
 await page.waitForTimeout(300);
 await shot(page, 'web-setup');
-await tap(page, [], [1, 0, 0, 0]); // joystick right
-await page.waitForTimeout(1400); // the joystick is listened to a little longer
+// Every joystick direction is asked (the joystick is listened to a little longer).
+for (const axes of [[1, 0, 0, 0], [-1, 0, 0, 0], [0, -1, 0, 0], [0, 1, 0, 0]]) {
+  await tap(page, [], axes);
+  await page.waitForTimeout(1400);
+}
 for (const b of [7, 6, 0, 1, 2, 3]) {
   // gatilho de cima = R2, gatilho de baixo = L2, then A, B, C (X), D (Y)
   await tap(page, [b]);
@@ -85,7 +88,7 @@ await shot(page, 'web-setup-summary');
 const summary = await page.locator('.game-row').allInnerTexts();
 if (summary.length !== 8) errors.push(`summary has ${summary.length} rows`);
 if (!summary[7].includes('Tecla voltar')) errors.push(`@ step learned: ${summary[7]}`);
-if (!summary[0].includes('Eixo X')) errors.push(`joystick learned as: ${summary[0]}`);
+if (!summary[0].includes('Direita ✓ · Esquerda ✓ · Cima ✓ · Baixo ✓')) errors.push(`joystick learned as: ${summary[0]}`);
 await page.getByRole('button', { name: 'Salvar e usar' }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'Testar agora' }).click();
@@ -102,6 +105,14 @@ await page.evaluate(() => window.__set([7], null));
 await page.waitForTimeout(150);
 const trig = await page.locator('.vc--right .qc-row--analog', { hasText: 'Gatilho' }).locator('.meter__value').innerText();
 if (trig !== '1,00') errors.push(`right trigger shows ${trig}`);
+await page.evaluate(() => window.__set([], null));
+// The joystick reaches the virtual left stick in every direction.
+for (const [axes, want] of [[[0, -1, 0, 0], /Y \+0,9|Y \+1,0/], [[0, 1, 0, 0], /Y -0,9|Y -1,0|Y −0,9|Y −1,0/], [[-1, 0, 0, 0], /X -0,9|X -1,0|X −0,9|X −1,0/], [[1, 0, 0, 0], /X \+0,9|X \+1,0/]]) {
+  await page.evaluate((a) => window.__set([], a), axes);
+  await page.waitForTimeout(400);
+  const t = await page.locator('.vc--left .vc__stick .mono').innerText();
+  if (!want.test(t)) errors.push(`left stick for ${axes} shows "${t}"`);
+}
 await page.evaluate(() => window.__set([], null));
 await shot(page, 'web-controllers');
 

@@ -53,6 +53,7 @@ import com.rispmr.vrboxemulator.engine.RegistryEvent
 import com.rispmr.vrboxemulator.engine.SettingsException
 import com.rispmr.vrboxemulator.engine.Sources
 import com.rispmr.vrboxemulator.engine.VirtualControllerManager
+import com.rispmr.vrboxemulator.engine.VirtualGamepad
 import com.rispmr.vrboxemulator.engine.VirtualTargets
 import com.rispmr.vrboxemulator.input.AndroidInputTranslator
 import com.rispmr.vrboxemulator.input.HidInputManager
@@ -198,6 +199,63 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     // ---------------------------------------------------------------- lifecycle
 
+    /**
+     * "Testar o controle virtual": with the app on screen, the Shizuku service reads the VR Box
+     * anyway and drives the virtual gamepad; the gamepad's own events reach this activity and are
+     * shown, so the user sees exactly what a game receives.
+     */
+    private var selfTest = false
+    private val selfTestAxes = FloatArray(6) // X, Y, Z, RZ, BRAKE(L2), GAS(R2)
+    private val selfTestButtons = LinkedHashSet<String>()
+    private var selfTestEvents = 0
+    private val ownPadIds = HashMap<Int, Boolean>()
+
+    private fun isOwnPad(deviceId: Int): Boolean = ownPadIds.getOrPut(deviceId) {
+        InputDevice.getDevice(deviceId)?.let { VirtualGamepad.isOwn(it.vendorId, it.productId, it.name) } == true
+    }
+
+    private fun setSelfTest(on: Boolean) {
+        if (selfTest == on) return
+        selfTest = on
+        selfTestAxes.fill(0f)
+        selfTestButtons.clear()
+        selfTestEvents = 0
+        VirtualGamepadManager.setReading(on || (!resumed && emulationRunning))
+        statusDirty = true
+        scheduleFrame()
+    }
+
+    private fun onOwnPadKey(event: KeyEvent) {
+        if (!selfTest || event.repeatCount > 0) return
+        val name = AndroidInputTranslator.keyName(event.keyCode).removePrefix("BUTTON_")
+        if (event.action == KeyEvent.ACTION_DOWN) selfTestButtons += name else if (event.action == KeyEvent.ACTION_UP) selfTestButtons -= name
+        selfTestEvents++
+        statusDirty = true
+        scheduleFrame()
+    }
+
+    private fun onOwnPadMotion(event: MotionEvent) {
+        if (!selfTest) return
+        val axes = intArrayOf(MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ, MotionEvent.AXIS_BRAKE, MotionEvent.AXIS_GAS)
+        for (i in axes.indices) selfTestAxes[i] = event.getAxisValue(axes[i])
+        selfTestEvents++
+        statusDirty = true
+        scheduleFrame()
+    }
+
+    private fun selfTestJson(): Any {
+        if (!selfTest) return JSONObject.NULL
+        val r = { v: Float -> round(v) }
+        return JSONObject()
+            // Android sticks: +y = down. The page draws +y = up.
+            .put("left", JSONObject().put("x", r(selfTestAxes[0])).put("y", r(-selfTestAxes[1])))
+            .put("right", JSONObject().put("x", r(selfTestAxes[2])).put("y", r(-selfTestAxes[3])))
+            .put("l2", r(selfTestAxes[4]))
+            .put("r2", r(selfTestAxes[5]))
+            .put("buttons", JSONArray(selfTestButtons.toList()))
+            .put("events", selfTestEvents)
+    }
+
     /** Linux scan code -> Android key name of the selected controller (from KeyEvent.getScanCode). */
     private val scanCodes = HashMap<Int, String>()
     private var scanCodesKey: String? = null
@@ -221,10 +279,12 @@ class AppController(private val activity: Activity, private val webView: WebView
     fun onResume() {
         resumed = true
         // On screen: the app reads the VR Box itself and the virtual gamepad rests.
+        selfTest = false
         VirtualGamepadManager.setReading(false)
         hid.start(
             onAdded = { id -> hid.describe(id)?.let { handleRegistry(registry.put(it)) } },
             onRemoved = { id ->
+                ownPadIds.remove(id)
                 translator.reset(id)
                 handleRegistry(registry.remove(id))
             },
@@ -241,6 +301,7 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     fun onPause() {
         resumed = false
+        selfTest = false
         // A game is (probably) opening: the Shizuku service reads the VR Box now.
         if (emulationRunning) VirtualGamepadManager.setReading(true)
         hid.stop()
@@ -286,6 +347,10 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     /** @return true when the event was consumed (it then does not reach the UI). */
     fun onKeyEvent(event: KeyEvent): Boolean = safeInput(false) {
+        if (isOwnPad(event.deviceId)) {
+            onOwnPadKey(event)
+            return@safeInput true
+        }
         val key = acceptDevice(event.deviceId) ?: return@safeInput false
         learnScanCode(key, event)
         rawBuffer.clear()
@@ -297,6 +362,10 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     fun onMotionEvent(event: MotionEvent): Boolean = safeInput(false) {
         if (event.isFromSource(InputDevice.SOURCE_TOUCHSCREEN)) return@safeInput false
+        if (isOwnPad(event.deviceId)) {
+            onOwnPadMotion(event)
+            return@safeInput true
+        }
         val key = acceptDevice(event.deviceId) ?: return@safeInput false
         rawBuffer.clear()
         translator.translateMotion(event, key, captured = false, out = rawBuffer)
@@ -560,6 +629,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         if (!emulationRunning) return
         emulationRunning = false
         streamer.stop()
+        selfTest = false
         VirtualGamepadManager.stop()
         applyKeepScreenOn()
         log.add(EventLog.SYSTEM, "Emulação parada", clock.wallMs())
@@ -1018,6 +1088,14 @@ class AppController(private val activity: Activity, private val webView: WebView
             if (emulationRunning) applyVirtualGamepad()
             statusJson()
         }
+        on("gamepad.test") { args ->
+            val on = args.optBoolean("on", true)
+            if (on && (!emulationRunning || !VirtualGamepadManager.isActive)) {
+                throw CommandException("Inicie a emulação primeiro.", "not_running")
+            }
+            setSelfTest(on)
+            statusJson()
+        }
         on("gamepad.retry") {
             VirtualGamepadManager.stop()
             applyVirtualGamepad()
@@ -1315,11 +1393,13 @@ class AppController(private val activity: Activity, private val webView: WebView
                 JSONObject()
                     .put("enabled", settings.game.enabled)
                     .put("output", "gamepad")
+                    .put("selfTest", selfTestJson())
                     .put("gamepad", VirtualGamepadManager.status().let { g -> JSONObject().put("state", g.state.key).put("message", g.message).put("uid", g.uid ?: JSONObject.NULL) })
                     .put(
                         "reader",
                         VirtualGamepadManager.remote()?.let { r ->
                             JSONObject().put("reading", r.reading).put("grabbed", r.grabbed).put("nodes", r.nodes).put("events", r.events).put("error", r.error)
+                                .put("found", r.found).put("foundGrabbed", r.foundGrabbed)
                         } ?: JSONObject.NULL,
                     ),
             )

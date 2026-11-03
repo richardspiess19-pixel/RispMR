@@ -84,6 +84,13 @@ async function run(label, { mock, width, height }) {
     await page.evaluate(() => (location.hash = '#/game'));
     await page.waitForTimeout(300);
     if (!(await page.getByText('Os jogos estão vendo um controle').count())) errors.push(`[${label}] virtual gamepad not shown as connected`);
+    // Self-test: what the game receives, live.
+    await page.getByRole('button', { name: 'Testar agora' }).click();
+    await page.waitForTimeout(250);
+    if (!(await page.getByText('Botões: A').count())) errors.push(`[${label}] virtual gamepad test does not show the buttons`);
+    await page.screenshot({ path: path.join(outDir, `${label}-game-test.png`), fullPage: true });
+    await page.getByRole('button', { name: 'Parar teste' }).click();
+    await page.waitForTimeout(150);
     await page.screenshot({ path: path.join(outDir, `${label}-game-gamepad.png`), fullPage: true });
     await page.evaluate(() => (location.hash = '#/detect'));
     await page.waitForTimeout(200);

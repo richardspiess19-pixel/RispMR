@@ -2,6 +2,7 @@ import { h, render } from '../dom.js';
 import { icon } from '../icons.js';
 import { startEmulation } from './dashboard.js';
 import { otherAppsInfo } from '../components/other-apps.js';
+import { createStickView } from '../components/stick-view.js';
 
 // Modo jogo: the game that is open receives a virtual gamepad driven by the VR Box. The Shizuku
 // service reads the VR Box while the game is in front and feeds the gamepad.
@@ -39,6 +40,16 @@ export default {
     const statusBody = h('div', { class: 'stack stack--sm' });
     const enableRow = h('div');
     const playBody = h('div', { class: 'stack stack--sm' });
+    const testBody = h('div', { class: 'stack stack--sm' });
+    const testLeft = createStickView({ label: 'Analógico esquerdo', size: 130 });
+    const testRight = createStickView({ label: 'Analógico direito', size: 130 });
+    const testInfo = h('p', { class: 'mono small' }, '');
+    const testView = h(
+      'div',
+      { class: 'stack stack--sm hidden' },
+      h('div', { class: 'mini-hands' }, h('div', { class: 'mini-hand' }, testLeft.el, h('span', { class: 'muted small' }, 'Analógico esquerdo')), h('div', { class: 'mini-hand' }, testRight.el, h('span', { class: 'muted small' }, 'Analógico direito'))),
+      testInfo,
+    );
 
     root.append(
       h(
@@ -47,6 +58,7 @@ export default {
         h('div', {}, h('h1', { class: 'page-title' }, 'Modo jogo'), h('p', { class: 'page-sub' }, 'Os jogos do celular recebem um controle de jogo de verdade, com os botões do jeito que você configurou.')),
       ),
       h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Controle virtual')), statusBody, enableRow),
+      h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Testar o que o jogo recebe')), testBody, testView),
       h(
         'section',
         { class: 'card' },
@@ -107,8 +119,9 @@ export default {
         text = 'Os jogos estão vendo um controle chamado "VR Box -> Quest (controle virtual)".';
         if (reader?.error) extra = h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, reader.error));
         else if (reader?.reading && !reader.nodes) extra = h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, 'O VR Box não foi encontrado. Ligue o controle: ele é procurado de novo a cada 2 segundos.'));
-        else if (reader?.reading && !reader.grabbed) extra = h('p', { class: 'muted small' }, 'Este celular não deixou separar o VR Box, então o jogo também vê o controle original.');
-        else if (reader?.reading) extra = h('p', { class: 'muted small' }, `Lendo o VR Box no jogo (${reader.events} sinais).`);
+        else if (reader?.found && !reader.foundGrabbed) extra = h('p', { class: 'muted small' }, 'Este celular não deixou separar o VR Box, então o jogo também vê o controle original.');
+        else if (reader?.found) extra = h('p', { class: 'muted small' }, `No jogo: VR Box encontrado e separado · ${reader.events} sinais lidos.`);
+        else if (reader && !reader.reading && reader.events === 0) extra = h('p', { class: 'muted small' }, 'Quando você abrir o jogo, o app passa a ler o VR Box por lá.');
       } else if (st === 'ready' || st === 'connecting') {
         text = running ? 'Criando o controle virtual…' : 'Tudo certo. O controle virtual aparece para os jogos quando você iniciar a emulação.';
       } else if (st === 'error') {
@@ -120,6 +133,40 @@ export default {
       }
       render(statusBody, h('div', { class: 'list__title' }, 'Situação', badge), h('p', { class: 'text-2' }, text), extra);
     };
+
+    let testOn = false;
+    const renderTest = (status) => {
+      const g = status?.game || {};
+      const t = g.selfTest;
+      const active = g.gamepad?.state === 'active' && Boolean(status?.emulation?.running);
+      const on = Boolean(t);
+      if (on !== testOn || !testBody.childElementCount) {
+        testOn = on;
+        render(
+          testBody,
+          h('p', { class: 'text-2' }, on ? 'Mexa o joystick para todos os lados e aperte os botões. Aqui aparece exatamente o que os jogos recebem.' : 'Veja aqui, antes de abrir o jogo, se o controle virtual recebe o joystick em todas as direções e os botões.'),
+          h(
+            'div',
+            { class: 'row' },
+            on
+              ? h('button', { class: 'btn btn--sm', type: 'button', onClick: () => runTest(false) }, icon('stop'), 'Parar teste')
+              : h('button', { class: 'btn btn--sm btn--primary', type: 'button', disabled: !active, onClick: () => runTest(true) }, icon('activity'), 'Testar agora'),
+          ),
+          !on && !active ? h('p', { class: 'muted small' }, 'Inicie a emulação para testar.') : null,
+        );
+        testView.classList.toggle('hidden', !on);
+      }
+      if (!t) return;
+      testLeft.update(t.left.x, t.left.y);
+      testRight.update(t.right.x, t.right.y);
+      const n = (v) => (v >= 0 ? '+' : '') + v.toFixed(2).replace('.', ',');
+      testInfo.textContent = `Esquerdo X ${n(t.left.x)} Y ${n(t.left.y)} · Direito X ${n(t.right.x)} Y ${n(t.right.y)} · L2 ${n(t.l2)} R2 ${n(t.r2)} · Botões: ${t.buttons.length ? t.buttons.join(', ') : 'nenhum'} · ${t.events} sinais`;
+    };
+
+    async function runTest(on) {
+      const r = await ctx.run('gamepad.test', { on });
+      if (r) ctx.store.set('status', r);
+    }
 
     const renderPlay = (status) => {
       const running = Boolean(status?.emulation?.running);
@@ -145,18 +192,23 @@ export default {
 
     renderEnable();
     renderStatus(ctx.store.state.status);
+    renderTest(ctx.store.state.status);
     renderPlay(ctx.store.state.status);
 
     let lastStatus = '';
     return {
       onStatus: (s) => {
-        const key = JSON.stringify([s?.game, s?.emulation?.running]);
+        renderTest(s);
+        const key = JSON.stringify([{ ...s?.game, selfTest: Boolean(s?.game?.selfTest) }, s?.emulation?.running]);
         if (key === lastStatus) return;
         lastStatus = key;
         renderStatus(s);
         renderPlay(s);
       },
       onSettings: renderEnable,
+      unmount: () => {
+        if (testOn) ctx.bridge.call('gamepad.test', { on: false }).catch(() => {});
+      },
     };
   },
 };

@@ -57,6 +57,8 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
     private var lastReport: ByteArray? = null
     private var error = ""
     private var events = 0L
+    private var found = 0
+    private var foundGrabbed = false
     private var tickScheduled = false
     private val buffer = ArrayList<RawEvent>(16)
 
@@ -279,6 +281,8 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
         val key = DeviceGroup.keyOf(c.device.name, c.device.vendorId, c.device.productId)
         val node = NodeReader(path, fd, EvdevTranslator(key, ranges, c.scanCodes), grab(fd))
         nodes[path] = node
+        found = maxOf(found, nodes.size)
+        foundGrabbed = nodes.values.all { it.grabbed }
         error = ""
         node.start()
     }
@@ -340,6 +344,8 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
             .put("grabbed", nodes.isNotEmpty() && nodes.values.all { it.grabbed })
             .put("nodes", JSONArray(nodes.keys.sorted()))
             .put("events", events)
+            .put("found", found)
+            .put("foundGrabbed", foundGrabbed)
             .put("error", error)
             .toString()
     }

@@ -53,7 +53,16 @@ object VirtualGamepadManager {
     data class Status(val state: State, val message: String = "", val uid: Int? = null)
 
     /** What the service reports about the VR Box (see IVirtualGamepad.status). */
-    data class Remote(val reading: Boolean, val grabbed: Boolean, val nodes: Int, val events: Long, val error: String)
+    data class Remote(
+        val reading: Boolean,
+        val grabbed: Boolean,
+        val nodes: Int,
+        val events: Long,
+        val error: String,
+        /** Device nodes of the VR Box opened since the service started (stays after the game). */
+        val found: Int,
+        val foundGrabbed: Boolean,
+    )
 
     const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
     private const val TAG = "VRBQ-gamepad"
@@ -186,7 +195,15 @@ object VirtualGamepadManager {
         val s = service ?: return null
         return runCatching {
             val o = JSONObject(s.status())
-            Remote(o.optBoolean("reading"), o.optBoolean("grabbed"), o.optJSONArray("nodes")?.length() ?: 0, o.optLong("events"), o.optString("error"))
+            Remote(
+                o.optBoolean("reading"),
+                o.optBoolean("grabbed"),
+                o.optJSONArray("nodes")?.length() ?: 0,
+                o.optLong("events"),
+                o.optString("error"),
+                o.optInt("found"),
+                o.optBoolean("foundGrabbed"),
+            )
         }.getOrNull()
     }
 
