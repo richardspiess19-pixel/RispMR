@@ -7,7 +7,7 @@
 
 import * as E from './engine.js';
 
-const VERSION = '0.4.0';
+const VERSION = '0.5.0';
 const KM_KEY = 'web:km';
 const STORE = { profiles: 'vrbq.profiles', settings: 'vrbq.settings', identified: 'vrbq.identified' };
 

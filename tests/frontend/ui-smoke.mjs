@@ -68,9 +68,18 @@ async function run(label, { mock, width, height }) {
     await page.waitForTimeout(200);
     const calls = await page.evaluate(() => window.__mockCalls);
     if (!calls.includes('emulation.start')) errors.push(`[${label}] Iniciar emulação did not call the bridge`);
-    // Modo jogo: drag a touch marker and check that the layout is saved.
+    // Modo jogo: the virtual gamepad asks Shizuku for permission.
     await page.evaluate(() => (location.hash = '#/game'));
     await page.waitForTimeout(300);
+    await page.getByRole('button', { name: 'Permitir' }).click();
+    await page.waitForTimeout(200);
+    if (!(await page.evaluate(() => window.__mockCalls)).includes('gamepad.permission')) errors.push(`[${label}] Permitir did not ask Shizuku`);
+    if (!(await page.getByText('Os jogos estão vendo um controle').count())) errors.push(`[${label}] virtual gamepad not shown as connected`);
+    await page.screenshot({ path: path.join(outDir, `${label}-game-gamepad.png`), fullPage: true });
+    // Touch output: drag a touch marker and check that the layout is saved.
+    await page.getByRole('radio', { name: /Toques na tela/ }).click();
+    await page.waitForTimeout(300);
+    if (await page.locator('[data-output="touch"]').evaluate((el) => el.classList.contains('hidden'))) errors.push(`[${label}] touch editor still hidden`);
     const marker = page.locator('.game-marker').first();
     const box = await marker.boundingBox();
     await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);

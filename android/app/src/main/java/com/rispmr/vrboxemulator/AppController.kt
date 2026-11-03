@@ -24,6 +24,7 @@ import com.rispmr.vrboxemulator.bridge.WebBridge
 import com.rispmr.vrboxemulator.demo.DemoScript
 import com.rispmr.vrboxemulator.game.GameModeBus
 import com.rispmr.vrboxemulator.game.GameModeService
+import com.rispmr.vrboxemulator.gamepad.VirtualGamepadManager
 import android.content.ComponentName
 import com.rispmr.vrboxemulator.engine.AppSettings
 import com.rispmr.vrboxemulator.engine.AppSettingsCodec
@@ -38,6 +39,7 @@ import com.rispmr.vrboxemulator.engine.EventLog
 import com.rispmr.vrboxemulator.engine.FileTextStorage
 import com.rispmr.vrboxemulator.engine.GameModeCodec
 import com.rispmr.vrboxemulator.engine.GameModeConfig
+import com.rispmr.vrboxemulator.engine.GameOutput
 import com.rispmr.vrboxemulator.engine.Hand
 import com.rispmr.vrboxemulator.engine.HandSnapshot
 import com.rispmr.vrboxemulator.engine.IdGenerator
@@ -150,6 +152,8 @@ class AppController(private val activity: Activity, private val webView: WebView
     }
 
     init {
+        VirtualGamepadManager.init(activity)
+        VirtualGamepadManager.addListener(busListener)
         log.capacity = settings.logSize
         profiles.load()
         profiles.loadWarnings.forEach { log.add(EventLog.SYSTEM, it, clock.wallMs()) }
@@ -230,6 +234,7 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     fun onDestroy() {
         GameModeBus.offState(busListener)
+        VirtualGamepadManager.removeListener(busListener)
         GameModeBus.setUiResumed(false)
         stopDemo()
         streamer.shutdown()
@@ -513,12 +518,14 @@ class AppController(private val activity: Activity, private val webView: WebView
         emulationStartedAt = clock.wallMs()
         GameModeBus.setEmulationActive(true)
         if (settings.udp.enabled) streamer.start(settings.udp)
+        applyVirtualGamepad()
         applyKeepScreenOn()
         val output = if (settings.udp.enabled) "rede UDP ${settings.udp.host}:${settings.udp.port} (${settings.udp.format})" else "nenhuma saída de rede"
         val game = when {
             !settings.game.enabled -> "Modo jogo desligado"
-            gameServiceEnabled() -> "Modo jogo pronto (abra o jogo)"
-            else -> "Modo jogo precisa do serviço de acessibilidade"
+            !gameServiceEnabled() -> "Modo jogo precisa do serviço de acessibilidade"
+            gamepadOutput() -> "controle virtual: ${gamepadLabel(VirtualGamepadManager.status())}"
+            else -> "Modo jogo pronto (abra o jogo)"
         }
         log.add(EventLog.SYSTEM, "Emulação iniciada — $game; $output", clock.wallMs())
         statusDirty = true
@@ -530,10 +537,32 @@ class AppController(private val activity: Activity, private val webView: WebView
         emulationRunning = false
         GameModeBus.setEmulationActive(false)
         streamer.stop()
+        VirtualGamepadManager.stop()
         applyKeepScreenOn()
         log.add(EventLog.SYSTEM, "Emulação parada", clock.wallMs())
         statusDirty = true
         scheduleFrame()
+    }
+
+    private fun gamepadOutput() = settings.game.enabled && settings.game.output == GameOutput.GAMEPAD
+
+    /** The virtual gamepad exists while emulation runs with Modo jogo set to "Controle virtual". */
+    private fun applyVirtualGamepad() {
+        if (emulationRunning && gamepadOutput()) {
+            if (!VirtualGamepadManager.isActive) VirtualGamepadManager.start()
+        } else {
+            VirtualGamepadManager.stop()
+        }
+    }
+
+    private fun gamepadLabel(s: VirtualGamepadManager.Status): String = when (s.state) {
+        VirtualGamepadManager.State.NOT_INSTALLED -> "instale o Shizuku"
+        VirtualGamepadManager.State.NOT_RUNNING -> "inicie o Shizuku"
+        VirtualGamepadManager.State.OLD_SHIZUKU -> "atualize o Shizuku"
+        VirtualGamepadManager.State.NO_PERMISSION -> "permita o app no Shizuku"
+        VirtualGamepadManager.State.READY, VirtualGamepadManager.State.CONNECTING -> "criando"
+        VirtualGamepadManager.State.ACTIVE -> "conectado"
+        VirtualGamepadManager.State.ERROR -> s.message
     }
 
     private fun applyKeepScreenOn() {
@@ -972,6 +1001,22 @@ class AppController(private val activity: Activity, private val webView: WebView
             startSafely(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
             null
         }
+        on("gamepad.permission") {
+            if (!VirtualGamepadManager.requestPermission()) {
+                throw CommandException("O Shizuku não está ligado. Abra o Shizuku e toque em Iniciar.", "shizuku_off")
+            }
+            if (emulationRunning) applyVirtualGamepad()
+            statusJson()
+        }
+        on("gamepad.retry") {
+            VirtualGamepadManager.stop()
+            applyVirtualGamepad()
+            statusJson()
+        }
+        on("gamepad.openShizuku") {
+            VirtualGamepadManager.openShizuku(activity)
+            null
+        }
         on("game.update") { args ->
             settings = settings.copy(game = GameModeCodec.decode(args, settings.game))
             onSettingsChanged()
@@ -1014,6 +1059,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         log.capacity = settings.logSize
         applyKeepScreenOn()
         updatePointerCapture()
+        if (emulationRunning) applyVirtualGamepad()
         statusDirty = true
         devicesDirty = true
         scheduleFrame()
@@ -1268,6 +1314,8 @@ class AppController(private val activity: Activity, private val webView: WebView
                 "game",
                 JSONObject()
                     .put("enabled", settings.game.enabled)
+                    .put("output", settings.game.output.key)
+                    .put("gamepad", VirtualGamepadManager.status().let { g -> JSONObject().put("state", g.state.key).put("message", g.message).put("uid", g.uid ?: JSONObject.NULL) })
                     .put("serviceEnabled", gameServiceEnabled())
                     .put("serviceConnected", GameModeBus.serviceConnected)
                     .put("joystickSupported", Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)

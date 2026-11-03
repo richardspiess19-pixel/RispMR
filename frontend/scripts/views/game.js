@@ -5,7 +5,27 @@ import { startEmulation } from './dashboard.js';
 import { fillRange } from './mapping.js';
 import { otherAppsInfo } from '../components/other-apps.js';
 
-// Modo jogo: the VR Box touches the screen of the game that is open.
+// Modo jogo: the game that is open receives the VR Box, as a virtual gamepad (Shizuku) or as
+// touches on its screen (accessibility gestures).
+
+/** What each virtual Quest control becomes on the virtual gamepad (VirtualGamepad.kt). */
+const GAMEPAD_LAYOUT = [
+  ['A, B, X, Y', 'A, B, X, Y'],
+  ['Joystick esquerdo / direito', 'Analógico esquerdo / direito'],
+  ['Clique dos joysticks', 'L3 / R3'],
+  ['Grip esquerdo / direito', 'L1 / R1'],
+  ['Gatilho esquerdo / direito', 'L2 / R2'],
+  ['Menu', 'Start'],
+  ['Sistema', 'Select'],
+];
+
+const SHIZUKU_STEPS = [
+  'Instale o Shizuku (grátis, na Play Store).',
+  'Em Configurações → Sobre o telefone, toque 7 vezes em "Número da versão" para liberar as Opções do desenvolvedor.',
+  'Em Opções do desenvolvedor, ative "Depuração por Wi-Fi" (depuração sem fio).',
+  'No Shizuku, toque em "Parear" e digite o código que aparece na Depuração por Wi-Fi. Depois toque em "Iniciar".',
+  'Volte aqui e toque em Permitir.',
+];
 
 const ACTIONS = [
   ['off', 'Não usar'],
@@ -29,6 +49,8 @@ export default {
 
   mount(root, ctx) {
     const serviceBody = h('div', { class: 'stack stack--sm' });
+    const outputBody = h('div', { class: 'stack stack--sm' });
+    const gamepadBody = h('div', { class: 'stack stack--sm' });
     const enableRow = h('div');
     const screen = h('div', { class: 'game-screen', role: 'application', 'aria-label': 'Tela do jogo' });
     const controlsList = h('div');
@@ -46,13 +68,15 @@ export default {
           'div',
           {},
           h('h1', { class: 'page-title' }, 'Modo jogo'),
-          h('p', { class: 'page-sub' }, 'Jogos de celular não entendem controles do Quest, mas todo jogo entende toque. No Modo jogo, cada botão do VR Box toca num ponto da tela do jogo — por exemplo o botão do Cardboard no centro, ou os botões e o joystick desenhados pelo jogo.'),
+          h('p', { class: 'page-sub' }, 'Faz o jogo aberto no celular receber o VR Box: como um controle de jogo de verdade, ou como toques na tela.'),
         ),
       ),
-      h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, '1. Permitir no Android')), serviceBody),
+      h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Como o jogo recebe')), outputBody, enableRow),
+      h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, '1. Ler o VR Box com o jogo aberto')), serviceBody),
+      h('section', { class: 'card', dataset: { output: 'gamepad' } }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, '2. Controle virtual (Shizuku)')), gamepadBody),
       h(
         'section',
-        { class: 'card' },
+        { class: 'card', dataset: { output: 'touch' } },
         h(
           'div',
           { class: 'card__head card__head--wrap' },
@@ -64,7 +88,6 @@ export default {
             h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => preset('clear') }, 'Limpar'),
           ),
         ),
-        enableRow,
         screen,
         h('p', { class: 'muted small' }, 'Arraste os pontos para onde ficam os botões no seu jogo. A tela aqui é o celular deitado.'),
         h('div', { class: 'section-title' }, 'Botões'),
@@ -119,8 +142,8 @@ export default {
         serviceBody,
         h('div', { class: 'list__title' }, 'Serviço de acessibilidade', on ? h('span', { class: 'badge badge--blue' }, icon('check'), 'Ativado') : h('span', { class: 'badge badge--purple' }, 'Desativado')),
         h('p', { class: 'text-2' }, on
-          ? 'Pronto. O app só lê o VR Box que você escolheu e só toca na tela enquanto a emulação estiver ligada.'
-          : 'O Android só deixa um app tocar na tela de outro app pelo Serviço de acessibilidade. Abra Acessibilidade, entre em "VR Box → Quest: Modo jogo" e ative.'),
+          ? 'Pronto. O app só lê o VR Box que você escolheu, e só enquanto a emulação estiver ligada.'
+          : 'Com o jogo na frente, o Android só entrega os botões do VR Box para outro app pelo Serviço de acessibilidade. Abra Acessibilidade, entre em "VR Box → Quest: Modo jogo" e ative.'),
         on ? null : h('p', { class: 'muted small' }, 'Se a opção estiver cinza (Android 13 ou mais novo): abra Informações do app, toque nos três pontinhos ⋮ e em "Permitir configurações restritas". Depois volte e ative.'),
         h(
           'div',
@@ -130,6 +153,80 @@ export default {
         ),
       );
     };
+
+    const output = () => cfg()?.output || 'gamepad';
+
+    const renderOutput = () => {
+      const c = cfg();
+      if (!c) {
+        render(outputBody);
+        return;
+      }
+      const choice = (value, ic, title, desc) =>
+        h(
+          'button',
+          {
+            class: `choice ${output() === value ? 'is-on' : ''}`,
+            type: 'button',
+            role: 'radio',
+            'aria-checked': String(output() === value),
+            onClick: () => output() !== value && save({ ...c, output: value }),
+          },
+          h('span', { class: 'choice__title' }, icon(ic), title),
+          h('small', {}, desc),
+        );
+      render(
+        outputBody,
+        h(
+          'div',
+          { class: 'choice-grid', role: 'radiogroup', 'aria-label': 'Como o jogo recebe' },
+          choice('gamepad', 'gamepad', 'Controle virtual', 'O jogo vê um controle de jogo com os seus botões. Para jogos que aceitam controle. Precisa do Shizuku.'),
+          choice('touch', 'target', 'Toques na tela', 'Cada botão toca num ponto da tela. Para jogos sem suporte a controle, como os de Cardboard.'),
+        ),
+      );
+      for (const el of root.querySelectorAll('[data-output]')) el.classList.toggle('hidden', el.dataset.output !== output());
+    };
+
+    const renderGamepad = (status) => {
+      const gp = status?.game?.gamepad || {};
+      const st = gp.state || 'not_running';
+      const btn = (label, cmd, primary = true, ic = null) =>
+        h('button', { class: `btn btn--sm ${primary ? 'btn--primary' : ''}`, type: 'button', onClick: () => runGamepad(cmd) }, ic ? icon(ic) : null, label);
+      const badge = st === 'active' ? h('span', { class: 'badge badge--blue' }, icon('check'), 'Conectado') : st === 'ready' || st === 'connecting' ? h('span', { class: 'badge badge--blue' }, 'Pronto') : h('span', { class: 'badge badge--purple' }, 'Falta configurar');
+      const TEXT = {
+        not_installed: ['O Shizuku é um app grátis que dá a este app a permissão do ADB. É só com ela que o Android deixa criar um controle que os outros jogos enxergam.', [btn('Baixar o Shizuku', 'gamepad.openShizuku', true, 'external')]],
+        not_running: ['O Shizuku está instalado, mas parado. Ele precisa ser iniciado de novo toda vez que o celular reinicia.', [btn('Abrir o Shizuku', 'gamepad.openShizuku', true, 'external')]],
+        old_shizuku: ['Este Shizuku é antigo. Atualize pela Play Store.', [btn('Abrir o Shizuku', 'gamepad.openShizuku', true, 'external')]],
+        no_permission: ['O Shizuku está ligado. Falta permitir este app nele.', [btn('Permitir', 'gamepad.permission', true, 'check')]],
+        ready: ['Tudo certo. O controle virtual aparece para os jogos quando você iniciar a emulação.', []],
+        connecting: ['Criando o controle virtual…', []],
+        active: ['Os jogos estão vendo um controle chamado "VR Box -> Quest (controle virtual)".', []],
+        error: [gp.message || 'Não consegui criar o controle virtual.', [btn('Tentar de novo', 'gamepad.retry', true)]],
+      };
+      const [text, actions] = TEXT[st] || TEXT.not_running;
+      render(
+        gamepadBody,
+        h('div', { class: 'list__title' }, 'Controle virtual', badge),
+        h('p', { class: 'text-2' }, text),
+        actions.length ? h('div', { class: 'row' }, actions) : null,
+        ['not_installed', 'not_running', 'old_shizuku'].includes(st)
+          ? h('details', { class: 'map-section', open: true }, h('summary', { class: 'section-title' }, 'Como ligar o Shizuku'), h('ol', { class: 'steps' }, SHIZUKU_STEPS.map((t) => h('li', {}, t))))
+          : null,
+        st === 'error' ? h('p', { class: 'muted small' }, 'Alguns celulares bloqueiam controles criados pelo ADB. Nesse caso, use "Toques na tela".') : null,
+        h(
+          'details',
+          { class: 'map-section' },
+          h('summary', { class: 'section-title' }, 'Como os botões chegam no jogo'),
+          h('dl', { class: 'gp-map' }, GAMEPAD_LAYOUT.flatMap(([a, b]) => [h('dt', {}, a), h('dd', {}, b)])),
+          h('p', { class: 'muted small' }, 'Os botões do VR Box seguem o seu mapeamento (tela Botões) até os controles virtuais, e deles vão para o controle virtual.'),
+        ),
+      );
+    };
+
+    async function runGamepad(cmd) {
+      const r = await ctx.run(cmd);
+      if (r && cmd !== 'gamepad.openShizuku') ctx.store.set('status', r);
+    }
 
     const renderEnable = () => {
       const c = cfg();
@@ -306,9 +403,16 @@ export default {
     const renderPlay = (status) => {
       const running = Boolean(status?.emulation?.running);
       const joystick = status?.game?.joystickSupported;
+      const gamepad = output() === 'gamepad';
       render(
         playBody,
-        h('ol', { class: 'steps' }, h('li', {}, 'Toque em Iniciar emulação.'), h('li', {}, 'Abra o jogo e coloque o celular no VR Box.'), h('li', {}, 'Os botões do controle tocam na tela onde você marcou.')),
+        h(
+          'ol',
+          { class: 'steps' },
+          h('li', {}, 'Toque em Iniciar emulação.'),
+          h('li', {}, 'Abra o jogo e coloque o celular no VR Box.'),
+          h('li', {}, gamepad ? 'O jogo recebe o controle virtual. Se ele pedir, escolha o controle "VR Box -> Quest".' : 'Os botões do controle tocam na tela onde você marcou.'),
+        ),
         h(
           'div',
           { class: 'row' },
@@ -316,8 +420,10 @@ export default {
             ? h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('emulation.stop') }, icon('stop'), 'Parar emulação')
             : h('button', { class: 'btn btn--sm btn--primary', type: 'button', onClick: () => startEmulation(ctx) }, icon('play'), 'Iniciar emulação'),
         ),
-        h('p', { class: 'muted small' }, 'Deixe o VR Box no modo gamepad ou teclado. No modo mouse o próprio Android já transforma o clique em toque, e o app não consegue trocar isso fora da tela dele.'),
-        joystick === false ? h('p', { class: 'muted small' }, 'Neste Android, o joystick analógico do VR Box só é lido com o app aberto. Para mexer o joystick dentro do jogo, ligue as setas (D-pad) às direções do joystick na tela Botões.') : null,
+        gamepad
+          ? h('p', { class: 'muted small' }, 'Melhor modo do VR Box: um em que o joystick manda setas (teclado). Assim o jogo só vê o controle virtual. No modo Gamepad, o joystick do próprio VR Box também chega direto no jogo.')
+          : h('p', { class: 'muted small' }, 'Deixe o VR Box no modo gamepad ou teclado. No modo mouse o próprio Android já transforma o clique em toque, e o app não consegue trocar isso fora da tela dele.'),
+        !gamepad && joystick === false ? h('p', { class: 'muted small' }, 'Neste Android, o joystick analógico do VR Box só é lido com o app aberto. Para mexer o joystick dentro do jogo, ligue as setas (D-pad) às direções do joystick na tela Botões.') : null,
         status?.game?.touches ? h('p', { class: 'muted small' }, `${status.game.touches} toques feitos nesta sessão.`) : null,
       );
     };
@@ -344,6 +450,7 @@ export default {
     };
 
     const renderAll = () => {
+      renderOutput();
       renderEnable();
       renderScreen();
       renderControls();
@@ -351,6 +458,7 @@ export default {
 
     renderService(ctx.store.state.status);
     renderAll();
+    renderGamepad(ctx.store.state.status);
     renderPlay(ctx.store.state.status);
 
     let lastStatus = '';
@@ -360,10 +468,13 @@ export default {
         if (key === lastStatus) return;
         lastStatus = key;
         renderService(s);
+        renderGamepad(s);
         renderPlay(s);
       },
       onSettings: () => {
-        if (!dragging) renderAll();
+        if (dragging) return;
+        renderAll();
+        renderPlay(ctx.store.state.status);
       },
       onFrame: renderFrame,
     };

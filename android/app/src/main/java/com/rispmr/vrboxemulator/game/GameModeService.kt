@@ -21,6 +21,7 @@ import com.rispmr.vrboxemulator.engine.DeviceClassifier
 import com.rispmr.vrboxemulator.engine.DeviceGroup
 import com.rispmr.vrboxemulator.engine.EventLog
 import com.rispmr.vrboxemulator.engine.FileTextStorage
+import com.rispmr.vrboxemulator.engine.GameOutput
 import com.rispmr.vrboxemulator.engine.InputProcessor
 import com.rispmr.vrboxemulator.engine.Profile
 import com.rispmr.vrboxemulator.engine.ProfileRepository
@@ -28,6 +29,7 @@ import com.rispmr.vrboxemulator.engine.RawEvent
 import com.rispmr.vrboxemulator.engine.SourceIds
 import com.rispmr.vrboxemulator.engine.TouchPlanner
 import com.rispmr.vrboxemulator.engine.VirtualControllerManager
+import com.rispmr.vrboxemulator.gamepad.VirtualGamepadManager
 import com.rispmr.vrboxemulator.input.AndroidInputTranslator
 import com.rispmr.vrboxemulator.input.HidInputManager
 import java.io.File
@@ -63,6 +65,7 @@ class GameModeService : AccessibilityService() {
     private val onState: () -> Unit = { main.post { applyState() } }
 
     override fun onServiceConnected() {
+        VirtualGamepadManager.init(this)
         composer = GestureComposer(main) { gesture, callback, handler -> dispatchGesture(gesture, callback, handler) }
         composer.onGesture = { GameModeBus.touchesPerformed++ }
         GameModeBus.onConfig(onConfig)
@@ -115,8 +118,14 @@ class GameModeService : AccessibilityService() {
         scheduleTick()
     }
 
+    private val gamepadOutput: Boolean get() = settings.game.output == GameOutput.GAMEPAD
+
     private fun plan() {
         val p = profile ?: return
+        if (gamepadOutput) {
+            VirtualGamepadManager.send(controllers.snapshot(), p.buttons.analogThreshold)
+            return
+        }
         val size = screenSize()
         val aspect = if (size.y > 0) size.x.toFloat() / size.y else 1f
         composer.update(planner.plan(controllers.snapshot(), settings.game, p.buttons.analogThreshold, aspect), size.x, size.y)
@@ -161,9 +170,13 @@ class GameModeService : AccessibilityService() {
         ProfileRepository(FileTextStorage(File(filesDir, "profiles.json")), defaults, persist = {}).apply { load() }.active()
     }.getOrNull()
 
-    /** Joystick motion is only intercepted while Modo jogo is active (Android 14+). */
+    /**
+     * Joystick motion is only intercepted while Modo jogo is active (Android 14+), and only for
+     * touches: intercepted motion never reaches any app, so it would also swallow the sticks of
+     * the virtual gamepad. With the virtual gamepad the VR Box joystick is read from key modes.
+     */
     private fun applyState() {
-        val wantMotion = active && usesAxes
+        val wantMotion = active && usesAxes && !gamepadOutput
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE && wantMotion != motionSourcesOn) {
             val info = serviceInfo
             if (info != null) {
@@ -175,6 +188,7 @@ class GameModeService : AccessibilityService() {
         if (!active) {
             processor.releaseAll(null)
             planner.reset()
+            VirtualGamepadManager.sendIdle()
             if (::composer.isInitialized) composer.releaseAll()
         }
     }

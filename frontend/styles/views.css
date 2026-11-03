@@ -424,3 +424,25 @@
   .setup__drawing { order: 2; padding: 0; }
   .setup__drawing .vb { width: min(62vw, 230px); }
 }
+
+/* Modo jogo: how the game receives the VR Box. */
+.choice-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
+@media (min-width: 560px) { .choice-grid { grid-template-columns: 1fr 1fr; } }
+.choice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface-2);
+  color: var(--text);
+}
+.choice small { color: var(--muted); font-size: 13px; line-height: 1.4; }
+.choice__title { display: flex; align-items: center; gap: 8px; font-weight: 650; }
+.choice__title svg { width: 18px; height: 18px; }
+.choice.is-on { border-color: var(--blue-2); background: var(--blue-soft); }
+.gp-map { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: 14px; }
+.gp-map dt { color: var(--text-2); }
+.gp-map dd { margin: 0; font-weight: 600; text-align: right; }

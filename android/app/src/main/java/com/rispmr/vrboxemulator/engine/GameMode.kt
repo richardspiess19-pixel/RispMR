@@ -29,6 +29,19 @@ enum class TouchAction(val key: String) {
     }
 }
 
+/** How the games receive the VR Box. */
+enum class GameOutput(val key: String) {
+    /** A virtual gamepad that every app sees (needs Shizuku). */
+    GAMEPAD("gamepad"),
+
+    /** Touches on the screen of the open game (accessibility gestures). */
+    TOUCH("touch");
+
+    companion object {
+        fun fromKey(key: String?): GameOutput? = entries.firstOrNull { it.key == key }
+    }
+}
+
 data class TouchPoint(val action: TouchAction = TouchAction.OFF, val x: Float = 0.5f, val y: Float = 0.5f)
 
 /** A joystick drawn on the game screen: the finger is dragged around [x],[y] inside [radius]. */
@@ -42,6 +55,7 @@ data class StickTouch(
 
 data class GameModeConfig(
     val enabled: Boolean = true,
+    val output: GameOutput = GameOutput.GAMEPAD,
     /** Keyed by virtual target id of buttons, trigger and grip ("right.a", "left.trigger"...). */
     val buttons: Map<String, TouchPoint> = emptyMap(),
     val leftStick: StickTouch = StickTouch(),
@@ -71,6 +85,7 @@ data class GameModeConfig(
 object GameModeCodec {
     fun encode(c: GameModeConfig): JSONObject = JSONObject().apply {
         put("enabled", c.enabled)
+        put("output", c.output.key)
         put(
             "buttons",
             JSONObject().apply {
@@ -102,6 +117,7 @@ object GameModeCodec {
         }
         return GameModeConfig(
             enabled = o.optBoolean("enabled", fallback.enabled),
+            output = GameOutput.fromKey(o.optString("output")) ?: fallback.output,
             buttons = if (b == null) fallback.buttons else buttons,
             leftStick = decodeStick(o.optJSONObject("leftStick"), fallback.leftStick),
             rightStick = decodeStick(o.optJSONObject("rightStick"), fallback.rightStick),

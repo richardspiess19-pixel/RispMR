@@ -51,6 +51,7 @@ Consequências importantes:
 | Mecanismo | Resultado | Status |
 | --- | --- | --- |
 | **Modo jogo — `AccessibilityService` (gestos + filtro de teclas)** | Com um jogo aberto, o serviço lê os botões do VR Box (`flagRequestFilterKeyEvents`; eixos do joystick via `setMotionEventSources` no Android 14+), passa pelo mesmo mapeamento e toca na tela do jogo com `dispatchGesture` (toques segurados, toques rápidos e arrasto em joysticks desenhados na tela). Funciona em qualquer jogo que use toque, inclusive o botão do Cardboard. | **Implementado** |
+| **Controle virtual — Shizuku + `/dev/uhid`** | Com o Shizuku ligado, cria um gamepad HID padrão que todos os apps veem e manda para ele o estado dos controles virtuais. Os botões do VR Box são lidos pelo mesmo serviço de acessibilidade. | **Implementado** (não testado em aparelho real) |
 | **Protocolo de rede próprio (VRBQ via UDP)** | Qualquer app que implemente o protocolo recebe os dois controles virtuais (no mesmo telefone via `127.0.0.1` ou em outro dispositivo da rede local). | **Implementado** |
 | `BluetoothHidDevice` (API 28+) | O telefone se apresenta a **outro** host (PC, headset) como um periférico HID — p.ex. um gamepad genérico. Seria um **gamepad**, não controles Touch. Alguns fabricantes desativam o perfil HID Device. | **Não disponível ainda** |
 | Camada de API OpenXR (API layer) | Substitui/injeta estados de ação do perfil `/interaction_profiles/oculus/touch_controller` dentro do processo do jogo, lendo VRBQ. Precisa ser carregada **no processo do jogo**. | **Não disponível ainda** (projeto em `integration/RuntimeIntegration`) |
@@ -67,6 +68,7 @@ Consequências importantes:
 | `BLUETOOTH` (`maxSdkVersion=30`) | Android 8–11 | Mesma finalidade (permissão de instalação, sem diálogo). |
 | `INTERNET` (normal) | Sempre concedida | Envio UDP do protocolo VRBQ. |
 | Serviço de acessibilidade | O usuário ativa em Configurações → Acessibilidade | Modo jogo. Só lê o controle escolhido, não lê o conteúdo da tela (`canRetrieveWindowContent=false`) e só age com a emulação ligada. |
+| Shizuku | O usuário instala o Shizuku, inicia pela depuração sem fio e permite o app | Controle virtual. O serviço no Shizuku só cria o controle virtual e manda os relatórios dele; não lê nada do celular. |
 
 **Não solicitadas de propósito:** `BLUETOOTH_SCAN`, localização (o pareamento é feito nas
 configurações do Android), notificações, serviço em primeiro plano, sobreposição de tela,
@@ -92,10 +94,21 @@ candidato).
   sobre GATT (BLE) também é reservado ao sistema.
 - Registrar dispositivos no runtime OpenXR de outro fabricante (Meta Horizon OS, Android XR).
 
-Alternativa conhecida, **não implementada**: o Shizuku permite que um app use APIs com
-privilégios de *shell* (após o usuário ativá-lo por depuração sem fio). Com isso seria possível
-injetar `KeyEvent`/`MotionEvent` de gamepad no app em primeiro plano. Ainda assim seriam eventos
-de gamepad Android, **não** controles Touch para OpenXR.
+**Controle virtual com Shizuku (implementado, não testado em aparelho real).** O Shizuku roda
+código com os privilégios do *shell* do ADB depois que o usuário o inicia pela depuração sem fio.
+O app sobe nele um serviço (`UhidUserService`) que abre `/dev/uhid`, a mesma interface do kernel
+que o comando `hid` do Android usa nos testes de compatibilidade, e cria um **gamepad HID
+padrão** (15 botões, dois analógicos, gatilhos L2/R2 analógicos). O kernel e o Android tratam esse
+dispositivo como um controle de verdade, então **todos os apps** o veem. Os controles virtuais
+Quest viram esse gamepad (A/B/X/Y, analógicos, L1/R1 = grips, L2/R2 = gatilhos, Start = Menu,
+Select = Sistema, L3/R3 = cliques). Riscos:
+
+- Não é API pública do Android: depende do *shell* ter acesso a `/dev/uhid` (padrão no AOSP por
+  causa dos testes CTS). Um fabricante pode bloquear; o app mostra o erro e oferece os toques.
+- O VR Box continua visível. As teclas dele são filtradas pelo serviço de acessibilidade, mas o
+  joystick no modo Gamepad não: interceptar movimento de joystick (`setMotionEventSources`)
+  engoliria também o do controle virtual. Use um modo em que o joystick mande setas.
+- É um gamepad Android comum, **não** controles Touch para OpenXR.
 
 ## 5. O que é impossível em um Android convencional
 
@@ -118,8 +131,8 @@ de gamepad Android, **não** controles Touch para OpenXR.
 
 ## 6. Alternativas reais
 
-1. **Modo jogo (implementado)** — para jogos no próprio celular: os controles virtuais viram
-   toques na tela do jogo.
+1. **Modo jogo (implementado)** — para jogos no próprio celular: os controles virtuais viram um
+   controle de jogo virtual (Shizuku) ou toques na tela do jogo.
 2. **Protocolo VRBQ (implementado)** — streaming UDP dos dois controles virtuais com
    especificação aberta, decodificadores de referência em C e Python e fixtures compartilhadas.
    Permite integração com:
@@ -130,8 +143,8 @@ de gamepad Android, **não** controles Touch para OpenXR.
      separados, fora deste app Android.
 3. **Telefone como gamepad Bluetooth (`BluetoothHidDevice`)** — viável em Android 9+ quando o
    fabricante mantém o perfil; resultado é um gamepad genérico, não Touch.
-4. **Shizuku** — injeção de eventos de gamepad Android no app em primeiro plano; exige
-   configuração técnica do usuário.
+4. **Shizuku (implementado)** — controle virtual HID visto por todos os apps; exige iniciar o
+   Shizuku pela depuração sem fio a cada reinício.
 
 ## Versão HTML dentro de um app conversor (WebView)
 

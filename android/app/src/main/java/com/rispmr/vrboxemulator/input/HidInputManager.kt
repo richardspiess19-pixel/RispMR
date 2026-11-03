@@ -8,6 +8,7 @@ import android.os.Looper
 import android.view.InputDevice
 import android.view.KeyEvent
 import com.rispmr.vrboxemulator.engine.InputDeviceInfo
+import com.rispmr.vrboxemulator.engine.VirtualGamepad
 
 /**
  * Enumerates input devices through the public [InputManager] API.
@@ -76,7 +77,8 @@ class HidInputManager(context: Context) {
                 sources = d.sources,
                 keyboardType = d.keyboardType,
                 isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) d.isExternal else null,
-                isVirtual = d.isVirtual,
+                // Our own virtual gamepad is never read back as a controller.
+                isVirtual = d.isVirtual || VirtualGamepad.isOwn(d.vendorId, d.productId, d.name),
                 controllerNumber = d.controllerNumber,
                 axes = axes,
                 declaredKeys = keys,

@@ -72,8 +72,10 @@
     ],
     log: [],
     seq: 0,
+    gamepad: 'no_permission',
     game: {
       enabled: true,
+      output: 'gamepad',
       buttons: { 'right.trigger': { action: 'hold', x: 0.5, y: 0.5 }, 'right.a': { action: 'hold', x: 0.5, y: 0.5 }, 'right.b': { action: 'tap', x: 0.86, y: 0.7 } },
       leftStick: { enabled: true, x: 0.18, y: 0.72, radius: 0.12 },
       rightStick: { enabled: false, x: 0.82, y: 0.72, radius: 0.12 },
@@ -114,7 +116,7 @@
     right: { configured: true, mappings: 3 },
     integration: { udpEnabled: state.udp.enabled, streaming: state.emulation, packets: state.emulation ? 1234 : 0, lastError: null, target: `${state.udp.host}:${state.udp.port}`, format: state.udp.format },
     profile: { id: 'default-vr-box', name: 'VR Box padrão', dirty: state.dirty },
-    game: { enabled: state.game.enabled, serviceEnabled: true, serviceConnected: true, joystickSupported: true, bindings: Object.values(state.game.buttons).filter((b) => b.action !== 'off').length + (state.game.leftStick.enabled ? 1 : 0), touches: 0 },
+    game: { enabled: state.game.enabled, output: state.game.output, gamepad: { state: state.gamepad, message: '', uid: state.gamepad === 'active' ? 2000 : null }, serviceEnabled: true, serviceConnected: true, joystickSupported: true, bindings: Object.values(state.game.buttons).filter((b) => b.action !== 'off').length + (state.game.leftStick.enabled ? 1 : 0), touches: 0 },
     identifiedCount: 3,
     demo: false,
   });
@@ -175,10 +177,12 @@
     }),
     'emulation.start': () => {
       state.emulation = true;
+      if (state.gamepad === 'ready') state.gamepad = 'active';
       return status();
     },
     'emulation.stop': () => {
       state.emulation = false;
+      if (state.gamepad === 'active') state.gamepad = 'ready';
       return status();
     },
     'bt.devices': () => ({ supported: true, enabled: true, permission: 'granted', bonded: [{ name: 'VR BOX', address: 'AA:BB:CC:DD:EE:FF', type: 'Clássico', deviceClass: '0x05C0', classLabel: 'Teclado + mouse (HID)', hidPeripheral: true, aclConnected: true }] }),
@@ -187,6 +191,12 @@
       return { settings: settings(), status: status() };
     },
     'game.preset': () => ({ settings: settings(), status: status() }),
+    'gamepad.permission': () => {
+      state.gamepad = state.emulation ? 'active' : 'ready';
+      return status();
+    },
+    'gamepad.retry': () => status(),
+    'gamepad.openShizuku': () => null,
     'profile.fromSetup': () => ({ profile: profile(), profiles: profiles() }),
     'input.connect': () => ({ selected: group, candidates: 1, bluetoothEnabled: true }),
     'input.devices': () => ({ groups: [group], selectedKey: group.key, showInternal: false }),

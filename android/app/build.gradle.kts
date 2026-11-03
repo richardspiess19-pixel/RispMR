@@ -32,8 +32,8 @@ android {
         applicationId = "com.rispmr.vrboxemulator"
         minSdk = 26 // Android 8.0: pointer capture API
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.4.0"
+        versionCode = 5
+        versionName = "0.5.0"
     }
 
     signingConfigs {
@@ -53,6 +53,11 @@ android {
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfigs.findByName("release")?.let { signingConfig = it }
         }
+    }
+
+    // The virtual gamepad service talks to the Shizuku process through AIDL.
+    buildFeatures {
+        aidl = true
     }
 
     compileOptions {
@@ -86,6 +91,9 @@ tasks.named("preBuild") { dependsOn(syncWebAssets) }
 
 dependencies {
     implementation("androidx.webkit:webkit:1.12.1")
+    // Shizuku: runs the virtual gamepad service with ADB (shell) rights. https://shizuku.rikka.app
+    implementation("dev.rikka.shizuku:api:13.1.5")
+    implementation("dev.rikka.shizuku:provider:13.1.5")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

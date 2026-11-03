@@ -139,7 +139,13 @@ export default {
       } else if (running) {
         title = 'Emulação ligada';
         const g = gameIndicator(status);
-        sub = g.tone === 'ok' ? 'Pode abrir o jogo. Os botões do VR Box viram toques na tela.' : 'O Modo jogo ainda não está pronto, então os jogos não vão reagir.';
+        const pad = status?.game?.output === 'gamepad';
+        sub =
+          g.tone !== 'ok'
+            ? 'O Modo jogo ainda não está pronto, então os jogos não vão reagir.'
+            : pad
+              ? 'Pode abrir o jogo. Ele vê um controle virtual com os seus botões.'
+              : 'Pode abrir o jogo. Os botões do VR Box viram toques na tela.';
         actions = [h('button', { class: 'btn btn--big', type: 'button', onClick: () => ctx.run('emulation.stop') }, icon('stop'), 'Parar emulação')];
         if (g.tone !== 'ok') actions.unshift(h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => ctx.nav('game') }, icon('target'), 'Configurar Modo jogo'));
       } else if (c?.demo) {
@@ -320,6 +326,6 @@ export async function startEmulation(ctx) {
   if (!r) return;
   const g = gameIndicator(r);
   if (r.game?.web) ctx.toast('Ligada só dentro deste app. Outros jogos precisam do app Android.', 'info', 4200);
-  else if (g.tone === 'ok') ctx.toast('Emulação ligada. Pode abrir o jogo.');
+  else if (g.tone === 'ok') ctx.toast(r.game?.output === 'gamepad' ? 'Emulação ligada. O controle virtual aparece para os jogos.' : 'Emulação ligada. Pode abrir o jogo.');
   else ctx.toast('Emulação ligada, mas falta configurar o Modo jogo para os jogos reagirem.', 'info', 4200);
 }

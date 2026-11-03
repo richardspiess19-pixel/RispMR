@@ -32,6 +32,14 @@ test('indicators never claim features that are not active', () => {
   assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: true, bindings: 0 } }).value, 'Sem toques');
   assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: true, bindings: 2 }, emulation: { running: true } }).value, 'Pronto');
   assert.equal(f.gameIndicator({ game: { enabled: false } }).value, 'Desligado');
+  const pad = (state) => f.gameIndicator({ game: { enabled: true, serviceEnabled: true, output: 'gamepad', bindings: 0, gamepad: { state } } });
+  assert.equal(pad('active').value, 'Controle virtual');
+  assert.equal(pad('active').tone, 'ok');
+  assert.equal(pad('ready').value, 'Pronto');
+  assert.equal(pad('not_installed').value, 'Falta o Shizuku');
+  assert.equal(pad('not_running').value, 'Shizuku parado');
+  assert.equal(pad('no_permission').value, 'Falta permitir');
+  assert.equal(pad('error').tone, 'err');
 });
 
 test('compatibility mirrors the native rule', () => {
