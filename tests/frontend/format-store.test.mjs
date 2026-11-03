@@ -4,27 +4,34 @@ import * as f from '../../frontend/scripts/format.js';
 import { createStore } from '../../frontend/scripts/store.js';
 
 test('number helpers', () => {
-  assert.equal(f.fixed(0.123), '0.12');
-  assert.equal(f.fixed(-0.001), '0.00');
+  assert.equal(f.fixed(0.123), '0,12');
+  assert.equal(f.fixed(-0.001), '0,00');
   assert.equal(f.fixed(null), '—');
-  assert.equal(f.signed(0.5), '+0.50');
-  assert.equal(f.signed(-0.5), '-0.50');
-  assert.equal(f.signed(0), '0.00');
+  assert.equal(f.signed(0.5), '+0,50');
+  assert.equal(f.signed(-0.5), '-0,50');
+  assert.equal(f.signed(0), '0,00');
+  assert.equal(f.stateLabel('PRESSED'), 'Pressionado');
+  assert.equal(f.stateLabel('RELEASED'), 'Solto');
   assert.match(f.clockTime(Date.UTC(2026, 0, 1, 21, 30, 1)), /^\d\d:\d\d:\d\d$/);
 });
 
 test('indicators never claim features that are not active', () => {
   assert.equal(f.bluetoothIndicator(null).value, '—');
-  assert.equal(f.bluetoothIndicator({ bluetooth: { link: 'connected' } }).value, 'Connected');
-  assert.equal(f.bluetoothIndicator({ bluetooth: { link: 'off' } }).value, 'Disconnected');
-  assert.equal(f.controllerIndicator({ controller: { demo: true } }).value, 'DEMO');
-  assert.equal(f.controllerIndicator({ controller: { selected: { name: 'VR BOX' }, connected: false } }).value, 'Not detected');
-  assert.equal(f.inputIndicator({ input: { active: false } }).value, 'Inactive');
-  assert.equal(f.emulationIndicator({ emulation: { running: true, output: 'none' } }).tone, 'warn');
-  assert.equal(f.integrationIndicator({ integration: { udpEnabled: false, streaming: false } }).value, 'Unavailable');
-  assert.equal(f.integrationIndicator({ integration: { udpEnabled: true, streaming: false, target: '127.0.0.1:47900' } }).value, 'Available');
-  assert.equal(f.handIndicator({ left: { configured: false, mappings: 0 } }, 'left').value, 'Not configured');
-  assert.equal(f.handIndicator({ right: { configured: true, mappings: 1 } }, 'right').hint, '1 mapping');
+  assert.equal(f.bluetoothIndicator({ bluetooth: { link: 'connected' } }).value, 'Conectado');
+  assert.equal(f.bluetoothIndicator({ bluetooth: { link: 'disconnected' } }).value, 'Desconectado');
+  assert.equal(f.controllerIndicator({ controller: { demo: true } }).value, 'Demonstração');
+  assert.equal(f.controllerIndicator({ controller: { selected: { name: 'VR BOX' }, connected: false } }).value, 'Não detectado');
+  assert.equal(f.inputIndicator({ input: { active: false } }).value, 'Inativa');
+  assert.equal(f.emulationIndicator({ emulation: { running: true } }).value, 'Ligada');
+  assert.equal(f.integrationIndicator({ integration: { udpEnabled: false, streaming: false } }).value, 'Indisponível');
+  assert.equal(f.integrationIndicator({ integration: { udpEnabled: true, streaming: false, target: '127.0.0.1:47900' } }).value, 'Disponível');
+  assert.equal(f.handIndicator({ left: { configured: false, mappings: 0 } }, 'left').value, 'Não configurado');
+  assert.equal(f.handIndicator({ right: { configured: true, mappings: 1 } }, 'right').hint, '1 botão');
+  // Modo jogo is only "Pronto" when the service is on and there is somewhere to touch.
+  assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: false, bindings: 2 } }).value, 'Falta ativar');
+  assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: true, bindings: 0 } }).value, 'Sem toques');
+  assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: true, bindings: 2 }, emulation: { running: true } }).value, 'Pronto');
+  assert.equal(f.gameIndicator({ game: { enabled: false } }).value, 'Desligado');
 });
 
 test('compatibility mirrors the native rule', () => {

@@ -22,6 +22,9 @@ import com.rispmr.vrboxemulator.bridge.CommandException
 import com.rispmr.vrboxemulator.bridge.CommandRouter
 import com.rispmr.vrboxemulator.bridge.WebBridge
 import com.rispmr.vrboxemulator.demo.DemoScript
+import com.rispmr.vrboxemulator.game.GameModeBus
+import com.rispmr.vrboxemulator.game.GameModeService
+import android.content.ComponentName
 import com.rispmr.vrboxemulator.engine.AppSettings
 import com.rispmr.vrboxemulator.engine.AppSettingsCodec
 import com.rispmr.vrboxemulator.engine.ButtonConfig
@@ -33,6 +36,8 @@ import com.rispmr.vrboxemulator.engine.DeviceRegistry
 import com.rispmr.vrboxemulator.engine.Detection
 import com.rispmr.vrboxemulator.engine.EventLog
 import com.rispmr.vrboxemulator.engine.FileTextStorage
+import com.rispmr.vrboxemulator.engine.GameModeCodec
+import com.rispmr.vrboxemulator.engine.GameModeConfig
 import com.rispmr.vrboxemulator.engine.Hand
 import com.rispmr.vrboxemulator.engine.HandSnapshot
 import com.rispmr.vrboxemulator.engine.IdGenerator
@@ -137,6 +142,13 @@ class AppController(private val activity: Activity, private val webView: WebView
     private var nextRequestCode = 5000
     private val ids = IdGenerator.RANDOM
 
+    private val busListener: () -> Unit = {
+        main.post {
+            statusDirty = true
+            scheduleFrame()
+        }
+    }
+
     init {
         log.capacity = settings.logSize
         profiles.load()
@@ -162,14 +174,23 @@ class AppController(private val activity: Activity, private val webView: WebView
             scheduleFrame()
         }
         bluetooth.onAclEvent = { name, connected ->
-            log.add(EventLog.SYSTEM, "Bluetooth link ${if (connected) "connected" else "disconnected"}: $name", clock.wallMs())
+            log.add(EventLog.SYSTEM, "Bluetooth ${if (connected) "conectado" else "desconectado"}: $name", clock.wallMs())
         }
         router.onInternalError = { cmd, e -> Log.e(TAG, "Command $cmd failed", e) }
+        GameModeBus.onState(busListener)
+        if (GameModeBus.emulationActive) {
+            // The screen was recreated while Modo jogo kept running.
+            emulationRunning = true
+            emulationStartedAt = clock.wallMs()
+            if (settings.udp.enabled) streamer.start(settings.udp)
+        }
         registerCommands()
-        log.add(EventLog.SYSTEM, "App started", clock.wallMs())
+        log.add(EventLog.SYSTEM, "App aberto", clock.wallMs())
     }
 
     // ---------------------------------------------------------------- lifecycle
+
+    private fun publishToGameMode() = GameModeBus.publish(settings, working)
 
     fun onPageStarted() {
         pageReady = false
@@ -178,6 +199,7 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     fun onResume() {
         resumed = true
+        GameModeBus.setUiResumed(true)
         hid.start(
             onAdded = { id -> hid.describe(id)?.let { handleRegistry(registry.put(it)) } },
             onRemoved = { id ->
@@ -197,15 +219,18 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     fun onPause() {
         resumed = false
+        GameModeBus.setUiResumed(false)
         hid.stop()
         bluetooth.stop()
         main.removeCallbacks(statsRunnable)
-        processor.releaseAll("app in background")
+        processor.releaseAll("app em segundo plano")
         afterStateChange()
         identified.save()
     }
 
     fun onDestroy() {
+        GameModeBus.offState(busListener)
+        GameModeBus.setUiResumed(false)
         stopDemo()
         streamer.shutdown()
         io.shutdown()
@@ -216,7 +241,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         if (!hasFocus) {
             // Android stops delivering events without focus: release everything so no
             // virtual button stays stuck in the PRESSED state.
-            processor.releaseAll("window lost focus")
+            processor.releaseAll("app perdeu o foco")
             afterStateChange()
         }
         updatePointerCapture()
@@ -350,10 +375,10 @@ class AppController(private val activity: Activity, private val webView: WebView
                 is RegistryEvent.Connected -> {
                     val g = e.group
                     if (!g.isCandidate) continue
-                    val verb = if (e.reconnected) "reconnected" else "detected"
-                    log.add(EventLog.SYSTEM, "Input device $verb: ${g.name} (${g.roles.joinToString(" + ")})", clock.wallMs())
+                    val verb = if (e.reconnected) "reconectado" else "encontrado"
+                    log.add(EventLog.SYSTEM, "Dispositivo $verb: ${g.name} (${g.roles.joinToString(" + ")})", clock.wallMs())
                     if (g.key == selectedKey) {
-                        log.add(EventLog.SYSTEM, "Selected controller is back: ${g.name}", clock.wallMs())
+                        log.add(EventLog.SYSTEM, "O controle voltou: ${g.name}", clock.wallMs())
                         updatePointerCapture()
                     } else if (selectedKey == null && !demoRunning && settings.autoSelectLastDevice && g.key == settings.lastDeviceKey) {
                         select(g.key, auto = true)
@@ -362,9 +387,9 @@ class AppController(private val activity: Activity, private val webView: WebView
                 is RegistryEvent.Disconnected -> {
                     val g = e.group
                     if (!g.isCandidate) continue
-                    log.add(EventLog.SYSTEM, "Input device disconnected: ${g.name}", clock.wallMs())
+                    log.add(EventLog.SYSTEM, "Dispositivo desconectado: ${g.name}", clock.wallMs())
                     if (g.key == selectedKey) {
-                        processor.releaseAll("controller disconnected")
+                        processor.releaseAll("controle desconectado")
                         afterStateChange()
                     }
                 }
@@ -374,7 +399,7 @@ class AppController(private val activity: Activity, private val webView: WebView
     }
 
     private fun select(key: String, auto: Boolean) {
-        val group = registry.group(key) ?: throw CommandException("Device is not connected", "not_connected")
+        val group = registry.group(key) ?: throw CommandException("Esse dispositivo não está conectado", "not_connected")
         if (selectedKey != key) {
             processor.releaseAll(null)
             translator.reset()
@@ -382,7 +407,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         selectedKey = key
         settings = settings.copy(lastDeviceKey = key)
         saveSettings()
-        log.add(EventLog.SYSTEM, "Controller selected${if (auto) " automatically" else ""}: ${group.name}", clock.wallMs())
+        log.add(EventLog.SYSTEM, "Controle selecionado${if (auto) " automaticamente" else ""}: ${group.name}", clock.wallMs())
         statusDirty = true
         devicesDirty = true
         identifiedDirty = true
@@ -398,7 +423,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         processor.detecting = false
         processor.releaseAll(null)
         translator.reset()
-        if (name != null) log.add(EventLog.SYSTEM, "Controller released: $name (input reading stopped)", clock.wallMs())
+        if (name != null) log.add(EventLog.SYSTEM, "Controle liberado: $name (leitura parada)", clock.wallMs())
         statusDirty = true
         devicesDirty = true
         updatePointerCapture()
@@ -460,14 +485,20 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     private fun startEmulation() {
         if (!readingActive()) {
-            throw CommandException("Connect and select a controller first (or start DEMO MODE).", "no_controller")
+            throw CommandException("Conecte e selecione um controle primeiro (ou ligue o modo demonstração).", "no_controller")
         }
         emulationRunning = true
         emulationStartedAt = clock.wallMs()
+        GameModeBus.setEmulationActive(true)
         if (settings.udp.enabled) streamer.start(settings.udp)
         applyKeepScreenOn()
-        val output = if (settings.udp.enabled) "VRBQ UDP -> ${settings.udp.host}:${settings.udp.port} (${settings.udp.format})" else "no output enabled (local preview only)"
-        log.add(EventLog.SYSTEM, "Emulation started — output: $output", clock.wallMs())
+        val output = if (settings.udp.enabled) "rede UDP ${settings.udp.host}:${settings.udp.port} (${settings.udp.format})" else "nenhuma saída de rede"
+        val game = when {
+            !settings.game.enabled -> "Modo jogo desligado"
+            gameServiceEnabled() -> "Modo jogo pronto (abra o jogo)"
+            else -> "Modo jogo precisa do serviço de acessibilidade"
+        }
+        log.add(EventLog.SYSTEM, "Emulação iniciada — $game; $output", clock.wallMs())
         statusDirty = true
         afterStateChange()
     }
@@ -475,9 +506,10 @@ class AppController(private val activity: Activity, private val webView: WebView
     private fun stopEmulation() {
         if (!emulationRunning) return
         emulationRunning = false
+        GameModeBus.setEmulationActive(false)
         streamer.stop()
         applyKeepScreenOn()
-        log.add(EventLog.SYSTEM, "Emulation stopped", clock.wallMs())
+        log.add(EventLog.SYSTEM, "Emulação parada", clock.wallMs())
         statusDirty = true
         scheduleFrame()
     }
@@ -508,7 +540,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         demoRunning = true
         demoStartedAt = clock.uptimeMs()
         updatePointerCapture()
-        log.add(EventLog.SYSTEM, "DEMO MODE started — all input is SIMULATED", clock.wallMs())
+        log.add(EventLog.SYSTEM, "Modo demonstração ligado — os comandos são simulados", clock.wallMs())
         statusDirty = true
         identifiedDirty = true
         main.post(demoRunnable)
@@ -521,7 +553,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         main.removeCallbacks(demoRunnable)
         processor.releaseAll(null)
         if (emulationRunning && !readingActive()) stopEmulation()
-        log.add(EventLog.SYSTEM, "DEMO MODE stopped", clock.wallMs())
+        log.add(EventLog.SYSTEM, "Modo demonstração desligado", clock.wallMs())
         statusDirty = true
         identifiedDirty = true
         updatePointerCapture()
@@ -534,6 +566,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         controllers.configure(working.mappings, working.buttons, working.left, working.right)
         controllers.onPhysicalState(processor.state, clock.uptimeMs())
         statusDirty = true
+        publishToGameMode()
     }
 
     private fun editWorking(updated: Profile): JSONObject {
@@ -558,14 +591,26 @@ class AppController(private val activity: Activity, private val webView: WebView
             } catch (e: Exception) {
                 Log.e(TAG, "Save failed", e)
                 main.post {
-                    log.add(EventLog.SYSTEM, "Saving failed: ${e.message}", clock.wallMs())
+                    log.add(EventLog.SYSTEM, "Não foi possível salvar: ${e.message}", clock.wallMs())
                     scheduleFrame()
                 }
             }
         }
     }
 
-    private fun saveSettings() = writeAsync(settingsStorage, AppSettingsCodec.encode(settings).toString())
+    private fun saveSettings() {
+        writeAsync(settingsStorage, AppSettingsCodec.encode(settings).toString())
+        publishToGameMode()
+    }
+
+    /** Whether the user turned on our accessibility service in Android settings. */
+    private fun gameServiceEnabled(): Boolean {
+        val enabled = Settings.Secure.getString(activity.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
+        val component = ComponentName(activity, GameModeService::class.java)
+        return enabled.split(':').any {
+            it.equals(component.flattenToString(), ignoreCase = true) || it.equals(component.flattenToShortString(), ignoreCase = true)
+        }
+    }
 
     // ---------------------------------------------------------------- commands
 
@@ -596,7 +641,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         onAsync("bt.requestPermission") { _, reply ->
             permissions.requestBluetooth { state ->
                 statusDirty = true
-                if (state.key == "granted") log.add(EventLog.SYSTEM, "Bluetooth permission granted", clock.wallMs())
+                if (state.key == "granted") log.add(EventLog.SYSTEM, "Permissão de Bluetooth concedida", clock.wallMs())
                 scheduleFrame()
                 reply.ok(JSONObject().put("permission", state.key).put("bluetooth", bluetoothJson()))
             }
@@ -606,8 +651,8 @@ class AppController(private val activity: Activity, private val webView: WebView
             null
         }
         onAsync("bt.requestEnable") { _, reply ->
-            if (!bluetooth.isSupported) throw CommandException("This phone has no Bluetooth adapter", "unsupported")
-            if (!permissions.hasBluetooth()) throw CommandException("Bluetooth permission is required", "permission_required")
+            if (!bluetooth.isSupported) throw CommandException("Este celular não tem Bluetooth", "unsupported")
+            if (!permissions.hasBluetooth()) throw CommandException("Precisa da permissão de Bluetooth", "permission_required")
             startForResult(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) { _, _ ->
                 statusDirty = true
                 scheduleFrame()
@@ -647,7 +692,7 @@ class AppController(private val activity: Activity, private val webView: WebView
             detecting = true
             processor.detecting = true
             statusDirty = true
-            log.add(EventLog.SYSTEM, "Automatic input detection started", clock.wallMs())
+            log.add(EventLog.SYSTEM, "Detecção de botões ligada", clock.wallMs())
             JSONObject().put("selected", selectedKey != null || demoRunning)
         }
         on("detect.stop") {
@@ -666,23 +711,23 @@ class AppController(private val activity: Activity, private val webView: WebView
         // Mapping (edits the working copy; "profile.save" persists it)
         on("mapping.add") { args ->
             val rule = ProfileCodec.decodeRule(args.put("id", ids.next("m-")))
-                ?: throw CommandException("This physical input cannot drive that virtual control", "incompatible")
+                ?: throw CommandException("Essa entrada não pode controlar esse comando", "incompatible")
             if (working.mappings.any { it.source == rule.source && it.target == rule.target }) {
-                throw CommandException("This mapping already exists", "duplicate")
+                throw CommandException("Esse mapeamento já existe", "duplicate")
             }
             editWorking(working.copy(mappings = working.mappings + rule))
         }
         on("mapping.update") { args ->
             val id = args.optString("id")
-            val current = working.mappings.firstOrNull { it.id == id } ?: throw CommandException("Mapping not found", "not_found")
+            val current = working.mappings.firstOrNull { it.id == id } ?: throw CommandException("Mapeamento não encontrado", "not_found")
             val merged = ProfileCodec.encodeRule(current)
             for (k in listOf("source", "target", "invert", "threshold", "scale")) if (args.has(k)) merged.put(k, args.get(k))
-            val rule = ProfileCodec.decodeRule(merged) ?: throw CommandException("This physical input cannot drive that virtual control", "incompatible")
+            val rule = ProfileCodec.decodeRule(merged) ?: throw CommandException("Essa entrada não pode controlar esse comando", "incompatible")
             editWorking(working.copy(mappings = working.mappings.map { if (it.id == id) rule else it }))
         }
         on("mapping.remove") { args ->
             val id = args.optString("id")
-            if (working.mappings.none { it.id == id }) throw CommandException("Mapping not found", "not_found")
+            if (working.mappings.none { it.id == id }) throw CommandException("Mapeamento não encontrado", "not_found")
             editWorking(working.copy(mappings = working.mappings.filterNot { it.id == id }))
         }
         on("mapping.resetDefault") {
@@ -713,7 +758,7 @@ class AppController(private val activity: Activity, private val webView: WebView
             working = profiles.update(working)
             dirty = false
             statusDirty = true
-            log.add(EventLog.SYSTEM, "Profile saved: ${working.name}", clock.wallMs())
+            log.add(EventLog.SYSTEM, "Perfil salvo: ${working.name}", clock.wallMs())
             JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
         }
         on("profile.revert") {
@@ -729,13 +774,13 @@ class AppController(private val activity: Activity, private val webView: WebView
         on("profiles.activate") { args ->
             val id = args.optString("id")
             if (dirty && !args.optBoolean("discard", false) && id != working.id) {
-                throw CommandException("The current profile has unsaved changes", "unsaved")
+                throw CommandException("O perfil atual tem alterações não salvas", "unsaved")
             }
             working = catching { profiles.setActive(id) }
             dirty = false
             applyWorking()
             afterStateChange()
-            log.add(EventLog.SYSTEM, "Profile activated: ${working.name}", clock.wallMs())
+            log.add(EventLog.SYSTEM, "Perfil em uso: ${working.name}", clock.wallMs())
             JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
         }
         on("profiles.create") { args ->
@@ -777,7 +822,7 @@ class AppController(private val activity: Activity, private val webView: WebView
                 applyWorking()
                 afterStateChange()
             }
-            log.add(EventLog.SYSTEM, "Initial profiles restored", clock.wallMs())
+            log.add(EventLog.SYSTEM, "Perfis iniciais restaurados", clock.wallMs())
             JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
         }
         onAsync("profiles.export") { args, reply ->
@@ -791,17 +836,17 @@ class AppController(private val activity: Activity, private val webView: WebView
             startForResult(intent) { code, data ->
                 val uri = data?.data
                 if (code != Activity.RESULT_OK || uri == null) {
-                    reply.fail(CommandException("Export cancelled", "cancelled"))
+                    reply.fail(CommandException("Exportação cancelada", "cancelled"))
                     return@startForResult
                 }
                 io.execute {
                     val error = runCatching {
                         activity.contentResolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
-                            ?: throw IllegalStateException("Cannot open the selected file")
+                            ?: throw IllegalStateException("Não foi possível abrir o arquivo escolhido")
                     }.exceptionOrNull()
                     main.post {
                         if (error == null) reply.ok(JSONObject().put("file", uri.lastPathSegment ?: "file"))
-                        else reply.fail(CommandException("Export failed: ${error.message}", "io"))
+                        else reply.fail(CommandException("Falha ao exportar: ${error.message}", "io"))
                     }
                 }
             }
@@ -814,7 +859,7 @@ class AppController(private val activity: Activity, private val webView: WebView
             startForResult(intent) { code, data ->
                 val uri = data?.data
                 if (code != Activity.RESULT_OK || uri == null) {
-                    reply.fail(CommandException("Import cancelled", "cancelled"))
+                    reply.fail(CommandException("Importação cancelada", "cancelled"))
                     return@startForResult
                 }
                 io.execute {
@@ -824,15 +869,15 @@ class AppController(private val activity: Activity, private val webView: WebView
                             onSuccess = { text ->
                                 try {
                                     val r = profiles.importJson(text)
-                                    log.add(EventLog.SYSTEM, "Profile imported: ${r.profile.name}", clock.wallMs())
+                                    log.add(EventLog.SYSTEM, "Perfil importado: ${r.profile.name}", clock.wallMs())
                                     reply.ok(
                                         JSONObject().put("created", r.profile.id).put("warnings", JSONArray(r.warnings)).put("profiles", profilesJson()),
                                     )
                                 } catch (e: ProfileException) {
-                                    reply.fail(CommandException(e.message ?: "Invalid profile", "invalid"))
+                                    reply.fail(CommandException(e.message ?: "Perfil inválido", "invalid"))
                                 }
                             },
-                            onFailure = { reply.fail(CommandException("Cannot read file: ${it.message}", "io")) },
+                            onFailure = { reply.fail(CommandException("Não foi possível ler o arquivo: ${it.message}", "io")) },
                         )
                     }
                 }
@@ -854,12 +899,12 @@ class AppController(private val activity: Activity, private val webView: WebView
             settings = try {
                 AppSettingsCodec.merge(settings, JSONObject().put("udp", args))
             } catch (e: SettingsException) {
-                throw CommandException(e.message ?: "Invalid setting", "invalid")
+                throw CommandException(e.message ?: "Configuração inválida", "invalid")
             }
             saveSettings()
             if (emulationRunning) {
                 if (settings.udp.enabled) streamer.start(settings.udp) else streamer.stop()
-                log.add(EventLog.SYSTEM, "Output reconfigured: ${if (settings.udp.enabled) "${settings.udp.host}:${settings.udp.port}" else "disabled"}", clock.wallMs())
+                log.add(EventLog.SYSTEM, "Saída de rede: ${if (settings.udp.enabled) "${settings.udp.host}:${settings.udp.port}" else "desligada"}", clock.wallMs())
             }
             statusDirty = true
             JSONObject().put("settings", AppSettingsCodec.encode(settings)).put("status", statusJson())
@@ -868,7 +913,7 @@ class AppController(private val activity: Activity, private val webView: WebView
             settings = try {
                 AppSettingsCodec.merge(settings, args)
             } catch (e: SettingsException) {
-                throw CommandException(e.message ?: "Invalid setting", "invalid")
+                throw CommandException(e.message ?: "Configuração inválida", "invalid")
             }
             onSettingsChanged()
             AppSettingsCodec.encode(settings)
@@ -877,6 +922,27 @@ class AppController(private val activity: Activity, private val webView: WebView
             settings = AppSettings(lastDeviceKey = settings.lastDeviceKey)
             onSettingsChanged()
             AppSettingsCodec.encode(settings)
+        }
+
+        // Modo jogo
+        on("game.openAccessibility") {
+            startSafely(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
+            null
+        }
+        on("game.update") { args ->
+            settings = settings.copy(game = GameModeCodec.decode(args, settings.game))
+            onSettingsChanged()
+            JSONObject().put("settings", AppSettingsCodec.encode(settings)).put("status", statusJson())
+        }
+        on("game.preset") { args ->
+            val preset = when (args.optString("name")) {
+                "cardboard" -> GameModeConfig.cardboard().copy(enabled = settings.game.enabled)
+                "clear" -> GameModeConfig(enabled = settings.game.enabled)
+                else -> throw CommandException("Modelo desconhecido", "invalid")
+            }
+            settings = settings.copy(game = preset)
+            onSettingsChanged()
+            JSONObject().put("settings", AppSettingsCodec.encode(settings)).put("status", statusJson())
         }
 
         // Demo, log, stats
@@ -913,7 +979,7 @@ class AppController(private val activity: Activity, private val webView: WebView
     private inline fun <T> catching(block: () -> T): T = try {
         block()
     } catch (e: ProfileException) {
-        throw CommandException(e.message ?: "Profile error", "profile")
+        throw CommandException(e.message ?: "Erro no perfil", "profile")
     }
 
     private fun merge(base: JSONObject, patch: JSONObject): JSONObject {
@@ -925,10 +991,10 @@ class AppController(private val activity: Activity, private val webView: WebView
     }
 
     private fun readLimited(uri: Uri): String {
-        val stream = activity.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Cannot open file")
+        val stream = activity.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Não foi possível abrir o arquivo")
         stream.use {
             val bytes = it.readBytes()
-            if (bytes.size > ProfileRepository.MAX_IMPORT_CHARS) throw IllegalStateException("File is too large")
+            if (bytes.size > ProfileRepository.MAX_IMPORT_CHARS) throw IllegalStateException("Arquivo grande demais")
             return String(bytes, Charsets.UTF_8)
         }
     }
@@ -937,9 +1003,9 @@ class AppController(private val activity: Activity, private val webView: WebView
         try {
             activity.startActivity(intent)
         } catch (e: ActivityNotFoundException) {
-            throw CommandException("This screen is not available on this phone", "unavailable")
+            throw CommandException("Essa tela não existe neste celular", "unavailable")
         } catch (e: SecurityException) {
-            throw CommandException("Android refused to open this screen", "denied")
+            throw CommandException("O Android não deixou abrir essa tela", "denied")
         }
     }
 
@@ -951,7 +1017,7 @@ class AppController(private val activity: Activity, private val webView: WebView
             activity.startActivityForResult(intent, code)
         } catch (e: Exception) {
             pendingResults.remove(code)
-            throw CommandException("This action is not available on this phone (${e.javaClass.simpleName})", "unavailable")
+            throw CommandException("Essa ação não está disponível neste celular (${e.javaClass.simpleName})", "unavailable")
         }
     }
 
@@ -1060,27 +1126,14 @@ class AppController(private val activity: Activity, private val webView: WebView
             else @Suppress("DEPRECATION") pm.getPackageInfo(activity.packageName, 0)
         }.getOrNull()
         return JSONObject()
-            .put("app", "VR BOX TO META QUEST EMULATOR")
+            .put("app", "VR Box → Quest")
             .put("version", pkg?.versionName ?: "?")
             .put("android", Build.VERSION.RELEASE)
             .put("sdk", Build.VERSION.SDK_INT)
             .put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
             .put("transport", bridge.transport)
             .put("pointerCaptureSupported", true)
-            .put("openxrBroker", detectOpenXrBroker() ?: JSONObject.NULL)
             .put("native", true)
-    }
-
-    /** Looks for the Khronos OpenXR runtime broker packages (informational only). */
-    private fun detectOpenXrBroker(): String? {
-        for (pkg in listOf("org.khronos.openxr.system_runtime_broker", "org.khronos.openxr.runtime_broker")) {
-            val found = runCatching {
-                if (Build.VERSION.SDK_INT >= 33) activity.packageManager.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
-                else @Suppress("DEPRECATION") activity.packageManager.getPackageInfo(pkg, 0)
-            }.isSuccess
-            if (found) return pkg
-        }
-        return null
     }
 
     private fun catalogJson(): JSONObject = JSONObject()
@@ -1168,6 +1221,16 @@ class AppController(private val activity: Activity, private val webView: WebView
                     .put("format", settings.udp.format),
             )
             .put("profile", JSONObject().put("id", working.id).put("name", working.name).put("dirty", dirty))
+            .put(
+                "game",
+                JSONObject()
+                    .put("enabled", settings.game.enabled)
+                    .put("serviceEnabled", gameServiceEnabled())
+                    .put("serviceConnected", GameModeBus.serviceConnected)
+                    .put("joystickSupported", Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+                    .put("bindings", settings.game.buttons.count { it.value.action != com.rispmr.vrboxemulator.engine.TouchAction.OFF } + (if (settings.game.leftStick.enabled) 1 else 0) + (if (settings.game.rightStick.enabled) 1 else 0))
+                    .put("touches", GameModeBus.touchesPerformed),
+            )
             .put("identifiedCount", identified.count(identifiedKey()))
             .put("demo", demoRunning)
     }

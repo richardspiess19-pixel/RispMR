@@ -35,7 +35,7 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 
-const ROUTES = ['dashboard', 'devices', 'detect', 'mapping', 'controllers', 'tester', 'profiles', 'settings', 'integration'];
+const ROUTES = ['dashboard', 'devices', 'detect', 'mapping', 'game', 'controllers', 'tester', 'profiles', 'settings', 'integration'];
 const errors = [];
 const browser = await chromium.launch();
 
@@ -48,7 +48,7 @@ async function run(label, { mock, width, height }) {
   page.on('pageerror', (e) => errors.push(`[${label}] pageerror: ${e.message}`));
   if (mock) await page.addInitScript({ path: path.join(here, 'mock-native.js') });
   await page.goto(`${base}/index.html#/dashboard`);
-  await page.waitForSelector('.tile');
+  await page.waitForSelector('.status-row');
   for (const r of ROUTES) {
     await page.evaluate((id) => {
       location.hash = `#/${id}`;
@@ -64,10 +64,21 @@ async function run(label, { mock, width, height }) {
     // Interactions: start emulation from the dashboard and open the target picker.
     await page.evaluate(() => (location.hash = '#/dashboard'));
     await page.waitForTimeout(200);
-    await page.getByRole('button', { name: 'Start emulation' }).click();
+    await page.locator('.hero__actions .btn').first().click();
     await page.waitForTimeout(200);
     const calls = await page.evaluate(() => window.__mockCalls);
-    if (!calls.includes('emulation.start')) errors.push(`[${label}] START EMULATION did not call the bridge`);
+    if (!calls.includes('emulation.start')) errors.push(`[${label}] Iniciar emulação did not call the bridge`);
+    // Modo jogo: drag a touch marker and check that the layout is saved.
+    await page.evaluate(() => (location.hash = '#/game'));
+    await page.waitForTimeout(300);
+    const marker = page.locator('.game-marker').first();
+    const box = await marker.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(box.x + 60, box.y + 30, { steps: 5 });
+    await page.mouse.up();
+    await page.waitForTimeout(200);
+    if (!(await page.evaluate(() => window.__mockCalls)).includes('game.update')) errors.push(`[${label}] dragging a game marker did not save`);
     await page.evaluate(() => (location.hash = '#/detect'));
     await page.waitForTimeout(200);
     const calls2 = await page.evaluate(() => window.__mockCalls);

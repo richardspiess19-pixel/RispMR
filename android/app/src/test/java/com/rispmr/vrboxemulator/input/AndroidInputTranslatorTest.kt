@@ -101,10 +101,10 @@ class BluetoothAndDemoTest {
     @Test
     fun classOfDeviceIsDecoded() {
         assertTrue(BluetoothClassDecoder.isPeripheral(0x05C0))
-        assertEquals("Keyboard + Pointing (HID combo)", BluetoothClassDecoder.label(0x05C0))
-        assertEquals("Pointing device / Mouse (HID)", BluetoothClassDecoder.label(0x0580))
-        assertEquals("HID peripheral · Gamepad", BluetoothClassDecoder.label(0x0508))
-        assertEquals("Phone", BluetoothClassDecoder.label(0x020C))
+        assertEquals("Teclado + mouse (HID)", BluetoothClassDecoder.label(0x05C0))
+        assertEquals("Mouse (HID)", BluetoothClassDecoder.label(0x0580))
+        assertEquals("Periférico HID · Gamepad", BluetoothClassDecoder.label(0x0508))
+        assertEquals("Celular", BluetoothClassDecoder.label(0x020C))
         assertFalse(BluetoothClassDecoder.isPeripheral(0x0404))
     }
 

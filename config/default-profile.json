@@ -1,26 +1,50 @@
 {
   "schema": 1,
   "type": "vrbq-profile-template",
-  "description": "Default settings applied to new profiles and used by 'Restore defaults'. Mappings are empty on purpose: new profiles start clean.",
+  "description": "Configuração padrão usada em perfis novos e em 'Restaurar padrão'. Sem mapeamentos de propósito: perfis novos começam limpos.",
   "profile": {
     "id": "template",
-    "name": "New Profile",
+    "name": "Novo perfil",
     "description": "",
     "mappings": [],
     "sticks": {
       "left": {
         "mode": "virtual_stick",
-        "smoothing": 0.10,
+        "smoothing": 0.1,
         "returnSpeed": 6.0,
-        "x": { "sensitivity": 1.0, "deadzone": 0.08, "curve": 1.0, "max": 1.0, "invert": false },
-        "y": { "sensitivity": 1.0, "deadzone": 0.08, "curve": 1.0, "max": 1.0, "invert": false }
+        "x": {
+          "sensitivity": 1.0,
+          "deadzone": 0.08,
+          "curve": 1.0,
+          "max": 1.0,
+          "invert": false
+        },
+        "y": {
+          "sensitivity": 1.0,
+          "deadzone": 0.08,
+          "curve": 1.0,
+          "max": 1.0,
+          "invert": false
+        }
       },
       "right": {
         "mode": "relative_mouse",
         "smoothing": 0.15,
         "returnSpeed": 8.0,
-        "x": { "sensitivity": 1.0, "deadzone": 0.05, "curve": 1.2, "max": 1.0, "invert": false },
-        "y": { "sensitivity": 1.0, "deadzone": 0.05, "curve": 1.2, "max": 1.0, "invert": false }
+        "x": {
+          "sensitivity": 1.0,
+          "deadzone": 0.05,
+          "curve": 1.2,
+          "max": 1.0,
+          "invert": false
+        },
+        "y": {
+          "sensitivity": 1.0,
+          "deadzone": 0.05,
+          "curve": 1.2,
+          "max": 1.0,
+          "invert": false
+        }
       }
     },
     "buttons": {

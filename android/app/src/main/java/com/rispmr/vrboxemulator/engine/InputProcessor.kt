@@ -1,6 +1,5 @@
 package com.rispmr.vrboxemulator.engine
 
-import java.util.Locale
 import kotlin.math.abs
 
 /**
@@ -83,7 +82,7 @@ class InputProcessor(
         motionAccum.fill(0f)
         controllers.onPhysicalState(state, now)
         controllers.reset(now)
-        if (hadInput && reason != null) log.add(EventLog.SYSTEM, "All inputs released ($reason)", clock.wallMs())
+        if (hadInput && reason != null) log.add(EventLog.SYSTEM, "Todos os botões foram soltos ($reason)", clock.wallMs())
     }
 
     private fun onAxis(id: String, value: Float, now: Long): Boolean {
@@ -150,7 +149,7 @@ class InputProcessor(
         if (pressed) state.digital[id] = true else state.digital.remove(id)
         val label = InputCatalog.labelOf(id)
         val stateName = if (pressed) "PRESSED" else "RELEASED"
-        log.add(EventLog.PHYSICAL, "${label.uppercase(Locale.ROOT)} $stateName", clock.wallMs())
+        log.add(EventLog.PHYSICAL, "$label ${if (pressed) "pressionado" else "solto"}", clock.wallMs())
         if (pressed) identifiedListener?.invoke(id, SourceKind.DIGITAL)
         if (detecting) {
             detectionListener?.invoke(

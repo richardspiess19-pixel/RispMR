@@ -47,25 +47,25 @@ data class InputDeviceInfo(
 object DeviceClassifier {
     fun roles(sources: Int, keyboardType: Int): List<String> = buildList {
         if (Sources.has(sources, Sources.MOUSE)) add("Mouse")
-        if (Sources.has(sources, Sources.MOUSE_RELATIVE)) add("Mouse (relative)")
+        if (Sources.has(sources, Sources.MOUSE_RELATIVE)) add("Mouse (relativo)")
         if (Sources.has(sources, Sources.GAMEPAD)) add("Gamepad")
         if (Sources.has(sources, Sources.JOYSTICK)) add("Joystick")
         if (Sources.has(sources, Sources.DPAD)) add("D-pad")
-        if (Sources.has(sources, Sources.KEYBOARD)) add(if (keyboardType == 2) "Keyboard" else "Keys / Buttons")
-        if (Sources.has(sources, Sources.TOUCHSCREEN)) add("Touchscreen")
+        if (Sources.has(sources, Sources.KEYBOARD)) add(if (keyboardType == 2) "Teclado" else "Teclas/botões")
+        if (Sources.has(sources, Sources.TOUCHSCREEN)) add("Tela de toque")
         if (Sources.has(sources, Sources.TOUCHPAD)) add("Touchpad")
-        if (Sources.has(sources, Sources.STYLUS)) add("Stylus")
+        if (Sources.has(sources, Sources.STYLUS)) add("Caneta")
         if (Sources.has(sources, Sources.TRACKBALL)) add("Trackball")
     }
 
     /** Short main type used in the UI. */
     fun primaryType(sources: Int, keyboardType: Int): String = when {
-        Sources.has(sources, Sources.GAMEPAD) || Sources.has(sources, Sources.JOYSTICK) -> "Gamepad / Joystick"
+        Sources.has(sources, Sources.GAMEPAD) || Sources.has(sources, Sources.JOYSTICK) -> "Gamepad/joystick"
         Sources.has(sources, Sources.MOUSE) -> "Mouse"
-        Sources.has(sources, Sources.KEYBOARD) && keyboardType == 2 -> "Keyboard"
-        Sources.has(sources, Sources.KEYBOARD) -> "Keys / Buttons"
-        Sources.has(sources, Sources.TOUCHSCREEN) -> "Touchscreen"
-        else -> "Other"
+        Sources.has(sources, Sources.KEYBOARD) && keyboardType == 2 -> "Teclado"
+        Sources.has(sources, Sources.KEYBOARD) -> "Teclas/botões"
+        Sources.has(sources, Sources.TOUCHSCREEN) -> "Tela de toque"
+        else -> "Outro"
     }
 
     private val VR_BOX_HINTS = listOf("vr box", "vrbox", "vr-box", "vr park", "vr-park", "vrpark", "bluetooth remote", "ble remote", "bt remote", "vr remote", "magicsee", "shinecon")

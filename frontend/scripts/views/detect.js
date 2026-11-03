@@ -1,19 +1,19 @@
 import { h, render, setText } from '../dom.js';
 import { icon } from '../icons.js';
-import { clockTime, kindLabel, targetLabel } from '../format.js';
+import { clockTime, kindLabel, stateLabel, targetLabel } from '../format.js';
 import { confirmDialog, pickTarget } from '../ui.js';
 
-// AUTOMATIC INPUT DETECTION
+// Detecção automática dos botões.
 
 export default {
   id: 'detect',
-  title: 'Detect',
+  title: 'Detectar botões',
 
   mount(root, ctx) {
     ctx.keepDetection = true;
-    const prompt = h('p', { class: 'detect-hero__text' }, 'Press a button on your VR Box controller');
+    const prompt = h('p', { class: 'detect-hero__text' }, 'Aperte um botão do VR Box');
     const hint = h('p', { class: 'muted small' }, '');
-    const card = h('div', { class: 'card card--glow detected' });
+    const card = h('div', { class: 'card card--accent detected' });
     const history = h('ul', { class: 'list' });
     const identifiedList = h('div');
     const saveBar = h('div', { class: 'save-bar hidden' });
@@ -22,35 +22,23 @@ export default {
       h(
         'header',
         { class: 'page-head' },
-        h(
-          'div',
-          {},
-          h('div', { class: 'page-kicker' }, 'Automatic input detection'),
-          h('h1', { class: 'page-title' }, 'Identify buttons'),
-          h('p', { class: 'page-sub' }, 'Every event received from the controller is identified with its Android name and state, and can be assigned to a virtual Quest input.'),
-        ),
+        h('div', {}, h('h1', { class: 'page-title' }, 'Detectar botões'), h('p', { class: 'page-sub' }, 'Aperte cada botão do controle. O app mostra o que recebeu e você escolhe o que ele vai fazer.')),
       ),
-      h(
-        'section',
-        { class: 'detect-hero' },
-        h('div', { class: 'learn__radar learn__radar--big', 'aria-hidden': 'true' }, h('span'), h('span'), h('i')),
-        prompt,
-        hint,
-      ),
+      h('section', { class: 'detect-hero' }, h('div', { class: 'learn__radar learn__radar--big', 'aria-hidden': 'true' }, h('span'), h('span'), h('i')), prompt, hint),
       card,
       saveBar,
       h(
         'div',
         { class: 'grid-2' },
-        h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'This session')), history),
+        h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Agora há pouco')), history),
         h(
           'section',
           { class: 'card' },
           h(
             'div',
             { class: 'card__head' },
-            h('div', {}, h('h2', { class: 'card__title' }, 'Identified inputs'), h('div', { class: 'card__sub' }, 'Saved per controller on this phone')),
-            h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => clearIdentified() }, icon('trash'), 'Clear'),
+            h('div', {}, h('h2', { class: 'card__title' }, 'Botões deste controle'), h('div', { class: 'card__sub' }, 'Ficam guardados no celular')),
+            h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => clearIdentified() }, icon('trash'), 'Limpar'),
           ),
           identifiedList,
         ),
@@ -59,43 +47,36 @@ export default {
 
     const renderCard = (d) => {
       if (!d) {
-        render(card, h('div', { class: 'detected__empty' }, h('div', { class: 'section-title' }, 'Physical input detected'), h('p', { class: 'muted' }, 'Nothing yet.')));
+        render(card, h('div', { class: 'section-title' }, 'Botão detectado'), h('p', { class: 'muted' }, 'Nada ainda.'));
         return;
       }
       const alternatives = (d.alternatives || []).map((a) =>
-        h('button', { class: 'btn btn--sm', type: 'button', onClick: () => assign(a.id, a.kind, a.label) }, `Use as ${a.label} (${kindLabel(a.kind)})`),
+        h('button', { class: 'btn btn--sm', type: 'button', onClick: () => assign(a.id, a.kind, a.label) }, `Usar como ${a.label}`),
       );
       render(
         card,
-        h('div', { class: 'section-title' }, 'Physical input detected'),
+        h('div', { class: 'section-title' }, 'Botão detectado'),
         h(
           'dl',
           { class: 'kv detected__kv' },
-          h('dt', {}, 'Device'),
-          h('dd', {}, d.device, d.demo ? h('span', { class: 'badge badge--purple' }, 'Simulated') : null),
-          h('dt', {}, 'Event'),
+          h('dt', {}, 'Dispositivo'),
+          h('dd', {}, d.device, d.demo ? h('span', { class: 'badge badge--purple' }, 'Simulado') : null),
+          h('dt', {}, 'Evento'),
           h('dd', { class: 'detected__event' }, d.label),
-          h('dt', {}, 'State'),
-          h('dd', {}, h('span', { class: `state ${d.state !== 'RELEASED' ? 'is-on' : ''}` }, d.state)),
-          h('dt', { class: 'raw' }, 'Code'),
+          h('dt', {}, 'Estado'),
+          h('dd', {}, h('span', { class: `state ${d.state !== 'RELEASED' ? 'is-on' : ''}` }, stateLabel(d.state))),
+          h('dt', { class: 'raw' }, 'Código'),
           h('dd', { class: 'mono raw' }, d.sourceId),
-          h('dt', {}, 'Type'),
-          h('dd', {}, kindLabel(d.kind)),
         ),
-        h('p', { class: 'detected__ok' }, icon('check'), 'Detected successfully.'),
-        h(
-          'div',
-          { class: 'row' },
-          h('button', { class: 'btn btn--primary btn--sm', type: 'button', onClick: () => assign(d.sourceId, d.kind, d.label) }, icon('wand'), 'Assign to virtual input'),
-          alternatives,
-        ),
+        h('p', { class: 'detected__ok' }, icon('check'), 'Detectado com sucesso.'),
+        h('div', { class: 'row' }, h('button', { class: 'btn btn--primary btn--sm', type: 'button', onClick: () => assign(d.sourceId, d.kind, d.label) }, icon('wand'), 'Escolher o que ele faz'), alternatives),
       );
     };
 
     const renderHistory = () => {
       const list = ctx.store.state.detections;
       if (!list.length) {
-        render(history, h('li', { class: 'empty' }, 'Detected events appear here.'));
+        render(history, h('li', { class: 'empty' }, 'Os botões apertados aparecem aqui.'));
         return;
       }
       render(
@@ -104,13 +85,8 @@ export default {
           h(
             'li',
             { class: 'list__item' },
-            h(
-              'div',
-              { class: 'list__main' },
-              h('div', { class: 'list__title' }, d.label),
-              h('div', { class: 'list__meta' }, `${clockTime(d.t)} · ${d.state}`, h('span', { class: 'mono raw' }, ` · ${d.sourceId}`)),
-            ),
-            h('div', { class: 'list__side' }, h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => assign(d.sourceId, d.kind, d.label) }, 'Assign')),
+            h('div', { class: 'list__main' }, h('div', { class: 'list__title' }, d.label), h('div', { class: 'list__meta' }, `${clockTime(d.t)} · ${stateLabel(d.state)}`, h('span', { class: 'mono raw' }, ` · ${d.sourceId}`))),
+            h('div', { class: 'list__side' }, h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => assign(d.sourceId, d.kind, d.label) }, 'Usar')),
           ),
         ),
       );
@@ -119,7 +95,7 @@ export default {
     const renderIdentified = (identified) => {
       const inputs = identified?.inputs || [];
       if (!inputs.length) {
-        render(identifiedList, h('div', { class: 'empty' }, 'No inputs identified yet for this controller.'));
+        render(identifiedList, h('div', { class: 'empty' }, 'Nenhum botão identificado ainda.'));
         return;
       }
       const mappings = ctx.store.state.profile?.mappings || [];
@@ -133,13 +109,8 @@ export default {
             return h(
               'li',
               { class: 'list__item' },
-              h(
-                'div',
-                { class: 'list__main' },
-                h('div', { class: 'list__title' }, i.label, h('span', { class: 'badge' }, kindLabel(i.kind))),
-                h('div', { class: 'list__meta' }, mapped.length ? `→ ${mapped.join(', ')}` : 'Not mapped', ` · seen ${i.count}×`),
-              ),
-              h('div', { class: 'list__side' }, h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => assign(i.id, i.kind, i.label) }, 'Assign')),
+              h('div', { class: 'list__main' }, h('div', { class: 'list__title' }, i.label, h('span', { class: 'badge' }, kindLabel(i.kind))), h('div', { class: 'list__meta' }, mapped.length ? `Faz: ${mapped.join(', ')}` : 'Ainda não faz nada')),
+              h('div', { class: 'list__side' }, h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => assign(i.id, i.kind, i.label) }, 'Usar')),
             );
           }),
         ),
@@ -149,29 +120,23 @@ export default {
     const renderSave = (status) => {
       const dirty = Boolean(status?.profile?.dirty);
       saveBar.classList.toggle('hidden', !dirty);
-      if (dirty) {
-        render(
-          saveBar,
-          h('span', {}, `Unsaved changes in "${status.profile.name}"`),
-          h('button', { class: 'btn btn--sm btn--primary', type: 'button', onClick: () => save() }, icon('save'), 'Save profile'),
-        );
-      }
+      if (dirty) render(saveBar, h('span', {}, 'Tem mudanças não salvas'), h('button', { class: 'btn btn--sm btn--primary', type: 'button', onClick: () => save() }, icon('save'), 'Salvar'));
     };
 
     const renderPrompt = (status) => {
       const c = status?.controller;
       if (!ctx.store.state.native) {
-        setText(prompt, 'Detection runs inside the Android app');
+        setText(prompt, 'A detecção funciona no app Android');
         setText(hint, '');
       } else if (c?.demo) {
-        setText(prompt, 'DEMO MODE: simulated presses are being detected');
-        setText(hint, 'Stop demo mode in the Device Manager to detect a real controller.');
+        setText(prompt, 'Detectando os botões simulados');
+        setText(hint, 'Pare a demonstração na tela Controle para usar o VR Box de verdade.');
       } else if (c?.selected) {
-        setText(prompt, 'Press a button on your VR Box controller');
-        setText(hint, `Listening to ${c.selected.name}${c.connected ? '' : ' (disconnected — waiting)'}`);
+        setText(prompt, 'Aperte um botão do VR Box');
+        setText(hint, c.connected ? `Ouvindo ${c.selected.name}` : `Esperando ${c.selected.name} reconectar`);
       } else {
-        setText(prompt, 'Press any button on the VR Box');
-        setText(hint, 'No controller selected: the first external device that sends input is selected automatically.');
+        setText(prompt, 'Aperte qualquer botão do VR Box');
+        setText(hint, 'O primeiro controle que mandar um botão é escolhido automaticamente.');
       }
     };
 
@@ -181,7 +146,7 @@ export default {
       const p = await ctx.run('mapping.add', { source: sourceId, target });
       if (p) {
         ctx.store.set('profile', p);
-        ctx.toast(`${label} → ${targetLabel(ctx.store.state.catalog, target)} (unsaved)`, 'ok');
+        ctx.toast(`${label} → ${targetLabel(ctx.store.state.catalog, target)}`);
       }
     }
 
@@ -190,12 +155,12 @@ export default {
       if (r) {
         ctx.store.set('profile', r.profile);
         ctx.store.set('profiles', r.profiles);
-        ctx.toast('Profile saved', 'ok');
+        ctx.toast('Perfil salvo');
       }
     }
 
     async function clearIdentified() {
-      if (!(await confirmDialog('Clear identified inputs', 'Forget the inputs identified for this controller? Mappings are not changed.', 'Clear', true))) return;
+      if (!(await confirmDialog('Limpar lista', 'Esquecer os botões identificados deste controle? O mapeamento não muda.', 'Limpar', true))) return;
       const r = await ctx.run('identified.clear');
       if (r) ctx.store.set('identified', r);
     }

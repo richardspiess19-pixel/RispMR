@@ -26,7 +26,7 @@ class DefaultConfigTest {
     @Test
     fun initialProfilesMatchTheSpecification() {
         val d = TestConfig.defaults()
-        assertEquals(listOf("Default VR Box", "Quest Touch Left", "Quest Touch Right", "Custom Profile"), d.initial.map { it.name })
+        assertEquals(listOf("VR Box padrão", "Quest Touch esquerdo", "Quest Touch direito", "Perfil personalizado"), d.initial.map { it.name })
         val left = d.initialById("quest-touch-left")!!
         assertTrue(left.isConfigured(Hand.LEFT))
         assertTrue("left profile only drives the left controller", !left.isConfigured(Hand.RIGHT))

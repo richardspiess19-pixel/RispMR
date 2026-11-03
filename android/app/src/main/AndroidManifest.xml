@@ -19,12 +19,6 @@
         android:name="android.hardware.touchscreen"
         android:required="false" />
 
-    <!-- Informational only: detects whether a Khronos OpenXR runtime broker is installed. -->
-    <queries>
-        <package android:name="org.khronos.openxr.runtime_broker" />
-        <package android:name="org.khronos.openxr.system_runtime_broker" />
-    </queries>
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -47,5 +41,19 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- Modo jogo: turned on by the user in Android Settings > Accessibility. -->
+        <service
+            android:name=".game.GameModeService"
+            android:exported="false"
+            android:label="@string/game_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/game_mode_service" />
+        </service>
     </application>
 </manifest>

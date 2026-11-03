@@ -78,7 +78,7 @@ class ProfileRepository(
         val text = try {
             storage.read()
         } catch (e: Exception) {
-            loadWarnings += "Cannot read profiles: ${e.message}"
+            loadWarnings += "Não foi possível ler os perfis: ${e.message}"
             null
         }
         if (text == null) {
@@ -95,18 +95,18 @@ class ProfileRepository(
                     if (profiles.none { it.id == r.profile.id }) profiles += r.profile
                     loadWarnings += r.warnings.map { "${r.profile.name}: $it" }
                 } catch (e: ProfileFormatException) {
-                    loadWarnings += "Profile #${i + 1} ignored: ${e.message}"
+                    loadWarnings += "Perfil nº ${i + 1} ignorado: ${e.message}"
                 }
             }
             if (profiles.isEmpty()) {
-                loadWarnings += "No valid profile found, defaults restored"
+                loadWarnings += "Nenhum perfil válido encontrado; os perfis iniciais foram restaurados"
                 seed()
                 return
             }
             activeId = root.optString("activeProfileId").takeIf { id -> profiles.any { it.id == id } } ?: profiles.first().id
         } catch (e: JSONException) {
             (storage as? FileTextStorage)?.backupCorrupt()
-            loadWarnings += "Profile file was corrupt and has been reset (backup kept)"
+            loadWarnings += "O arquivo de perfis estava corrompido e foi recriado (cópia guardada)"
             seed()
         }
     }
@@ -130,7 +130,7 @@ class ProfileRepository(
     }
 
     fun create(name: String, baseId: String? = null): Profile {
-        val clean = uniqueName(ProfileCodec.cleanName(name) ?: throw ProfileException("Profile name is required"))
+        val clean = uniqueName(ProfileCodec.cleanName(name) ?: throw ProfileException("Dê um nome ao perfil"))
         val base = baseId?.let { get(it) }
         val p = if (base != null) {
             base.copy(id = ids.next("p-"), name = clean, builtin = false, updatedAt = now())
@@ -144,7 +144,7 @@ class ProfileRepository(
 
     fun rename(id: String, name: String): Profile {
         val p = require(id)
-        val clean = ProfileCodec.cleanName(name) ?: throw ProfileException("Profile name is required")
+        val clean = ProfileCodec.cleanName(name) ?: throw ProfileException("Dê um nome ao perfil")
         val renamed = p.copy(name = if (clean == p.name) clean else uniqueName(clean), updatedAt = now())
         replace(renamed)
         return renamed
@@ -152,7 +152,7 @@ class ProfileRepository(
 
     fun duplicate(id: String): Profile {
         val p = require(id)
-        val copy = p.copy(id = ids.next("p-"), name = uniqueName("${p.name} Copy"), builtin = false, updatedAt = now())
+        val copy = p.copy(id = ids.next("p-"), name = uniqueName("${p.name} (cópia)"), builtin = false, updatedAt = now())
         profiles.add(profiles.indexOf(p) + 1, copy)
         save()
         return copy
@@ -160,7 +160,7 @@ class ProfileRepository(
 
     fun delete(id: String) {
         val p = require(id)
-        if (profiles.size <= 1) throw ProfileException("At least one profile must exist")
+        if (profiles.size <= 1) throw ProfileException("Precisa existir pelo menos um perfil")
         profiles.remove(p)
         if (activeId == id) activeId = profiles.first().id
         save()
@@ -211,24 +211,24 @@ class ProfileRepository(
     data class ImportResult(val profile: Profile, val warnings: List<String>)
 
     fun importJson(text: String): ImportResult {
-        if (text.length > MAX_IMPORT_CHARS) throw ProfileException("File is too large for a profile")
+        if (text.length > MAX_IMPORT_CHARS) throw ProfileException("O arquivo é grande demais para ser um perfil")
         val root = try {
             JSONObject(text)
         } catch (e: JSONException) {
-            throw ProfileException("File is not valid JSON")
+            throw ProfileException("O arquivo não é um JSON válido")
         }
         val obj = when {
             root.optString("type") == EXPORT_TYPE -> root.optJSONObject("profile")
             root.has("mappings") -> root
             else -> null
-        } ?: throw ProfileException("File does not contain a VR BOX TO META QUEST profile")
+        } ?: throw ProfileException("Esse arquivo não tem um perfil do VR Box → Quest")
         val schema = root.optInt("schema", ProfileCodec.SCHEMA)
-        if (schema > ProfileCodec.SCHEMA) throw ProfileException("Profile was created by a newer version (schema $schema)")
+        if (schema > ProfileCodec.SCHEMA) throw ProfileException("Esse perfil foi criado por uma versão mais nova do app (schema $schema)")
         if (!obj.has("id")) obj.put("id", "import")
         val decoded = try {
             ProfileCodec.decode(obj, defaults.template)
         } catch (e: ProfileFormatException) {
-            throw ProfileException(e.message ?: "Invalid profile")
+            throw ProfileException(e.message ?: "Perfil inválido")
         }
         val p = decoded.profile.copy(id = ids.next("p-"), name = uniqueName(decoded.profile.name), builtin = false, updatedAt = now())
         profiles += p
@@ -246,12 +246,12 @@ class ProfileRepository(
 
     private fun replace(p: Profile) {
         val idx = profiles.indexOfFirst { it.id == p.id }
-        if (idx < 0) throw ProfileException("Profile not found")
+        if (idx < 0) throw ProfileException("Perfil não encontrado")
         profiles[idx] = p
         save()
     }
 
-    private fun require(id: String): Profile = get(id) ?: throw ProfileException("Profile not found")
+    private fun require(id: String): Profile = get(id) ?: throw ProfileException("Perfil não encontrado")
 
     private fun uniqueName(name: String): String {
         if (profiles.none { it.name.equals(name, ignoreCase = true) }) return name

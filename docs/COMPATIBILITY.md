@@ -13,6 +13,15 @@
 WebView: `WebMessageListener` (WebView ≥ 83) é usado quando disponível; caso contrário a ponte
 cai para `addJavascriptInterface` automaticamente.
 
+## Modo jogo
+
+| Recurso | Android |
+| --- | --- |
+| Botões do VR Box (teclas/gamepad) virando toques | 8.0+ |
+| Joystick analógico do VR Box dentro do jogo | 14+ (antes disso: use o D-pad ligado às direções) |
+| VR Box em modo mouse | Não é interceptado fora do app; o clique já vira toque pelo próprio Android |
+| Opção de acessibilidade cinza | Android 13+: Informações do app → ⋮ → Permitir configurações restritas |
+
 ## Modos típicos do VR Box
 
 Os modos variam por fabricante; o app **não** presume nenhum deles. O que costuma acontecer:

@@ -42,7 +42,7 @@ export function createQuestController(hand) {
 
   const svg = s(
     'svg',
-    { class: `qc qc--${hand}`, viewBox: `0 0 ${W} 290`, role: 'img', 'aria-label': `${hand} virtual Quest controller` },
+    { class: `qc qc--${hand}`, viewBox: `0 0 ${W} 290`, role: 'img', 'aria-label': hand === 'left' ? 'Controle virtual esquerdo' : 'Controle virtual direito' },
     s(
       'g',
       mirror ? { transform: mirror } : {},
@@ -56,8 +56,8 @@ export function createQuestController(hand) {
     primary,
     secondary,
     menu,
-    s('text', { class: 'qc__label', x: W / 2, y: 22, 'text-anchor': 'middle' }, 'TRIGGER'),
-    s('text', { class: 'qc__label', x: hand === 'left' ? 103 : 97, y: 286, 'text-anchor': 'middle' }, 'GRIP'),
+    s('text', { class: 'qc__label', x: W / 2, y: 22, 'text-anchor': 'middle' }, 'gatilho'),
+    s('text', { class: 'qc__label', x: hand === 'left' ? 103 : 97, y: 286, 'text-anchor': 'middle' }, 'grip'),
   );
 
   let last = '';

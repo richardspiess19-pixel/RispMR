@@ -6,7 +6,7 @@ import { confirmDialog, modal, promptDialog } from '../ui.js';
 
 export default {
   id: 'profiles',
-  title: 'Profiles',
+  title: 'Perfis',
 
   mount(root, ctx) {
     const list = h('div');
@@ -18,16 +18,15 @@ export default {
         h(
           'div',
           {},
-          h('div', { class: 'page-kicker' }, 'Profile manager'),
-          h('h1', { class: 'page-title' }, 'Profiles'),
-          h('p', { class: 'page-sub' }, 'A profile stores the mappings, joystick and button settings. The same physical controller can have several profiles. Profiles are saved in the app\'s private storage on this phone.'),
+          h('h1', { class: 'page-title' }, 'Perfis'),
+          h('p', { class: 'page-sub' }, 'Cada perfil guarda os botões e os ajustes do joystick. Dá para ter um perfil para cada jogo. Tudo fica salvo neste celular.'),
         ),
         h(
           'div',
           { class: 'row' },
-          h('button', { class: 'btn btn--sm btn--primary', type: 'button', onClick: () => create() }, icon('plus'), 'Create'),
-          h('button', { class: 'btn btn--sm', type: 'button', onClick: () => importProfile() }, icon('upload'), 'Import'),
-          h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => restoreDefaults() }, icon('refresh'), 'Restore defaults'),
+          h('button', { class: 'btn btn--sm btn--primary', type: 'button', onClick: () => create() }, icon('plus'), 'Novo perfil'),
+          h('button', { class: 'btn btn--sm', type: 'button', onClick: () => importProfile() }, icon('upload'), 'Importar'),
+          h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => restoreDefaults() }, icon('refresh'), 'Restaurar iniciais'),
         ),
       ),
       h('section', { class: 'card' }, list),
@@ -36,7 +35,7 @@ export default {
     const renderList = () => {
       const profiles = ctx.store.state.profiles || [];
       if (!ctx.store.state.native) {
-        render(list, h('div', { class: 'empty' }, 'Profiles are stored by the Android app.'));
+        render(list, h('div', { class: 'empty' }, 'Os perfis ficam no app Android.'));
         return;
       }
       render(
@@ -55,20 +54,19 @@ export default {
                   'div',
                   { class: 'list__title' },
                   p.name,
-                  p.active ? h('span', { class: 'badge badge--blue' }, 'Active') : null,
-                  p.builtin ? h('span', { class: 'badge' }, 'Initial') : null,
-                  p.dirty ? h('span', { class: 'badge badge--purple' }, 'Unsaved') : null,
+                  p.active ? h('span', { class: 'badge badge--blue' }, 'Em uso') : null,
+                  p.dirty ? h('span', { class: 'badge badge--purple' }, 'Não salvo') : null,
                 ),
                 h('div', { class: 'list__meta' }, p.description || '—'),
-                h('div', { class: 'list__meta' }, `${p.mappings} mappings · Left ${p.left ? 'configured' : 'not configured'} · Right ${p.right ? 'configured' : 'not configured'}`),
+                h('div', { class: 'list__meta' }, `${p.mappings} ${p.mappings === 1 ? 'ligação' : 'ligações'}`),
                 h(
                   'div',
                   { class: 'row profile-item__actions' },
-                  p.active ? null : h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => activate(p) }, icon('check'), 'Activate'),
-                  h('button', { class: 'btn btn--sm', type: 'button', onClick: () => rename(p) }, icon('edit'), 'Rename'),
-                  h('button', { class: 'btn btn--sm', type: 'button', onClick: () => duplicate(p) }, icon('copy'), 'Duplicate'),
-                  h('button', { class: 'btn btn--sm', type: 'button', onClick: () => exportProfile(p) }, icon('download'), 'Export'),
-                  h('button', { class: 'btn btn--sm btn--danger', type: 'button', onClick: () => remove(p) }, icon('trash'), 'Delete'),
+                  p.active ? null : h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => activate(p) }, icon('check'), 'Usar'),
+                  h('button', { class: 'btn btn--sm', type: 'button', onClick: () => rename(p) }, icon('edit'), 'Renomear'),
+                  h('button', { class: 'btn btn--sm', type: 'button', onClick: () => duplicate(p) }, icon('copy'), 'Duplicar'),
+                  h('button', { class: 'btn btn--sm', type: 'button', onClick: () => exportProfile(p) }, icon('download'), 'Exportar'),
+                  h('button', { class: 'btn btn--sm btn--danger', type: 'button', onClick: () => remove(p) }, icon('trash'), 'Excluir'),
                 ),
               ),
             ),
@@ -85,47 +83,47 @@ export default {
 
     async function create() {
       const profiles = ctx.store.state.profiles;
-      const nameInput = h('input', { class: 'input', type: 'text', maxlength: '48', placeholder: 'My VR Box layout' });
-      const base = h('select', { class: 'select' }, h('option', { value: '' }, 'Empty profile (default settings)'), profiles.map((p) => h('option', { value: p.id }, `Copy of ${p.name}`)));
+      const nameInput = h('input', { class: 'input', type: 'text', maxlength: '48', placeholder: 'Ex.: Jogo de corrida' });
+      const base = h('select', { class: 'select' }, h('option', { value: '' }, 'Vazio'), profiles.map((p) => h('option', { value: p.id }, `Cópia de ${p.name}`)));
       const activateBox = h('input', { type: 'checkbox', checked: true });
       const ok = await modal({
-        title: 'Create profile',
+        title: 'Novo perfil',
         body: h(
           'div',
           { class: 'stack' },
-          h('label', { class: 'field' }, h('span', { class: 'field__label' }, 'Name'), nameInput),
-          h('label', { class: 'field' }, h('span', { class: 'field__label' }, 'Start from'), base),
-          h('label', { class: 'switch' }, h('span', { class: 'switch__text' }, h('span', { class: 'switch__title' }, 'Activate after creating')), activateBox),
+          h('label', { class: 'field' }, h('span', { class: 'field__label' }, 'Nome'), nameInput),
+          h('label', { class: 'field' }, h('span', { class: 'field__label' }, 'Começar de'), base),
+          h('label', { class: 'switch' }, h('span', { class: 'switch__text' }, h('span', { class: 'switch__title' }, 'Usar logo depois de criar')), activateBox),
         ),
         actions: [
-          { label: 'Cancel', value: false, kind: 'ghost' },
-          { label: 'Create', value: true, kind: 'primary' },
+          { label: 'Cancelar', value: false, kind: 'ghost' },
+          { label: 'Criar', value: true, kind: 'primary' },
         ],
         onOpen: () => setTimeout(() => nameInput.focus(), 30),
       });
       if (!ok) return;
-      const name = nameInput.value.trim() || 'New Profile';
+      const name = nameInput.value.trim() || 'Novo perfil';
       const r = await ctx.run('profiles.create', { name, baseId: base.value });
       if (!r) return;
       applyResult(r);
       if (activateBox.checked) await activate({ id: r.created, name });
-      else ctx.toast(`Profile "${name}" created`, 'ok');
+      else ctx.toast(`Perfil "${name}" criado`);
     }
 
     async function activate(p) {
       const current = ctx.store.state.profile;
       let discard = false;
       if (current?.dirty) {
-        discard = await confirmDialog('Unsaved changes', `Discard the unsaved changes of "${current.name}"?`, 'Discard & switch', true);
+        discard = await confirmDialog('Mudanças não salvas', `Descartar o que não foi salvo em "${current.name}"?`, 'Descartar e trocar', true);
         if (!discard) return;
       }
       const r = await ctx.run('profiles.activate', { id: p.id, discard });
       applyResult(r);
-      if (r) ctx.toast(`Active profile: ${r.profile.name}`, 'ok');
+      if (r) ctx.toast(`Usando: ${r.profile.name}`);
     }
 
     async function rename(p) {
-      const name = await promptDialog('Rename profile', 'Name', p.name, 'Rename');
+      const name = await promptDialog('Renomear perfil', 'Nome', p.name, 'Renomear');
       if (!name || name === p.name) return;
       applyResult(await ctx.run('profiles.rename', { id: p.id, name }));
     }
@@ -133,33 +131,33 @@ export default {
     async function duplicate(p) {
       const r = await ctx.run('profiles.duplicate', { id: p.id });
       applyResult(r);
-      if (r) ctx.toast('Profile duplicated', 'ok');
+      if (r) ctx.toast('Perfil duplicado');
     }
 
     async function remove(p) {
-      if (!(await confirmDialog('Delete profile', `Delete "${p.name}" permanently from this phone?`, 'Delete', true))) return;
+      if (!(await confirmDialog('Excluir perfil', `Apagar "${p.name}" deste celular? Não dá para desfazer.`, 'Excluir', true))) return;
       const r = await ctx.run('profiles.delete', { id: p.id });
       applyResult(r);
-      if (r) ctx.toast('Profile deleted', 'ok');
+      if (r) ctx.toast('Perfil excluído');
     }
 
     async function exportProfile(p) {
       const r = await ctx.run('profiles.export', { id: p.id }, { timeout: 0 });
-      if (r) ctx.toast(`Exported to ${r.file}`, 'ok');
+      if (r) ctx.toast('Perfil exportado');
     }
 
     async function importProfile() {
       const r = await ctx.run('profiles.import', {}, { timeout: 0 });
       if (!r) return;
       applyResult(r);
-      ctx.toast(r.warnings?.length ? `Imported with ${r.warnings.length} warning(s): ${r.warnings[0]}` : 'Profile imported', r.warnings?.length ? 'warn' : 'ok', 4200);
+      ctx.toast(r.warnings?.length ? `Importado, mas: ${r.warnings[0]}` : 'Perfil importado', 'info', 4200);
     }
 
     async function restoreDefaults() {
-      if (!(await confirmDialog('Restore default profiles', 'Reset the four initial profiles (Default VR Box, Quest Touch Left, Quest Touch Right, Custom Profile) to their original configuration? Your own profiles are kept.', 'Restore'))) return;
+      if (!(await confirmDialog('Restaurar perfis iniciais', 'Voltar os quatro perfis que vêm com o app para o original? Os perfis que você criou continuam.', 'Restaurar'))) return;
       const r = await ctx.run('profiles.restoreDefaults');
       applyResult(r);
-      if (r) ctx.toast('Initial profiles restored', 'ok');
+      if (r) ctx.toast('Perfis iniciais restaurados');
     }
 
     renderList();

@@ -8,11 +8,11 @@
     targets.push(
       { id: `${p}.stick.x`, hand, control: 'stick', label: 'Joystick X', type: 'stick_axis' },
       { id: `${p}.stick.y`, hand, control: 'stick', label: 'Joystick Y', type: 'stick_axis' },
-      { id: `${p}.stick.up`, hand, control: 'stick', label: 'Joystick Up', type: 'stick_direction' },
-      { id: `${p}.stick.down`, hand, control: 'stick', label: 'Joystick Down', type: 'stick_direction' },
-      { id: `${p}.stick.left`, hand, control: 'stick', label: 'Joystick Left', type: 'stick_direction' },
-      { id: `${p}.stick.right`, hand, control: 'stick', label: 'Joystick Right', type: 'stick_direction' },
-      { id: `${p}.stickClick`, hand, control: 'stickClick', label: 'Joystick Click', type: 'button' },
+      { id: `${p}.stick.up`, hand, control: 'stick', label: 'Joystick para cima', type: 'stick_direction' },
+      { id: `${p}.stick.down`, hand, control: 'stick', label: 'Joystick para baixo', type: 'stick_direction' },
+      { id: `${p}.stick.left`, hand, control: 'stick', label: 'Joystick para a esquerda', type: 'stick_direction' },
+      { id: `${p}.stick.right`, hand, control: 'stick', label: 'Joystick para a direita', type: 'stick_direction' },
+      { id: `${p}.stickClick`, hand, control: 'stickClick', label: 'Clique do joystick', type: 'button' },
     );
     if (hand === 'left') {
       targets.push(
@@ -24,11 +24,11 @@
       targets.push(
         { id: 'right.a', hand, control: 'a', label: 'A', type: 'button' },
         { id: 'right.b', hand, control: 'b', label: 'B', type: 'button' },
-        { id: 'right.system', hand, control: 'system', label: 'System', type: 'button' },
+        { id: 'right.system', hand, control: 'system', label: 'Sistema', type: 'button' },
       );
     }
     targets.push(
-      { id: `${p}.trigger`, hand, control: 'trigger', label: 'Trigger', type: 'analog' },
+      { id: `${p}.trigger`, hand, control: 'trigger', label: 'Gatilho', type: 'analog' },
       { id: `${p}.grip`, hand, control: 'grip', label: 'Grip', type: 'analog' },
     );
   }
@@ -47,7 +47,7 @@
     vendor: 'Apple',
     vidPid: '05AC:022C',
     primaryType: 'Mouse',
-    roles: ['Mouse', 'Keys / Buttons'],
+    roles: ['Mouse', 'Teclas/botões'],
     external: true,
     likelyVrBox: true,
     candidate: true,
@@ -55,7 +55,7 @@
     declaredKeys: ['VOLUME_UP', 'VOLUME_DOWN', 'MEDIA_PLAY_PAUSE', 'ENTER'],
     nodes: [
       { id: 7, sources: '0x00002002', roles: ['Mouse'], keyboardType: 0, controllerNumber: 0, descriptor: 'a1b2c3' },
-      { id: 8, sources: '0x00000101', roles: ['Keys / Buttons'], keyboardType: 1, controllerNumber: 0, descriptor: 'a1b2c4' },
+      { id: 8, sources: '0x00000101', roles: ['Teclas/botões'], keyboardType: 1, controllerNumber: 0, descriptor: 'a1b2c4' },
     ],
     connected: true,
   };
@@ -64,26 +64,32 @@
     udp: { enabled: true, host: '127.0.0.1', port: 47900, rateHz: 90, format: 'json' },
     dirty: false,
     mappings: [
-      { id: 'd01', source: 'mouse:btn:primary', target: 'right.a', sourceLabel: 'Mouse Button Left', sourceKind: 'digital', targetLabel: 'A' },
-      { id: 'd02', source: 'mouse:btn:secondary', target: 'right.b', sourceLabel: 'Mouse Button Right', sourceKind: 'digital', targetLabel: 'B' },
-      { id: 'd07', source: 'mouse:x', target: 'left.stick.x', sourceLabel: 'Mouse Movement X', sourceKind: 'relative', targetLabel: 'Joystick X' },
-      { id: 'd08', source: 'mouse:y', target: 'left.stick.y', sourceLabel: 'Mouse Movement Y', sourceKind: 'relative', targetLabel: 'Joystick Y' },
-      { id: 'd28', source: 'key:VOLUME_UP', target: 'right.trigger', sourceLabel: 'Volume Up', sourceKind: 'digital', targetLabel: 'Trigger' },
+      { id: 'd01', source: 'mouse:btn:primary', target: 'right.a', sourceLabel: 'Botão esquerdo do mouse', sourceKind: 'digital', targetLabel: 'A' },
+      { id: 'd02', source: 'mouse:btn:secondary', target: 'right.b', sourceLabel: 'Botão direito do mouse', sourceKind: 'digital', targetLabel: 'B' },
+      { id: 'd07', source: 'mouse:x', target: 'left.stick.x', sourceLabel: 'Movimento do mouse (X)', sourceKind: 'relative', targetLabel: 'Joystick X' },
+      { id: 'd08', source: 'mouse:y', target: 'left.stick.y', sourceLabel: 'Movimento do mouse (Y)', sourceKind: 'relative', targetLabel: 'Joystick Y' },
+      { id: 'd28', source: 'key:VOLUME_UP', target: 'right.trigger', sourceLabel: 'Volume +', sourceKind: 'digital', targetLabel: 'Gatilho' },
     ],
     log: [],
     seq: 0,
+    game: {
+      enabled: true,
+      buttons: { 'right.trigger': { action: 'hold', x: 0.5, y: 0.5 }, 'right.a': { action: 'hold', x: 0.5, y: 0.5 }, 'right.b': { action: 'tap', x: 0.86, y: 0.7 } },
+      leftStick: { enabled: true, x: 0.18, y: 0.72, radius: 0.12 },
+      rightStick: { enabled: false, x: 0.82, y: 0.72, radius: 0.12 },
+    },
   };
   const now = () => Date.now();
   const addLog = (c, m) => state.log.push({ seq: ++state.seq, t: now(), c, m });
-  addLog('system', 'App started');
-  addLog('system', 'Input device detected: VR BOX (Mouse + Keys / Buttons)');
-  addLog('physical', 'MOUSE BUTTON LEFT PRESSED');
-  addLog('virtual', 'RIGHT BUTTON A PRESSED');
+  addLog('system', 'App aberto');
+  addLog('system', 'Dispositivo encontrado: VR BOX (Mouse + Teclas/botões)');
+  addLog('physical', 'Botão esquerdo do mouse pressionado');
+  addLog('virtual', 'Direito · botão A pressionado');
 
   const profile = () => ({
     id: 'default-vr-box',
-    name: 'Default VR Box',
-    description: 'Spreads the VR Box inputs over both virtual controllers.',
+    name: 'VR Box padrão',
+    description: 'Divide os botões do VR Box entre os dois controles.',
     baseId: 'default-vr-box',
     builtin: true,
     updatedAt: 1,
@@ -91,13 +97,13 @@
     sticks: { left: stick('virtual_stick'), right: stick('relative_mouse') },
     buttons: { analogThreshold: 0.5, digitalAnalogValue: 1 },
     dirty: state.dirty,
-    baseName: 'Default VR Box',
+    baseName: 'VR Box padrão',
   });
   const profiles = () => [
-    { id: 'default-vr-box', name: 'Default VR Box', description: 'Spreads the VR Box inputs over both virtual controllers.', builtin: true, mappings: state.mappings.length, left: true, right: true, active: true, dirty: state.dirty },
-    { id: 'quest-touch-left', name: 'Quest Touch Left', description: 'The whole VR Box drives the LEFT virtual controller.', builtin: true, mappings: 27, left: true, right: false, active: false, dirty: false },
-    { id: 'quest-touch-right', name: 'Quest Touch Right', description: 'The whole VR Box drives the RIGHT virtual controller.', builtin: true, mappings: 26, left: false, right: true, active: false, dirty: false },
-    { id: 'custom-profile', name: 'Custom Profile', description: 'Empty profile.', builtin: true, mappings: 0, left: false, right: false, active: false, dirty: false },
+    { id: 'default-vr-box', name: 'VR Box padrão', description: 'Divide os botões do VR Box entre os dois controles.', builtin: true, mappings: state.mappings.length, left: true, right: true, active: true, dirty: state.dirty },
+    { id: 'quest-touch-left', name: 'Quest Touch esquerdo', description: 'O VR Box inteiro vira o controle ESQUERDO.', builtin: true, mappings: 27, left: true, right: false, active: false, dirty: false },
+    { id: 'quest-touch-right', name: 'Quest Touch direito', description: 'O VR Box inteiro vira o controle DIREITO.', builtin: true, mappings: 26, left: false, right: true, active: false, dirty: false },
+    { id: 'custom-profile', name: 'Perfil personalizado', description: 'Perfil vazio.', builtin: true, mappings: 0, left: false, right: false, active: false, dirty: false },
   ];
   const status = () => ({
     bluetooth: { supported: true, enabled: true, permission: 'granted', link: 'connected' },
@@ -107,7 +113,8 @@
     left: { configured: true, mappings: 2 },
     right: { configured: true, mappings: 3 },
     integration: { udpEnabled: state.udp.enabled, streaming: state.emulation, packets: state.emulation ? 1234 : 0, lastError: null, target: `${state.udp.host}:${state.udp.port}`, format: state.udp.format },
-    profile: { id: 'default-vr-box', name: 'Default VR Box', dirty: state.dirty },
+    profile: { id: 'default-vr-box', name: 'VR Box padrão', dirty: state.dirty },
+    game: { enabled: state.game.enabled, serviceEnabled: true, serviceConnected: true, joystickSupported: true, bindings: Object.values(state.game.buttons).filter((b) => b.action !== 'off').length + (state.game.leftStick.enabled ? 1 : 0), touches: 0 },
     identifiedCount: 3,
     demo: false,
   });
@@ -123,13 +130,14 @@
     keepScreenOn: true,
     lastDeviceKey: group.key,
     udp: state.udp,
+    game: state.game,
   });
   const identified = () => ({
     deviceKey: group.key,
     inputs: [
-      { id: 'mouse:btn:primary', label: 'Mouse Button Left', kind: 'digital', count: 12, lastSeen: now() },
-      { id: 'mouse:x', label: 'Mouse Movement X', kind: 'relative', count: 40, lastSeen: now() },
-      { id: 'key:VOLUME_UP', label: 'Volume Up', kind: 'digital', count: 3, lastSeen: now() },
+      { id: 'mouse:btn:primary', label: 'Botão esquerdo do mouse', kind: 'digital', count: 12, lastSeen: now() },
+      { id: 'mouse:x', label: 'Movimento do mouse (X)', kind: 'relative', count: 40, lastSeen: now() },
+      { id: 'key:VOLUME_UP', label: 'Volume +', kind: 'digital', count: 3, lastSeen: now() },
     ],
   });
   let t = 0;
@@ -146,7 +154,7 @@
       p: {
         pressed: pressed ? ['mouse:btn:primary'] : [],
         axes: { 'axis:X': a },
-        labels: { 'mouse:btn:primary': 'Mouse Button Left', 'axis:X': 'Joystick Axis X' },
+        labels: { 'mouse:btn:primary': 'Botão esquerdo do mouse', 'axis:X': 'Eixo X do joystick' },
         mouse: { dx: Math.round(a * 8), dy: Math.round(b * 8) },
       },
     };
@@ -154,7 +162,7 @@
 
   const handlers = {
     'app.hello': () => ({
-      info: { app: 'VR BOX TO META QUEST EMULATOR', version: '0.1.0', android: '14', sdk: 34, device: 'Mock Phone', transport: 'WebMessageListener', pointerCaptureSupported: true, openxrBroker: null, native: true },
+      info: { app: 'VR Box → Quest', version: '0.2.0', android: '14', sdk: 34, device: 'Celular de teste', transport: 'WebMessageListener', pointerCaptureSupported: true, native: true },
       status: status(),
       catalog: { targets, buttons: { left: ['stickClick', 'x', 'y', 'menu'], right: ['stickClick', 'a', 'b', 'system'] } },
       settings: settings(),
@@ -173,7 +181,12 @@
       state.emulation = false;
       return status();
     },
-    'bt.devices': () => ({ supported: true, enabled: true, permission: 'granted', bonded: [{ name: 'VR BOX', address: 'AA:BB:CC:DD:EE:FF', type: 'Classic', deviceClass: '0x05C0', classLabel: 'Keyboard + Pointing (HID combo)', hidPeripheral: true, aclConnected: true }] }),
+    'bt.devices': () => ({ supported: true, enabled: true, permission: 'granted', bonded: [{ name: 'VR BOX', address: 'AA:BB:CC:DD:EE:FF', type: 'Clássico', deviceClass: '0x05C0', classLabel: 'Teclado + mouse (HID)', hidPeripheral: true, aclConnected: true }] }),
+    'game.update': (args) => {
+      state.game = args;
+      return { settings: settings(), status: status() };
+    },
+    'game.preset': () => ({ settings: settings(), status: status() }),
     'input.devices': () => ({ groups: [group], selectedKey: group.key, showInternal: false }),
     'detect.start': () => ({ selected: true }),
     'detect.stop': () => null,

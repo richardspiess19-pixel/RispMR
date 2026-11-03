@@ -84,22 +84,22 @@ object ProfileCodec {
     fun decode(json: JSONObject, template: Profile? = null): DecodeResult {
         val warnings = ArrayList<String>()
         val id = json.optString("id").trim()
-        if (id.isEmpty() || id.length > 64) throw ProfileFormatException("Profile id is missing or invalid")
+        if (id.isEmpty() || id.length > 64) throw ProfileFormatException("Perfil sem identificador válido")
         val name = cleanName(json.optString("name"))
-            ?: throw ProfileFormatException("Profile name is missing")
+            ?: throw ProfileFormatException("Perfil sem nome")
 
         val mappings = ArrayList<MappingRule>()
         val arr = json.optJSONArray("mappings") ?: JSONArray()
         val seenIds = HashSet<String>()
         for (i in 0 until arr.length()) {
             if (mappings.size >= MAX_MAPPINGS) {
-                warnings += "Too many mappings, extra rules ignored"
+                warnings += "Mapeamentos demais; os excedentes foram ignorados"
                 break
             }
             val o = arr.optJSONObject(i) ?: continue
             val rule = decodeRule(o, i)
             if (rule == null) {
-                warnings += "Mapping #${i + 1} ignored (invalid source or target)"
+                warnings += "Mapeamento nº ${i + 1} ignorado (entrada ou destino inválido)"
                 continue
             }
             val unique = if (seenIds.add(rule.id)) rule else rule.copy(id = "${rule.id}-$i").also { seenIds.add(it.id) }

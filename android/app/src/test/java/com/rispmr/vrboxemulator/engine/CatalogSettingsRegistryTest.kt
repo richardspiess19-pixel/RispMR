@@ -12,23 +12,24 @@ import org.junit.Test
 class InputCatalogTest {
     @Test
     fun labelsMatchTheSpecification() {
-        assertEquals("Mouse Button Left", InputCatalog.labelOf("mouse:btn:primary"))
-        assertEquals("Mouse Button Right", InputCatalog.labelOf("mouse:btn:secondary"))
-        assertEquals("Mouse Movement X", InputCatalog.labelOf("mouse:x"))
-        assertEquals("Mouse Movement Y", InputCatalog.labelOf("mouse:y"))
-        assertEquals("Gamepad Button A", InputCatalog.labelOf("key:BUTTON_A"))
-        assertEquals("Gamepad Button L1", InputCatalog.labelOf("key:BUTTON_L1"))
-        assertEquals("Gamepad Button Left Thumb", InputCatalog.labelOf("key:BUTTON_THUMBL"))
-        assertEquals("Button 1", InputCatalog.labelOf("key:BUTTON_1"))
-        assertEquals("D-pad Up", InputCatalog.labelOf("key:DPAD_UP"))
-        assertEquals("Volume Up", InputCatalog.labelOf("key:VOLUME_UP"))
-        assertEquals("Media Play/Pause", InputCatalog.labelOf("key:MEDIA_PLAY_PAUSE"))
-        assertEquals("Keyboard Enter", InputCatalog.labelOf("key:ENTER"))
-        assertEquals("Key Code 289", InputCatalog.labelOf("key:289"))
-        assertEquals("Joystick Axis X", InputCatalog.labelOf("axis:X"))
-        assertEquals("Joystick Axis Y- (up)", InputCatalog.labelOf("axis:Y:-"))
-        assertEquals("D-pad Hat X+ (right)", InputCatalog.labelOf("axis:HAT_X:+"))
-        assertEquals("Mouse Wheel Up", InputCatalog.labelOf("mouse:wheel:up"))
+        assertEquals("Botão esquerdo do mouse", InputCatalog.labelOf("mouse:btn:primary"))
+        assertEquals("Botão direito do mouse", InputCatalog.labelOf("mouse:btn:secondary"))
+        assertEquals("Movimento do mouse (X)", InputCatalog.labelOf("mouse:x"))
+        assertEquals("Movimento do mouse (Y)", InputCatalog.labelOf("mouse:y"))
+        assertEquals("Botão A (gamepad)", InputCatalog.labelOf("key:BUTTON_A"))
+        assertEquals("Botão L1 (gamepad)", InputCatalog.labelOf("key:BUTTON_L1"))
+        assertEquals("Clique do analógico esquerdo", InputCatalog.labelOf("key:BUTTON_THUMBL"))
+        assertEquals("Botão 1", InputCatalog.labelOf("key:BUTTON_1"))
+        assertEquals("D-pad cima", InputCatalog.labelOf("key:DPAD_UP"))
+        assertEquals("Volume +", InputCatalog.labelOf("key:VOLUME_UP"))
+        assertEquals("Play/pause", InputCatalog.labelOf("key:MEDIA_PLAY_PAUSE"))
+        assertEquals("Tecla Enter", InputCatalog.labelOf("key:ENTER"))
+        assertEquals("Tecla código 289", InputCatalog.labelOf("key:289"))
+        assertEquals("Tecla A", InputCatalog.labelOf("key:A"))
+        assertEquals("Eixo X do joystick", InputCatalog.labelOf("axis:X"))
+        assertEquals("Eixo Y do joystick → cima", InputCatalog.labelOf("axis:Y:-"))
+        assertEquals("D-pad horizontal → direita", InputCatalog.labelOf("axis:HAT_X:+"))
+        assertEquals("Roda do mouse para cima", InputCatalog.labelOf("mouse:wheel:up"))
     }
 
     @Test
@@ -86,7 +87,7 @@ class AppSettingsTest {
         store.save()
         val reloaded = IdentifiedInputsStore(storage).apply { load() }
         assertEquals(2, reloaded.list("dev1").single().count)
-        assertEquals("Mouse Movement X", reloaded.list("dev2").single().label)
+        assertEquals("Movimento do mouse (X)", reloaded.list("dev2").single().label)
         assertEquals(0, reloaded.count(null))
     }
 }
@@ -115,7 +116,7 @@ class DeviceRegistryTest {
         val events = r.replaceAll(listOf(info(7, "VR BOX", Sources.MOUSE), info(8, "VR BOX", Sources.KEYBOARD), info(2, "gpio-keys", Sources.KEYBOARD, external = false)))
         val g = r.groups().single()
         assertEquals("VR BOX", g.name)
-        assertEquals(listOf("Mouse", "Keys / Buttons"), g.roles)
+        assertEquals(listOf("Mouse", "Teclas/botões"), g.roles)
         assertEquals("Mouse", g.primaryType)
         assertTrue(g.likelyVrBox)
         assertEquals(1, events.count { it is RegistryEvent.Connected && it.group.name == "VR BOX" })
@@ -141,7 +142,7 @@ class DeviceRegistryTest {
     @Test
     fun gamepadModeIsClassified() {
         val g = DeviceGroup("k", "Gamepad", 1, 2, listOf(info(3, "Gamepad", Sources.GAMEPAD or Sources.JOYSTICK or Sources.DPAD)))
-        assertEquals("Gamepad / Joystick", g.primaryType)
+        assertEquals("Gamepad/joystick", g.primaryType)
         assertTrue(g.roles.containsAll(listOf("Gamepad", "Joystick", "D-pad")))
         assertFalse(g.likelyVrBox)
     }

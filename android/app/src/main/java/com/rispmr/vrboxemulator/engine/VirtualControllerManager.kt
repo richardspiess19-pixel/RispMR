@@ -8,9 +8,14 @@ data class VirtualEvent(
     /** Analog value for trigger/grip, `null` for digital buttons. */
     val value: Float?,
 ) {
+    /** e.g. "Direito · botão A pressionado", "Esquerdo · gatilho pressionado (0,82)". */
     fun describe(): String {
-        val base = "${hand.label} ${VirtualTargets.logLabel(control)} ${if (pressed) "PRESSED" else "RELEASED"}"
-        return if (value != null && pressed) "$base (${"%.2f".format(java.util.Locale.ROOT, value)})" else base
+        val base = "${hand.label} · ${VirtualTargets.logLabel(control)} ${if (pressed) "pressionado" else "solto"}"
+        return if (value != null && pressed) "$base (${"%.2f".format(PT_BR, value)})" else base
+    }
+
+    companion object {
+        val PT_BR: java.util.Locale = java.util.Locale.forLanguageTag("pt-BR")
     }
 }
 

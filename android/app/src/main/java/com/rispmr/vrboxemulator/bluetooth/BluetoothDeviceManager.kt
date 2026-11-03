@@ -43,30 +43,30 @@ object BluetoothClassDecoder {
         val major = deviceClass and MAJOR_MASK
         if (major != MAJOR_PERIPHERAL) {
             return when (major) {
-                0x0100 -> "Computer"
-                0x0200 -> "Phone"
-                0x0400 -> "Audio / Video"
-                0x0600 -> "Imaging"
-                0x0700 -> "Wearable"
-                0x0800 -> "Toy"
-                0x0900 -> "Health"
-                0x1F00 -> "Uncategorized"
-                else -> "Other"
+                0x0100 -> "Computador"
+                0x0200 -> "Celular"
+                0x0400 -> "Áudio/vídeo"
+                0x0600 -> "Imagem"
+                0x0700 -> "Vestível"
+                0x0800 -> "Brinquedo"
+                0x0900 -> "Saúde"
+                0x1F00 -> "Sem categoria"
+                else -> "Outro"
             }
         }
         val pointing = deviceClass and 0x80 != 0
         val keyboard = deviceClass and 0x40 != 0
         val base = when {
-            keyboard && pointing -> "Keyboard + Pointing (HID combo)"
-            keyboard -> "Keyboard (HID)"
-            pointing -> "Pointing device / Mouse (HID)"
-            else -> "HID peripheral"
+            keyboard && pointing -> "Teclado + mouse (HID)"
+            keyboard -> "Teclado (HID)"
+            pointing -> "Mouse (HID)"
+            else -> "Periférico HID"
         }
         val sub = when (deviceClass and 0x3C) {
             0x04 -> " · Joystick"
             0x08 -> " · Gamepad"
-            0x0C -> " · Remote control"
-            0x10 -> " · Sensing device"
+            0x0C -> " · Controle remoto"
+            0x10 -> " · Sensor"
             else -> ""
         }
         return base + sub
@@ -154,13 +154,13 @@ class BluetoothDeviceManager(private val context: Context, private val hasPermis
         return devices.map { d ->
             val cls = safe { d.bluetoothClass?.deviceClass } ?: 0
             BondedDeviceInfo(
-                name = safe { d.name } ?: "(no name)",
+                name = safe { d.name } ?: "(sem nome)",
                 address = d.address,
                 type = when (safe { d.type }) {
-                    BluetoothDevice.DEVICE_TYPE_CLASSIC -> "Classic"
+                    BluetoothDevice.DEVICE_TYPE_CLASSIC -> "Clássico"
                     BluetoothDevice.DEVICE_TYPE_LE -> "Low Energy"
-                    BluetoothDevice.DEVICE_TYPE_DUAL -> "Dual mode"
-                    else -> "Unknown"
+                    BluetoothDevice.DEVICE_TYPE_DUAL -> "Dual"
+                    else -> "Desconhecido"
                 },
                 deviceClass = cls,
                 classLabel = BluetoothClassDecoder.label(cls),

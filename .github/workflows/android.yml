@@ -7,6 +7,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      HAS_KEYSTORE: ${{ secrets.KEYSTORE_BASE64 != '' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -44,3 +46,24 @@ jobs:
         with:
           name: app-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
+
+      # Signed release only when the repository has the signing secrets.
+      - name: Signed release APK
+        if: env.HAS_KEYSTORE == 'true'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        working-directory: android
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > release.jks
+          printf 'storeFile=release.jks\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > keystore.properties
+          ./gradlew --no-daemon assembleRelease
+          rm -f release.jks keystore.properties
+
+      - uses: actions/upload-artifact@v4
+        if: env.HAS_KEYSTORE == 'true'
+        with:
+          name: app-release-apk
+          path: android/app/build/outputs/apk/release/app-release.apk

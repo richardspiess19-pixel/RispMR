@@ -3,19 +3,19 @@ import { icon } from '../icons.js';
 import { createEventLog } from '../components/event-log.js';
 import { connect, disconnect } from './dashboard.js';
 
-// BLUETOOTH DEVICE MANAGER
+// Controle Bluetooth: how this phone sees the VR Box.
 
 export default {
   id: 'devices',
-  title: 'Devices',
+  title: 'Controle',
 
   mount(root, ctx) {
     const adapterBody = h('div', { class: 'stack stack--sm' });
     const inputList = h('div');
     const selectedBody = h('div', { class: 'stack stack--sm' });
     const bondedBody = h('div');
-    const received = createEventLog({ max: 14, categories: ['physical'], emptyText: 'Press a button on the selected controller.' });
-    const connLog = createEventLog({ max: 30, categories: ['system'], emptyText: 'No connection events yet.' });
+    const received = createEventLog({ max: 14, categories: ['physical'], emptyText: 'Aperte um botão no controle.' });
+    const connLog = createEventLog({ max: 30, categories: ['system'], emptyText: 'Nada ainda.' });
     const demoBody = h('div', { class: 'stack stack--sm' });
 
     root.append(
@@ -25,38 +25,33 @@ export default {
         h(
           'div',
           {},
-          h('div', { class: 'page-kicker' }, 'Bluetooth device manager'),
-          h('h1', { class: 'page-title' }, 'Controllers & devices'),
-          h('p', { class: 'page-sub' }, 'Some VR Box controllers are presented by Android as a mouse or a keyboard instead of a gamepad. This screen shows exactly how this phone sees yours.'),
+          h('h1', { class: 'page-title' }, 'Controle Bluetooth'),
+          h('p', { class: 'page-sub' }, 'Cada VR Box aparece de um jeito no Android: às vezes como mouse, às vezes como teclado ou gamepad. Aqui você vê como o seu celular enxerga o seu.'),
         ),
         h(
           'div',
           { class: 'row' },
-          h('button', { class: 'btn btn--primary btn--sm', type: 'button', onClick: () => connect(ctx) }, icon('plug'), 'Connect'),
-          h('button', { class: 'btn btn--sm', type: 'button', onClick: () => refresh() }, icon('refresh'), 'Refresh'),
+          h('button', { class: 'btn btn--primary btn--sm', type: 'button', onClick: () => connect(ctx) }, icon('plug'), 'Conectar'),
+          h('button', { class: 'btn btn--sm', type: 'button', onClick: () => refresh() }, icon('refresh'), 'Atualizar'),
         ),
       ),
       h(
         'div',
         { class: 'grid-2' },
+        h('section', { class: 'card card--accent' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Controle em uso')), selectedBody),
         h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Bluetooth')), adapterBody),
-        h('section', { class: 'card card--glow' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Selected device')), selectedBody),
       ),
       h(
         'section',
         { class: 'card' },
-        h(
-          'div',
-          { class: 'card__head' },
-          h('div', {}, h('h2', { class: 'card__title' }, 'Input devices'), h('div', { class: 'card__sub' }, 'As presented by Android (no permission needed)')),
-        ),
+        h('div', { class: 'card__head' }, h('div', {}, h('h2', { class: 'card__title' }, 'Dispositivos encontrados'), h('div', { class: 'card__sub' }, 'Do jeito que o Android mostra'))),
         inputList,
       ),
       h(
         'div',
         { class: 'grid-2' },
-        h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Commands received')), received.el),
-        h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Connection log')), connLog.el),
+        h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Comandos recebidos')), received.el),
+        h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Conexões')), connLog.el),
       ),
       h(
         'section',
@@ -64,12 +59,12 @@ export default {
         h(
           'div',
           { class: 'card__head' },
-          h('div', {}, h('h2', { class: 'card__title' }, 'Paired Bluetooth devices'), h('div', { class: 'card__sub' }, 'Requires the "Nearby devices" permission on Android 12+')),
-          h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => loadBonded() }, icon('refresh'), 'Reload'),
+          h('h2', { class: 'card__title' }, 'Pareados no Bluetooth'),
+          h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: () => loadBonded() }, icon('refresh'), 'Recarregar'),
         ),
         bondedBody,
       ),
-      h('section', { class: 'card card--plain demo-card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Demo mode')), demoBody),
+      h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Modo demonstração')), demoBody),
     );
 
     received.reset(ctx.store.state.log);
@@ -78,39 +73,31 @@ export default {
     const renderAdapter = (status) => {
       const bt = status?.bluetooth;
       if (!bt) {
-        render(adapterBody, h('div', { class: 'empty' }, 'Bluetooth information is available in the Android app.'));
+        render(adapterBody, h('div', { class: 'empty' }, 'Disponível no app Android.'));
         return;
       }
-      const permText = { granted: 'Granted', not_required: 'Not required (Android 11 or older)', denied: 'Not granted', permanently_denied: 'Denied — enable it in app settings' }[bt.permission];
-      const enabledText = bt.enabled === null ? 'Unknown (permission needed)' : bt.enabled ? 'On' : 'Off';
+      const perm = {
+        granted: 'Permitido',
+        not_required: 'Não precisa (Android 11 ou anterior)',
+        denied: 'Ainda não permitido',
+        permanently_denied: 'Negado — libere nas configurações do app',
+      }[bt.permission];
       const buttons = [];
-      if (bt.permission === 'denied') {
-        buttons.push(h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => requestPermission() }, 'Grant permission'));
-      }
-      if (bt.permission === 'permanently_denied') {
-        buttons.push(h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('app.openAppSettings') }, icon('external'), 'App settings'));
-      }
-      if (bt.enabled === false) {
-        buttons.push(h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => ctx.run('bt.requestEnable', {}, { timeout: 0 }) }, 'Turn on Bluetooth'));
-      }
-      buttons.push(h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('bt.openSettings') }, icon('bluetooth'), 'Pair in Android settings'));
+      if (bt.permission === 'denied') buttons.push(h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => requestPermission() }, 'Permitir'));
+      if (bt.permission === 'permanently_denied') buttons.push(h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('app.openAppSettings') }, icon('external'), 'Configurações do app'));
+      if (bt.enabled === false) buttons.push(h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => ctx.run('bt.requestEnable', {}, { timeout: 0 }) }, 'Ligar Bluetooth'));
+      buttons.push(h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('bt.openSettings') }, icon('bluetooth'), 'Parear no Android'));
       render(
         adapterBody,
         h(
           'dl',
           { class: 'kv' },
-          h('dt', {}, 'Adapter'),
-          h('dd', {}, bt.supported ? enabledText : 'Not available on this phone'),
-          h('dt', {}, 'Permission'),
-          h('dd', {}, permText || bt.permission),
-          h('dt', {}, 'Link'),
-          h('dd', {}, linkText(bt.link)),
+          h('dt', {}, 'Bluetooth'),
+          h('dd', {}, !bt.supported ? 'Este celular não tem' : bt.enabled === null ? 'Sem permissão para ver' : bt.enabled ? 'Ligado' : 'Desligado'),
+          h('dt', {}, 'Permissão'),
+          h('dd', {}, perm || bt.permission),
         ),
-        h(
-          'p',
-          { class: 'muted small' },
-          'Pairing and the HID connection are handled by Android. Regular apps cannot open an HID connection themselves, so pair the VR Box in system settings; it then appears below automatically.',
-        ),
+        h('p', { class: 'muted small' }, 'O pareamento é feito no Bluetooth do próprio Android. Depois disso o controle aparece aqui sozinho. A permissão serve só para mostrar os detalhes; os botões funcionam sem ela.'),
         h('div', { class: 'row' }, buttons),
       );
     };
@@ -120,45 +107,38 @@ export default {
       if (c?.demo) {
         render(
           selectedBody,
-          h('div', { class: 'list__title' }, 'DEMO VR Box', h('span', { class: 'badge badge--purple' }, 'Simulated')),
-          h('p', { class: 'muted' }, 'DEMO MODE is generating input. No real device is being read.'),
-          h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('demo.stop') }, icon('stop'), 'Stop demo')),
+          h('div', { class: 'list__title' }, 'VR Box de demonstração', h('span', { class: 'badge badge--purple' }, 'Simulado')),
+          h('p', { class: 'muted' }, 'Nenhum controle de verdade está sendo lido.'),
+          h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('demo.stop') }, icon('stop'), 'Parar demonstração')),
         );
         return;
       }
       if (!c?.selected) {
-        render(
-          selectedBody,
-          h('div', { class: 'empty' }, 'No controller selected. Press SELECT on a device below, or CONNECT to pick the best match automatically.'),
-        );
+        render(selectedBody, h('div', { class: 'empty' }, 'Nenhum controle escolhido. Toque em "Usar" num dispositivo abaixo ou em Conectar.'));
         return;
       }
       const g = c.selected;
+      const mouse = g.roles.some((r) => r.startsWith('Mouse'));
       render(
         selectedBody,
-        h(
-          'div',
-          { class: 'list__title' },
-          g.name,
-          c.connected ? h('span', { class: 'badge badge--blue' }, 'Connected') : h('span', { class: 'badge badge--purple' }, 'Disconnected'),
-        ),
+        h('div', { class: 'list__title' }, g.name, c.connected ? h('span', { class: 'badge badge--blue' }, 'Conectado') : h('span', { class: 'badge badge--purple' }, 'Desconectado')),
         h(
           'dl',
           { class: 'kv' },
-          h('dt', {}, 'State'),
-          h('dd', {}, c.connected ? (status.input.focused ? 'Reading input' : 'Paused (app not focused)') : 'Waiting for reconnection'),
-          h('dt', {}, 'Input type'),
-          h('dd', {}, `${g.primaryType} — ${g.roles.join(' + ') || 'unknown'}`),
-          h('dt', {}, 'Vendor'),
-          h('dd', {}, `${g.vendor || 'Unknown vendor'} (${g.vidPid})`),
-          h('dt', {}, 'Mouse'),
-          h('dd', {}, g.roles.some((r) => r.startsWith('Mouse')) ? (status.input.pointerCapture ? 'Captured (relative movement)' : 'Not captured — tap the screen once to give the app focus') : 'Not a mouse device'),
+          h('dt', {}, 'Situação'),
+          h('dd', {}, c.connected ? (status.input.focused ? 'Lendo os botões' : 'Pausado (app em segundo plano)') : 'Esperando reconectar'),
+          h('dt', {}, 'O Android vê como'),
+          h('dd', {}, g.roles.join(' + ') || g.primaryType),
+          h('dt', {}, 'Fabricante'),
+          h('dd', {}, `${g.vendor || 'Desconhecido'} (${g.vidPid})`),
+          mouse ? h('dt', {}, 'Mouse') : null,
+          mouse ? h('dd', {}, status.input.pointerCapture ? 'Capturado pelo app' : 'Toque na tela uma vez para o app capturar o mouse') : null,
         ),
         h(
           'div',
           { class: 'row' },
-          h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => ctx.nav('detect') }, icon('radar'), 'Detect inputs'),
-          h('button', { class: 'btn btn--sm', type: 'button', onClick: () => disconnect(ctx) }, icon('unplug'), 'Disconnect'),
+          h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => ctx.nav('detect') }, icon('radar'), 'Detectar botões'),
+          h('button', { class: 'btn btn--sm', type: 'button', onClick: () => disconnect(ctx) }, icon('unplug'), 'Desconectar'),
         ),
       );
     };
@@ -166,23 +146,14 @@ export default {
     const renderDevices = (devices) => {
       const groups = devices?.groups || [];
       const selectedKey = ctx.store.state.status?.controller?.selected?.key;
-      const showInternal = Boolean(devices?.showInternal);
       const toggle = h(
         'label',
         { class: 'switch' },
-        h('span', { class: 'switch__text' }, h('span', { class: 'switch__title' }, 'Show built-in devices'), h('span', { class: 'switch__desc' }, 'Phone keys, internal keyboards…')),
-        h('input', {
-          type: 'checkbox',
-          checked: showInternal,
-          onChange: (e) => ctx.run('settings.update', { showInternalDevices: e.target.checked }),
-        }),
+        h('span', { class: 'switch__text' }, h('span', { class: 'switch__title' }, 'Mostrar dispositivos internos'), h('span', { class: 'switch__desc' }, 'Botões do próprio celular, teclados internos…')),
+        h('input', { type: 'checkbox', checked: Boolean(devices?.showInternal), onChange: (e) => ctx.run('settings.update', { showInternalDevices: e.target.checked }) }),
       );
       if (!groups.length) {
-        render(
-          inputList,
-          h('div', { class: 'empty' }, ctx.store.state.native ? 'No external input device found. Pair and turn on the VR Box.' : 'Device list is available in the Android app.'),
-          toggle,
-        );
+        render(inputList, h('div', { class: 'empty' }, ctx.store.state.native ? 'Nenhum controle externo. Pareie e ligue o VR Box.' : 'A lista aparece no app Android.'), toggle);
         return;
       }
       render(
@@ -192,44 +163,35 @@ export default {
           { class: 'list' },
           groups.map((g) => {
             const selected = g.key === selectedKey;
-            const details = h(
-              'details',
-              { class: 'device-details' },
-              h('summary', {}, 'Technical details'),
-              h(
-                'dl',
-                { class: 'kv small' },
-                h('dt', {}, 'Nodes'),
-                h('dd', { class: 'mono' }, g.nodes.map((n) => `#${n.id} ${n.sources} ${n.roles.join('+')}`).join('\n')),
-                h('dt', {}, 'Axes'),
-                h('dd', { class: 'mono' }, g.axes.length ? g.axes.join(', ') : 'none'),
-                h('dt', {}, 'Declared keys'),
-                h('dd', { class: 'mono' }, g.declaredKeys.length ? g.declaredKeys.join(', ') : 'none'),
-              ),
-              h('p', { class: 'muted small' }, 'Declared keys come from the Android key layout and may include keys the controller never sends. Use Automatic Input Detection to see what it really sends.'),
-            );
             return h(
               'li',
-              { class: `list__item list__item--device ${selected ? 'is-selected' : ''}` },
+              { class: `list__item ${selected ? 'is-selected' : ''}` },
               h(
                 'div',
                 { class: 'list__main' },
+                h('div', { class: 'list__title' }, g.name, g.likelyVrBox ? h('span', { class: 'badge badge--purple' }, 'Parece um VR Box') : null, g.external === false ? h('span', { class: 'badge' }, 'Interno') : null),
+                h('div', { class: 'list__meta' }, `${g.roles.join(' + ') || g.primaryType} · ${g.vidPid}${g.vendor ? ` · ${g.vendor}` : ''}`),
                 h(
-                  'div',
-                  { class: 'list__title' },
-                  g.name,
-                  g.likelyVrBox ? h('span', { class: 'badge badge--purple' }, 'Likely VR Box') : null,
-                  g.external === false ? h('span', { class: 'badge' }, 'Built-in') : null,
+                  'details',
+                  { class: 'device-details' },
+                  h('summary', {}, 'Detalhes técnicos'),
+                  h(
+                    'dl',
+                    { class: 'kv small' },
+                    h('dt', {}, 'Partes'),
+                    h('dd', { class: 'mono' }, g.nodes.map((n) => `#${n.id} ${n.sources} ${n.roles.join('+')}`).join('\n')),
+                    h('dt', {}, 'Eixos'),
+                    h('dd', { class: 'mono' }, g.axes.length ? g.axes.join(', ') : 'nenhum'),
+                    h('dt', {}, 'Teclas'),
+                    h('dd', { class: 'mono' }, g.declaredKeys.length ? g.declaredKeys.join(', ') : 'nenhuma'),
+                  ),
+                  h('p', { class: 'muted small' }, 'A lista de teclas vem do Android e pode ter teclas que o controle nunca manda. Para saber o que ele manda de verdade, use Detectar botões.'),
                 ),
-                h('div', { class: 'list__meta' }, `Android sees: ${g.roles.join(' + ') || g.primaryType} · ${g.vidPid}${g.vendor ? ` · ${g.vendor}` : ''}`),
-                details,
               ),
               h(
                 'div',
                 { class: 'list__side' },
-                selected
-                  ? h('span', { class: 'badge badge--blue' }, icon('check'), 'Selected')
-                  : h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => select(g.key) }, 'Select'),
+                selected ? h('span', { class: 'badge badge--blue' }, icon('check'), 'Em uso') : h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => select(g.key) }, 'Usar'),
               ),
             );
           }),
@@ -240,19 +202,19 @@ export default {
 
     const renderBonded = (bt) => {
       if (!bt) {
-        render(bondedBody, h('div', { class: 'empty' }, 'Available in the Android app.'));
+        render(bondedBody, h('div', { class: 'empty' }, 'Disponível no app Android.'));
         return;
       }
       if (bt.bonded === null) {
         render(
           bondedBody,
-          h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, 'Paired devices are hidden because the Bluetooth permission was not granted. Controller input still works without it.')),
-          h('div', { class: 'row' }, h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => requestPermission() }, 'Grant permission')),
+          h('p', { class: 'muted' }, 'Para mostrar os pareados, o Android pede a permissão "Dispositivos próximos". O controle funciona mesmo sem ela.'),
+          h('div', { class: 'row' }, h('button', { class: 'btn btn--sm btn--blue', type: 'button', onClick: () => requestPermission() }, 'Permitir')),
         );
         return;
       }
       if (!bt.bonded.length) {
-        render(bondedBody, h('div', { class: 'empty' }, 'No paired devices.'));
+        render(bondedBody, h('div', { class: 'empty' }, 'Nenhum dispositivo pareado.'));
         return;
       }
       render(
@@ -264,17 +226,11 @@ export default {
             h(
               'li',
               { class: 'list__item' },
-              h(
-                'div',
-                { class: 'list__main' },
-                h('div', { class: 'list__title' }, d.name, d.hidPeripheral ? h('span', { class: 'badge badge--blue' }, 'HID') : null),
-                h('div', { class: 'list__meta' }, `${d.classLabel} · ${d.type} · `, h('span', { class: 'mono' }, d.address)),
-              ),
-              h('div', { class: 'list__side' }, h('span', { class: `badge ${d.aclConnected ? 'badge--blue' : ''}` }, d.aclConnected === null ? 'Link not observed' : d.aclConnected ? 'Link up' : 'Link down')),
+              h('div', { class: 'list__main' }, h('div', { class: 'list__title' }, d.name), h('div', { class: 'list__meta' }, `${d.classLabel} · ${d.type} · `, h('span', { class: 'mono' }, d.address))),
+              h('div', { class: 'list__side' }, d.aclConnected ? h('span', { class: 'badge badge--blue' }, 'Conectado') : d.aclConnected === false ? h('span', { class: 'badge' }, 'Desconectado') : null),
             ),
           ),
         ),
-        h('p', { class: 'muted small' }, 'Link state is reported by Android broadcasts while the app is open; for devices connected before the app started it shows "not observed" until they reconnect.'),
       );
     };
 
@@ -282,27 +238,26 @@ export default {
       const on = Boolean(status?.demo);
       render(
         demoBody,
-        h('p', { class: 'text-2' }, 'DEMO MODE generates SIMULATED input (mouse circle, button presses) to explore mapping and the virtual controllers without hardware. It is labelled everywhere and never reported as a Bluetooth device.'),
+        h('p', { class: 'text-2' }, 'Sem o controle por perto? O modo demonstração simula alguns botões e movimentos para você ver como tudo funciona.'),
         h(
           'div',
           { class: 'row' },
           on
-            ? h('button', { class: 'btn btn--sm btn--purple', type: 'button', onClick: () => ctx.run('demo.stop') }, icon('stop'), 'Stop demo mode')
-            : h('button', { class: 'btn btn--sm btn--purple', type: 'button', onClick: () => ctx.run('demo.start') }, icon('play'), 'Start demo mode'),
+            ? h('button', { class: 'btn btn--sm btn--purple', type: 'button', onClick: () => ctx.run('demo.stop') }, icon('stop'), 'Parar demonstração')
+            : h('button', { class: 'btn btn--sm btn--purple', type: 'button', onClick: () => ctx.run('demo.start') }, icon('play'), 'Iniciar demonstração'),
         ),
       );
     };
 
     async function select(key) {
       const r = await ctx.run('input.select', { key });
-      if (r) ctx.toast('Controller selected', 'ok');
+      if (r) ctx.toast('Controle escolhido');
     }
 
     async function requestPermission() {
       const r = await ctx.run('bt.requestPermission', {}, { timeout: 0 });
       if (!r) return;
-      if (r.permission === 'granted') ctx.toast('Bluetooth permission granted', 'ok');
-      else ctx.toast('Permission not granted. Input reading still works; Bluetooth details stay hidden.', 'warn', 4200);
+      if (r.permission !== 'granted') ctx.toast('Sem a permissão, só os detalhes do Bluetooth ficam escondidos.', 'info', 4000);
       renderBonded(r.bluetooth);
     }
 
@@ -324,13 +279,12 @@ export default {
     renderDemo(ctx.store.state.status);
     loadBonded();
 
-    let lastStatusKey = '';
+    let lastKey = '';
     return {
       onStatus: (status) => {
-        // Re-render only when something relevant changed (status pushes are frequent while emulating).
         const key = JSON.stringify([status?.bluetooth, status?.controller, status?.input, status?.demo]);
-        if (key === lastStatusKey) return;
-        lastStatusKey = key;
+        if (key === lastKey) return;
+        lastKey = key;
         renderAdapter(status);
         renderSelected(status);
         renderDemo(status);
@@ -344,18 +298,3 @@ export default {
     };
   },
 };
-
-function linkText(link) {
-  return (
-    {
-      connected: 'Controller connected',
-      disconnected: 'No controller link',
-      off: 'Bluetooth off',
-      unverified: 'Input device present (grant permission to confirm Bluetooth)',
-      not_bluetooth: 'Selected device is not a paired Bluetooth device',
-      unsupported: 'No Bluetooth adapter',
-      unknown: 'Unknown (permission needed)',
-    }[link] || link
-  );
-}
-

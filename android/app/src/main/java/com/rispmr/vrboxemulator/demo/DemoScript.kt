@@ -59,7 +59,7 @@ class DemoScript {
 
     companion object {
         const val DEVICE_KEY = "demo"
-        const val DEVICE_NAME = "DEMO VR Box (simulated input)"
+        const val DEVICE_NAME = "VR Box de demonstração (simulado)"
         const val LOOP_MS = 8000L
         const val STEP_MS = 16L
     }

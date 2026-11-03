@@ -15,21 +15,23 @@ import tester from './views/tester.js';
 import profiles from './views/profiles.js';
 import settings from './views/settings.js';
 import integration from './views/integration.js';
+import game from './views/game.js';
 
-const VIEWS = { dashboard, devices, detect, mapping, controllers, tester, profiles, settings, integration };
+const VIEWS = { dashboard, devices, detect, mapping, controllers, tester, profiles, settings, integration, game };
 
 const NAV_MAIN = [
-  ['dashboard', 'Home', 'home'],
-  ['devices', 'Devices', 'bluetooth'],
-  ['mapping', 'Mapping', 'sliders'],
-  ['controllers', 'Controllers', 'gamepad'],
-  ['tester', 'Tester', 'activity'],
+  ['dashboard', 'Início', 'home'],
+  ['devices', 'Controle', 'bluetooth'],
+  ['mapping', 'Botões', 'sliders'],
+  ['game', 'Jogo', 'target'],
+  ['tester', 'Testar', 'activity'],
 ];
 const NAV_MORE = [
-  ['detect', 'Detect inputs', 'radar'],
-  ['profiles', 'Profiles', 'layers'],
-  ['settings', 'Settings', 'settings'],
-  ['integration', 'VR Integration', 'link'],
+  ['detect', 'Detectar botões', 'radar'],
+  ['controllers', 'Controles virtuais', 'gamepad'],
+  ['profiles', 'Perfis', 'layers'],
+  ['settings', 'Configurações', 'settings'],
+  ['integration', 'Integração', 'link'],
 ];
 
 const bridge = createBridge();
@@ -51,7 +53,7 @@ const ctx = {
       return await bridge.call(cmd, args, opts);
     } catch (e) {
       if (e.code === 'cancelled') return null;
-      if (e.code === 'no_native') toast('Available only in the Android app (browser preview).', 'warn');
+      if (e.code === 'no_native') toast('Isso funciona só no app Android.');
       else toast(e.message, 'error', 4200);
       return null;
     }
@@ -73,14 +75,14 @@ function buildNav() {
       'button',
       { class: 'nav__item nav__item--more', type: 'button', dataset: { nav: 'more' }, onClick: openMore },
       icon('more'),
-      h('span', {}, 'More'),
+      h('span', {}, 'Mais'),
     ),
   );
 }
 
 function openMore() {
   modal({
-    title: 'More',
+    title: 'Mais',
     body: h(
       'div',
       { class: 'more-grid' },
@@ -126,7 +128,7 @@ function route() {
     handle = view.mount(viewEl, ctx) || {};
   } catch (e) {
     console.error(e);
-    viewEl.append(h('div', { class: 'notice notice--err' }, icon('alert'), h('div', {}, `This screen failed to load: ${e.message}`)));
+    viewEl.append(h('div', { class: 'notice notice--err' }, icon('alert'), h('div', {}, `Esta tela deu erro: ${e.message}`)));
   }
   current = { id: view.id, handle };
   for (const a of navEl.querySelectorAll('[data-nav]')) {
@@ -135,7 +137,7 @@ function route() {
     if (a.tagName === 'A') a.setAttribute('aria-current', a.dataset.nav === view.id ? 'page' : 'false');
   }
   window.scrollTo(0, 0);
-  document.title = `${view.title} · VR BOX TO META QUEST EMULATOR`;
+  document.title = `${view.title} · VR Box → Quest`;
 }
 
 const call = (name, ...args) => {
@@ -155,7 +157,7 @@ function buildChips() {
   for (const [key, ic] of [
     ['bt', 'bluetooth'],
     ['ctrl', 'gamepad'],
-    ['emu', 'play'],
+    ['emu', 'target'],
   ]) {
     const text = h('span', {}, '—');
     const el = h('span', { class: 'chip', title: key }, h('span', { class: 'dot' }), icon(ic), text);
@@ -174,14 +176,14 @@ function renderChrome(status) {
   const bt = bluetoothIndicator(status);
   const ctrl = controllerIndicator(status);
   const emu = emulationIndicator(status);
-  set('bt', bt, bt.tone === 'ok' ? 'OK' : bt.tone === 'err' ? 'Off' : bt.tone === 'warn' ? '?' : '—');
-  set('ctrl', ctrl, ctrl.tone === 'ok' ? 'OK' : ctrl.value === 'DEMO' ? 'Demo' : '—');
-  set('emu', emu, emu.value === 'Running' ? 'Live' : 'Off');
+  set('bt', bt, bt.tone === 'ok' ? 'OK' : bt.tone === 'err' ? 'Desl.' : bt.tone === 'warn' ? '?' : '—');
+  set('ctrl', ctrl, ctrl.tone === 'ok' ? 'OK' : ctrl.value === 'Demonstração' ? 'Demo' : '—');
+  set('emu', emu, emu.tone === 'ok' ? 'Ligada' : 'Parada');
 
   if (!store.state.native) {
-    showBanner('preview', 'Browser preview — Android native bridge not detected. Hardware features are unavailable.');
+    showBanner('preview', 'Prévia no navegador — instale o app no celular para usar o controle.');
   } else if (status?.demo) {
-    showBanner('demo', 'DEMO MODE — simulated input, no real controller');
+    showBanner('demo', 'Modo demonstração — os comandos são simulados');
   } else {
     showBanner(null);
   }
@@ -273,7 +275,7 @@ async function boot() {
       store.init(hello);
       applySettings(hello.settings);
     } catch (e) {
-      toast(`Native bridge error: ${e.message}`, 'error', 6000);
+      toast(`Não consegui falar com o app: ${e.message}`, 'error', 6000);
     }
   } else {
     applySettings(null);

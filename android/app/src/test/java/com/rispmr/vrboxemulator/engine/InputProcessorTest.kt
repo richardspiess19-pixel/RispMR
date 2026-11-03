@@ -45,20 +45,20 @@ class InputProcessorTest {
     fun pressAndReleaseProduceVirtualEventsAndLog() {
         assertTrue(processor.process(button("mouse:btn:primary", true)))
         assertTrue(controllers.right.button("a"))
-        assertEquals("RIGHT BUTTON A PRESSED", virtualEvents.last().describe())
+        assertEquals("Direito · botão A pressionado", virtualEvents.last().describe())
         assertFalse("repeated press is ignored", processor.process(button("mouse:btn:primary", true)))
         processor.process(button("mouse:btn:primary", false))
         assertFalse(controllers.right.button("a"))
-        assertEquals("RIGHT BUTTON A RELEASED", virtualEvents.last().describe())
+        assertEquals("Direito · botão A solto", virtualEvents.last().describe())
         val texts = log.recent(10).filter { it.category == EventLog.PHYSICAL }.map { it.text }
-        assertEquals(listOf("MOUSE BUTTON LEFT PRESSED", "MOUSE BUTTON LEFT RELEASED"), texts)
+        assertEquals(listOf("Botão esquerdo do mouse pressionado", "Botão esquerdo do mouse solto"), texts)
     }
 
     @Test
     fun digitalTriggerIsFullyPressed() {
         processor.process(button("key:BUTTON_4", true))
         assertEquals(1f, controllers.right.trigger, 1e-6f)
-        assertEquals("RIGHT TRIGGER PRESSED (1.00)", virtualEvents.last().describe())
+        assertEquals("Direito · gatilho pressionado (1,00)", virtualEvents.last().describe())
     }
 
     @Test
@@ -81,7 +81,7 @@ class InputProcessorTest {
         processor.process(button("key:BUTTON_A", true))
         processor.process(button("key:BUTTON_A", false))
         assertEquals(listOf("PRESSED", "RELEASED"), detections.map { it.state })
-        assertEquals("Gamepad Button A", detections[0].label)
+        assertEquals("Botão A (gamepad)", detections[0].label)
         assertEquals("dev", detections[0].deviceKey)
 
         detections.clear()
@@ -130,7 +130,7 @@ class InputProcessorTest {
         assertEquals(0f, controllers.right.trigger, 0f)
         assertEquals(0f, controllers.left.stickX, 0f)
         assertTrue(processor.state.pressedIds().isEmpty())
-        assertEquals("All inputs released (controller disconnected)", log.recent(1).single().text)
+        assertEquals("Todos os botões foram soltos (controller disconnected)", log.recent(1).single().text)
     }
 
     @Test

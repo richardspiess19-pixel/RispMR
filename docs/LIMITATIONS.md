@@ -50,13 +50,14 @@ Consequências importantes:
 
 | Mecanismo | Resultado | Status |
 | --- | --- | --- |
+| **Modo jogo — `AccessibilityService` (gestos + filtro de teclas)** | Com um jogo aberto, o serviço lê os botões do VR Box (`flagRequestFilterKeyEvents`; eixos do joystick via `setMotionEventSources` no Android 14+), passa pelo mesmo mapeamento e toca na tela do jogo com `dispatchGesture` (toques segurados, toques rápidos e arrasto em joysticks desenhados na tela). Funciona em qualquer jogo que use toque, inclusive o botão do Cardboard. | **Implementado** |
 | **Protocolo de rede próprio (VRBQ via UDP)** | Qualquer app que implemente o protocolo recebe os dois controles virtuais (no mesmo telefone via `127.0.0.1` ou em outro dispositivo da rede local). | **Implementado** |
 | `BluetoothHidDevice` (API 28+) | O telefone se apresenta a **outro** host (PC, headset) como um periférico HID — p.ex. um gamepad genérico. Seria um **gamepad**, não controles Touch. Alguns fabricantes desativam o perfil HID Device. | **Não disponível ainda** |
 | Camada de API OpenXR (API layer) | Substitui/injeta estados de ação do perfil `/interaction_profiles/oculus/touch_controller` dentro do processo do jogo, lendo VRBQ. Precisa ser carregada **no processo do jogo**. | **Não disponível ainda** (projeto em `integration/RuntimeIntegration`) |
 | Driver em um runtime OpenXR aberto (ex.: Monado) | O runtime passaria a expor controles virtuais a partir do VRBQ. Exige que o runtime seja o runtime ativo — o que inclui headset/compositor, fora do escopo. | **Não disponível** (fora do escopo) |
 | `InputManager.injectInputEvent` | Injeção global de eventos | **Impossível** para apps comuns (`INJECT_EVENTS` é permissão de assinatura) |
 | `/dev/uinput` | Criar um dispositivo de entrada virtual no kernel | **Impossível** sem root |
-| `AccessibilityService.dispatchGesture` | Apenas gestos de toque na tela | Não serve para controles VR |
+| `AccessibilityService.dispatchGesture` | Gestos de toque na tela | Usado pelo Modo jogo (não cria controles, só toca na tela) |
 
 ## 3. Permissões necessárias
 
@@ -65,10 +66,15 @@ Consequências importantes:
 | `BLUETOOTH_CONNECT` (runtime, Android 12+) | Opcional | Listar dispositivos pareados e observar o link. **Sem ela o app continua lendo o controle**; apenas os detalhes Bluetooth ficam ocultos. |
 | `BLUETOOTH` (`maxSdkVersion=30`) | Android 8–11 | Mesma finalidade (permissão de instalação, sem diálogo). |
 | `INTERNET` (normal) | Sempre concedida | Envio UDP do protocolo VRBQ. |
+| Serviço de acessibilidade | O usuário ativa em Configurações → Acessibilidade | Modo jogo. Só lê o controle escolhido, não lê o conteúdo da tela (`canRetrieveWindowContent=false`) e só age com a emulação ligada. |
 
 **Não solicitadas de propósito:** `BLUETOOTH_SCAN`, localização (o pareamento é feito nas
-configurações do Android), notificações e serviço em primeiro plano (a entrada só chega ao app
-em foco), acessibilidade, sobreposição de tela.
+configurações do Android), notificações, serviço em primeiro plano, sobreposição de tela,
+visibilidade de outros pacotes.
+
+**Instalação no Brasil:** desde 30/09/2026 o Android exige desenvolvedor verificado, e o Play
+Protect barra APKs com acessibilidade vindos do navegador/mensageiros/gerenciadores de arquivos.
+Instalar por ADB evita os dois bloqueios (ver `INSTALLATION.md`).
 
 Tratamento implementado: permissão negada, negada permanentemente (botão para abrir as
 configurações do app), Bluetooth desligado (pedido `ACTION_REQUEST_ENABLE`), telefone sem
@@ -97,7 +103,12 @@ de gamepad Android, **não** controles Touch para OpenXR.
   a entrada de controles é produzida exclusivamente pelo **runtime** ativo (no Quest, o runtime
   da Meta). Um app comum não consegue adicionar dispositivos a ele.
 - **Fazer um jogo do Quest aceitar o VR Box como Touch** apenas instalando um app no telefone.
-- **Ler o controle com o app em segundo plano** ou com a tela desligada.
+- **Ler o controle em segundo plano sem o serviço de acessibilidade**, ou com a tela desligada.
+- **Interceptar o VR Box em modo mouse** dentro de outros apps: cliques e movimento de mouse não
+  passam pelo filtro de acessibilidade sem ligar a exploração por toque (o modo do TalkBack). Use o
+  controle em modo gamepad/teclado no Modo jogo.
+- **Joystick analógico no Modo jogo antes do Android 14**: só as teclas são filtráveis; use as
+  setas (D-pad) ligadas às direções do joystick.
 - **Capturar mouse/teclado globalmente** para outros apps.
 - Fornecer **pose 6DoF** (posição/rotação da mão): o VR Box não tem rastreamento, e rastreamento
   está fora do escopo deste projeto. Muitos jogos exigem pose dos controles; mesmo com um runtime
@@ -107,7 +118,9 @@ de gamepad Android, **não** controles Touch para OpenXR.
 
 ## 6. Alternativas reais
 
-1. **Protocolo VRBQ (implementado)** — streaming UDP dos dois controles virtuais com
+1. **Modo jogo (implementado)** — para jogos no próprio celular: os controles virtuais viram
+   toques na tela do jogo.
+2. **Protocolo VRBQ (implementado)** — streaming UDP dos dois controles virtuais com
    especificação aberta, decodificadores de referência em C e Python e fixtures compartilhadas.
    Permite integração com:
    - jogos/apps próprios (Unity, Godot, nativos) que leiam o pacote e o tratem como entrada;
@@ -115,9 +128,9 @@ de gamepad Android, **não** controles Touch para OpenXR.
      que você controle (projeto em `integration/RuntimeIntegration`);
    - um driver para runtime aberto (Monado) ou para SteamVR (OpenVR driver) em um PC — receptores
      separados, fora deste app Android.
-2. **Telefone como gamepad Bluetooth (`BluetoothHidDevice`)** — viável em Android 9+ quando o
+3. **Telefone como gamepad Bluetooth (`BluetoothHidDevice`)** — viável em Android 9+ quando o
    fabricante mantém o perfil; resultado é um gamepad genérico, não Touch.
-3. **Shizuku** — injeção de eventos de gamepad Android no app em primeiro plano; exige
+4. **Shizuku** — injeção de eventos de gamepad Android no app em primeiro plano; exige
    configuração técnica do usuário.
 
 ## Conclusão
@@ -125,5 +138,6 @@ de gamepad Android, **não** controles Touch para OpenXR.
 Não é possível disponibilizar controles Quest Touch virtuais para outros jogos **sem** um
 runtime, driver ou integração privilegiada. O app entrega: leitura real do VR Box, identificação
 automática de comandos, mapeamento completo, dois controles virtuais com joysticks, gatilhos e grip
-analógicos, testador em tempo real, perfis, e uma integração real e documentada (VRBQ) para
-aplicações compatíveis. Nenhuma tela afirma que um dispositivo foi emulado no sistema.
+analógicos, testador em tempo real, perfis, o Modo jogo (toques reais na tela dos jogos do
+celular) e uma integração de rede documentada (VRBQ). Nenhuma tela afirma que um controle Quest foi
+registrado no sistema.

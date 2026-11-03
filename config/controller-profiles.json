@@ -1,129 +1,485 @@
 {
   "schema": 1,
   "type": "vrbq-initial-profiles",
-  "description": "Initial profiles created on first launch and by 'Restore default profiles'. Physical sources cover the most common ways Android presents VR Box controllers (mouse mode, gamepad mode, generic joystick buttons and media/volume keys). Any profile can be edited by the user.",
+  "description": "Perfis criados na primeira abertura e ao restaurar os perfis iniciais. As entradas cobrem os jeitos mais comuns de o Android apresentar um VR Box (modo mouse, modo gamepad, botões genéricos e teclas de mídia/volume). Todos podem ser editados.",
   "activeProfileId": "default-vr-box",
   "profiles": [
     {
       "id": "default-vr-box",
-      "name": "Default VR Box",
-      "description": "Spreads the VR Box inputs over both virtual controllers. Mouse movement drives the left joystick.",
+      "name": "VR Box padrão",
+      "description": "Divide os botões do VR Box entre os dois controles. O movimento do mouse vira o joystick esquerdo.",
       "mappings": [
-        { "id": "d01", "source": "mouse:btn:primary", "target": "right.a" },
-        { "id": "d02", "source": "mouse:btn:secondary", "target": "right.b" },
-        { "id": "d03", "source": "key:BUTTON_1", "target": "left.x" },
-        { "id": "d04", "source": "key:BUTTON_2", "target": "left.y" },
-        { "id": "d05", "source": "key:BUTTON_3", "target": "right.grip" },
-        { "id": "d06", "source": "key:BUTTON_4", "target": "right.trigger" },
-        { "id": "d07", "source": "mouse:x", "target": "left.stick.x" },
-        { "id": "d08", "source": "mouse:y", "target": "left.stick.y" },
-        { "id": "d09", "source": "key:BUTTON_A", "target": "right.a" },
-        { "id": "d10", "source": "key:BUTTON_B", "target": "right.b" },
-        { "id": "d11", "source": "key:BUTTON_X", "target": "left.x" },
-        { "id": "d12", "source": "key:BUTTON_Y", "target": "left.y" },
-        { "id": "d13", "source": "key:BUTTON_L1", "target": "left.grip" },
-        { "id": "d14", "source": "key:BUTTON_R1", "target": "right.grip" },
-        { "id": "d15", "source": "key:BUTTON_L2", "target": "left.trigger" },
-        { "id": "d16", "source": "key:BUTTON_R2", "target": "right.trigger" },
-        { "id": "d17", "source": "axis:X", "target": "left.stick.x" },
-        { "id": "d18", "source": "axis:Y", "target": "left.stick.y" },
-        { "id": "d19", "source": "axis:Z", "target": "right.stick.x" },
-        { "id": "d20", "source": "axis:RZ", "target": "right.stick.y" },
-        { "id": "d21", "source": "key:DPAD_UP", "target": "left.stick.up" },
-        { "id": "d22", "source": "key:DPAD_DOWN", "target": "left.stick.down" },
-        { "id": "d23", "source": "key:DPAD_LEFT", "target": "left.stick.left" },
-        { "id": "d24", "source": "key:DPAD_RIGHT", "target": "left.stick.right" },
-        { "id": "d25", "source": "key:BUTTON_START", "target": "left.menu" },
-        { "id": "d26", "source": "key:BUTTON_THUMBL", "target": "left.stickClick" },
-        { "id": "d27", "source": "key:BUTTON_THUMBR", "target": "right.stickClick" },
-        { "id": "d28", "source": "key:VOLUME_UP", "target": "right.a" },
-        { "id": "d29", "source": "key:VOLUME_DOWN", "target": "right.b" },
-        { "id": "d30", "source": "key:MEDIA_PLAY_PAUSE", "target": "right.trigger" },
-        { "id": "d31", "source": "key:ENTER", "target": "right.trigger" },
-        { "id": "d32", "source": "axis:HAT_X", "target": "left.stick.x" },
-        { "id": "d33", "source": "axis:HAT_Y", "target": "left.stick.y" }
+        {
+          "id": "d01",
+          "source": "mouse:btn:primary",
+          "target": "right.a"
+        },
+        {
+          "id": "d02",
+          "source": "mouse:btn:secondary",
+          "target": "right.b"
+        },
+        {
+          "id": "d03",
+          "source": "key:BUTTON_1",
+          "target": "left.x"
+        },
+        {
+          "id": "d04",
+          "source": "key:BUTTON_2",
+          "target": "left.y"
+        },
+        {
+          "id": "d05",
+          "source": "key:BUTTON_3",
+          "target": "right.grip"
+        },
+        {
+          "id": "d06",
+          "source": "key:BUTTON_4",
+          "target": "right.trigger"
+        },
+        {
+          "id": "d07",
+          "source": "mouse:x",
+          "target": "left.stick.x"
+        },
+        {
+          "id": "d08",
+          "source": "mouse:y",
+          "target": "left.stick.y"
+        },
+        {
+          "id": "d09",
+          "source": "key:BUTTON_A",
+          "target": "right.a"
+        },
+        {
+          "id": "d10",
+          "source": "key:BUTTON_B",
+          "target": "right.b"
+        },
+        {
+          "id": "d11",
+          "source": "key:BUTTON_X",
+          "target": "left.x"
+        },
+        {
+          "id": "d12",
+          "source": "key:BUTTON_Y",
+          "target": "left.y"
+        },
+        {
+          "id": "d13",
+          "source": "key:BUTTON_L1",
+          "target": "left.grip"
+        },
+        {
+          "id": "d14",
+          "source": "key:BUTTON_R1",
+          "target": "right.grip"
+        },
+        {
+          "id": "d15",
+          "source": "key:BUTTON_L2",
+          "target": "left.trigger"
+        },
+        {
+          "id": "d16",
+          "source": "key:BUTTON_R2",
+          "target": "right.trigger"
+        },
+        {
+          "id": "d17",
+          "source": "axis:X",
+          "target": "left.stick.x"
+        },
+        {
+          "id": "d18",
+          "source": "axis:Y",
+          "target": "left.stick.y"
+        },
+        {
+          "id": "d19",
+          "source": "axis:Z",
+          "target": "right.stick.x"
+        },
+        {
+          "id": "d20",
+          "source": "axis:RZ",
+          "target": "right.stick.y"
+        },
+        {
+          "id": "d21",
+          "source": "key:DPAD_UP",
+          "target": "left.stick.up"
+        },
+        {
+          "id": "d22",
+          "source": "key:DPAD_DOWN",
+          "target": "left.stick.down"
+        },
+        {
+          "id": "d23",
+          "source": "key:DPAD_LEFT",
+          "target": "left.stick.left"
+        },
+        {
+          "id": "d24",
+          "source": "key:DPAD_RIGHT",
+          "target": "left.stick.right"
+        },
+        {
+          "id": "d25",
+          "source": "key:BUTTON_START",
+          "target": "left.menu"
+        },
+        {
+          "id": "d26",
+          "source": "key:BUTTON_THUMBL",
+          "target": "left.stickClick"
+        },
+        {
+          "id": "d27",
+          "source": "key:BUTTON_THUMBR",
+          "target": "right.stickClick"
+        },
+        {
+          "id": "d28",
+          "source": "key:VOLUME_UP",
+          "target": "right.a"
+        },
+        {
+          "id": "d29",
+          "source": "key:VOLUME_DOWN",
+          "target": "right.b"
+        },
+        {
+          "id": "d30",
+          "source": "key:MEDIA_PLAY_PAUSE",
+          "target": "right.trigger"
+        },
+        {
+          "id": "d31",
+          "source": "key:ENTER",
+          "target": "right.trigger"
+        },
+        {
+          "id": "d32",
+          "source": "axis:HAT_X",
+          "target": "left.stick.x"
+        },
+        {
+          "id": "d33",
+          "source": "axis:HAT_Y",
+          "target": "left.stick.y"
+        }
       ]
     },
     {
       "id": "quest-touch-left",
-      "name": "Quest Touch Left",
-      "description": "The whole VR Box drives the LEFT virtual controller.",
+      "name": "Quest Touch esquerdo",
+      "description": "O VR Box inteiro vira o controle ESQUERDO.",
       "mappings": [
-        { "id": "l01", "source": "mouse:btn:primary", "target": "left.trigger" },
-        { "id": "l02", "source": "mouse:btn:secondary", "target": "left.grip" },
-        { "id": "l03", "source": "mouse:x", "target": "left.stick.x" },
-        { "id": "l04", "source": "mouse:y", "target": "left.stick.y" },
-        { "id": "l05", "source": "key:BUTTON_A", "target": "left.x" },
-        { "id": "l06", "source": "key:BUTTON_B", "target": "left.y" },
-        { "id": "l07", "source": "key:BUTTON_X", "target": "left.x" },
-        { "id": "l08", "source": "key:BUTTON_Y", "target": "left.y" },
-        { "id": "l09", "source": "key:BUTTON_1", "target": "left.x" },
-        { "id": "l10", "source": "key:BUTTON_2", "target": "left.y" },
-        { "id": "l11", "source": "key:BUTTON_3", "target": "left.grip" },
-        { "id": "l12", "source": "key:BUTTON_4", "target": "left.trigger" },
-        { "id": "l13", "source": "key:BUTTON_L1", "target": "left.grip" },
-        { "id": "l14", "source": "key:BUTTON_R1", "target": "left.grip" },
-        { "id": "l15", "source": "key:BUTTON_L2", "target": "left.trigger" },
-        { "id": "l16", "source": "key:BUTTON_R2", "target": "left.trigger" },
-        { "id": "l17", "source": "axis:X", "target": "left.stick.x" },
-        { "id": "l18", "source": "axis:Y", "target": "left.stick.y" },
-        { "id": "l19", "source": "key:DPAD_UP", "target": "left.stick.up" },
-        { "id": "l20", "source": "key:DPAD_DOWN", "target": "left.stick.down" },
-        { "id": "l21", "source": "key:DPAD_LEFT", "target": "left.stick.left" },
-        { "id": "l22", "source": "key:DPAD_RIGHT", "target": "left.stick.right" },
-        { "id": "l23", "source": "key:BUTTON_START", "target": "left.menu" },
-        { "id": "l24", "source": "key:BUTTON_THUMBL", "target": "left.stickClick" },
-        { "id": "l25", "source": "key:VOLUME_UP", "target": "left.x" },
-        { "id": "l26", "source": "key:VOLUME_DOWN", "target": "left.y" },
-        { "id": "l27", "source": "key:ENTER", "target": "left.trigger" }
+        {
+          "id": "l01",
+          "source": "mouse:btn:primary",
+          "target": "left.trigger"
+        },
+        {
+          "id": "l02",
+          "source": "mouse:btn:secondary",
+          "target": "left.grip"
+        },
+        {
+          "id": "l03",
+          "source": "mouse:x",
+          "target": "left.stick.x"
+        },
+        {
+          "id": "l04",
+          "source": "mouse:y",
+          "target": "left.stick.y"
+        },
+        {
+          "id": "l05",
+          "source": "key:BUTTON_A",
+          "target": "left.x"
+        },
+        {
+          "id": "l06",
+          "source": "key:BUTTON_B",
+          "target": "left.y"
+        },
+        {
+          "id": "l07",
+          "source": "key:BUTTON_X",
+          "target": "left.x"
+        },
+        {
+          "id": "l08",
+          "source": "key:BUTTON_Y",
+          "target": "left.y"
+        },
+        {
+          "id": "l09",
+          "source": "key:BUTTON_1",
+          "target": "left.x"
+        },
+        {
+          "id": "l10",
+          "source": "key:BUTTON_2",
+          "target": "left.y"
+        },
+        {
+          "id": "l11",
+          "source": "key:BUTTON_3",
+          "target": "left.grip"
+        },
+        {
+          "id": "l12",
+          "source": "key:BUTTON_4",
+          "target": "left.trigger"
+        },
+        {
+          "id": "l13",
+          "source": "key:BUTTON_L1",
+          "target": "left.grip"
+        },
+        {
+          "id": "l14",
+          "source": "key:BUTTON_R1",
+          "target": "left.grip"
+        },
+        {
+          "id": "l15",
+          "source": "key:BUTTON_L2",
+          "target": "left.trigger"
+        },
+        {
+          "id": "l16",
+          "source": "key:BUTTON_R2",
+          "target": "left.trigger"
+        },
+        {
+          "id": "l17",
+          "source": "axis:X",
+          "target": "left.stick.x"
+        },
+        {
+          "id": "l18",
+          "source": "axis:Y",
+          "target": "left.stick.y"
+        },
+        {
+          "id": "l19",
+          "source": "key:DPAD_UP",
+          "target": "left.stick.up"
+        },
+        {
+          "id": "l20",
+          "source": "key:DPAD_DOWN",
+          "target": "left.stick.down"
+        },
+        {
+          "id": "l21",
+          "source": "key:DPAD_LEFT",
+          "target": "left.stick.left"
+        },
+        {
+          "id": "l22",
+          "source": "key:DPAD_RIGHT",
+          "target": "left.stick.right"
+        },
+        {
+          "id": "l23",
+          "source": "key:BUTTON_START",
+          "target": "left.menu"
+        },
+        {
+          "id": "l24",
+          "source": "key:BUTTON_THUMBL",
+          "target": "left.stickClick"
+        },
+        {
+          "id": "l25",
+          "source": "key:VOLUME_UP",
+          "target": "left.x"
+        },
+        {
+          "id": "l26",
+          "source": "key:VOLUME_DOWN",
+          "target": "left.y"
+        },
+        {
+          "id": "l27",
+          "source": "key:ENTER",
+          "target": "left.trigger"
+        }
       ]
     },
     {
       "id": "quest-touch-right",
-      "name": "Quest Touch Right",
-      "description": "The whole VR Box drives the RIGHT virtual controller.",
+      "name": "Quest Touch direito",
+      "description": "O VR Box inteiro vira o controle DIREITO.",
       "mappings": [
-        { "id": "r01", "source": "mouse:btn:primary", "target": "right.trigger" },
-        { "id": "r02", "source": "mouse:btn:secondary", "target": "right.grip" },
-        { "id": "r03", "source": "mouse:x", "target": "right.stick.x" },
-        { "id": "r04", "source": "mouse:y", "target": "right.stick.y" },
-        { "id": "r05", "source": "key:BUTTON_A", "target": "right.a" },
-        { "id": "r06", "source": "key:BUTTON_B", "target": "right.b" },
-        { "id": "r07", "source": "key:BUTTON_X", "target": "right.a" },
-        { "id": "r08", "source": "key:BUTTON_Y", "target": "right.b" },
-        { "id": "r09", "source": "key:BUTTON_1", "target": "right.a" },
-        { "id": "r10", "source": "key:BUTTON_2", "target": "right.b" },
-        { "id": "r11", "source": "key:BUTTON_3", "target": "right.grip" },
-        { "id": "r12", "source": "key:BUTTON_4", "target": "right.trigger" },
-        { "id": "r13", "source": "key:BUTTON_L1", "target": "right.grip" },
-        { "id": "r14", "source": "key:BUTTON_R1", "target": "right.grip" },
-        { "id": "r15", "source": "key:BUTTON_L2", "target": "right.trigger" },
-        { "id": "r16", "source": "key:BUTTON_R2", "target": "right.trigger" },
-        { "id": "r17", "source": "axis:X", "target": "right.stick.x" },
-        { "id": "r18", "source": "axis:Y", "target": "right.stick.y" },
-        { "id": "r19", "source": "key:DPAD_UP", "target": "right.stick.up" },
-        { "id": "r20", "source": "key:DPAD_DOWN", "target": "right.stick.down" },
-        { "id": "r21", "source": "key:DPAD_LEFT", "target": "right.stick.left" },
-        { "id": "r22", "source": "key:DPAD_RIGHT", "target": "right.stick.right" },
-        { "id": "r23", "source": "key:BUTTON_THUMBR", "target": "right.stickClick" },
-        { "id": "r24", "source": "key:VOLUME_UP", "target": "right.a" },
-        { "id": "r25", "source": "key:VOLUME_DOWN", "target": "right.b" },
-        { "id": "r26", "source": "key:ENTER", "target": "right.trigger" }
+        {
+          "id": "r01",
+          "source": "mouse:btn:primary",
+          "target": "right.trigger"
+        },
+        {
+          "id": "r02",
+          "source": "mouse:btn:secondary",
+          "target": "right.grip"
+        },
+        {
+          "id": "r03",
+          "source": "mouse:x",
+          "target": "right.stick.x"
+        },
+        {
+          "id": "r04",
+          "source": "mouse:y",
+          "target": "right.stick.y"
+        },
+        {
+          "id": "r05",
+          "source": "key:BUTTON_A",
+          "target": "right.a"
+        },
+        {
+          "id": "r06",
+          "source": "key:BUTTON_B",
+          "target": "right.b"
+        },
+        {
+          "id": "r07",
+          "source": "key:BUTTON_X",
+          "target": "right.a"
+        },
+        {
+          "id": "r08",
+          "source": "key:BUTTON_Y",
+          "target": "right.b"
+        },
+        {
+          "id": "r09",
+          "source": "key:BUTTON_1",
+          "target": "right.a"
+        },
+        {
+          "id": "r10",
+          "source": "key:BUTTON_2",
+          "target": "right.b"
+        },
+        {
+          "id": "r11",
+          "source": "key:BUTTON_3",
+          "target": "right.grip"
+        },
+        {
+          "id": "r12",
+          "source": "key:BUTTON_4",
+          "target": "right.trigger"
+        },
+        {
+          "id": "r13",
+          "source": "key:BUTTON_L1",
+          "target": "right.grip"
+        },
+        {
+          "id": "r14",
+          "source": "key:BUTTON_R1",
+          "target": "right.grip"
+        },
+        {
+          "id": "r15",
+          "source": "key:BUTTON_L2",
+          "target": "right.trigger"
+        },
+        {
+          "id": "r16",
+          "source": "key:BUTTON_R2",
+          "target": "right.trigger"
+        },
+        {
+          "id": "r17",
+          "source": "axis:X",
+          "target": "right.stick.x"
+        },
+        {
+          "id": "r18",
+          "source": "axis:Y",
+          "target": "right.stick.y"
+        },
+        {
+          "id": "r19",
+          "source": "key:DPAD_UP",
+          "target": "right.stick.up"
+        },
+        {
+          "id": "r20",
+          "source": "key:DPAD_DOWN",
+          "target": "right.stick.down"
+        },
+        {
+          "id": "r21",
+          "source": "key:DPAD_LEFT",
+          "target": "right.stick.left"
+        },
+        {
+          "id": "r22",
+          "source": "key:DPAD_RIGHT",
+          "target": "right.stick.right"
+        },
+        {
+          "id": "r23",
+          "source": "key:BUTTON_THUMBR",
+          "target": "right.stickClick"
+        },
+        {
+          "id": "r24",
+          "source": "key:VOLUME_UP",
+          "target": "right.a"
+        },
+        {
+          "id": "r25",
+          "source": "key:VOLUME_DOWN",
+          "target": "right.b"
+        },
+        {
+          "id": "r26",
+          "source": "key:ENTER",
+          "target": "right.trigger"
+        }
       ],
       "sticks": {
         "right": {
           "mode": "virtual_stick",
-          "smoothing": 0.10,
+          "smoothing": 0.1,
           "returnSpeed": 6.0,
-          "x": { "sensitivity": 1.0, "deadzone": 0.08, "curve": 1.0, "max": 1.0, "invert": false },
-          "y": { "sensitivity": 1.0, "deadzone": 0.08, "curve": 1.0, "max": 1.0, "invert": false }
+          "x": {
+            "sensitivity": 1.0,
+            "deadzone": 0.08,
+            "curve": 1.0,
+            "max": 1.0,
+            "invert": false
+          },
+          "y": {
+            "sensitivity": 1.0,
+            "deadzone": 0.08,
+            "curve": 1.0,
+            "max": 1.0,
+            "invert": false
+          }
         }
       }
     },
     {
       "id": "custom-profile",
-      "name": "Custom Profile",
-      "description": "Empty profile. Use Automatic Input Detection and Controller Mapping to build your own layout.",
+      "name": "Perfil personalizado",
+      "description": "Perfil vazio. Use \"Detectar botões\" e \"Botões\" para montar o seu.",
       "mappings": []
     }
   ]

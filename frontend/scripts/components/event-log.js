@@ -3,9 +3,9 @@
 import { h, clear } from '../dom.js';
 import { clockTime } from '../format.js';
 
-const CAT = { physical: 'P', virtual: 'V', system: 'S' };
+const CAT = { physical: 'Controle', virtual: 'Virtual', system: 'App' };
 
-export function createEventLog({ max = 150, categories = null, emptyText = 'No events yet.' } = {}) {
+export function createEventLog({ max = 150, categories = null, emptyText = 'Nada ainda.' } = {}) {
   const el = h('ol', { class: 'log', 'aria-live': 'off' });
   const empty = h('li', { class: 'log__empty' }, emptyText);
   let paused = false;
@@ -17,7 +17,7 @@ export function createEventLog({ max = 150, categories = null, emptyText = 'No e
       'li',
       { class: `log__row log__row--${e.c}` },
       h('span', { class: 'log__time' }, clockTime(e.t)),
-      h('span', { class: 'log__cat', title: e.c }, CAT[e.c] || '·'),
+      h('span', { class: 'log__cat', title: CAT[e.c] || e.c }),
       h('span', { class: 'log__msg' }, e.m),
     );
   }

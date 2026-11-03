@@ -2,7 +2,7 @@
 
 import { h } from './dom.js';
 import { icon } from './icons.js';
-import { isCompatible, kindLabel } from './format.js';
+import { isCompatible } from './format.js';
 
 export function toast(message, kind = 'info', ms = 2800) {
   const root = document.getElementById('toasts');
@@ -17,7 +17,7 @@ export function toast(message, kind = 'info', ms = 2800) {
  * Opens a modal. `actions`: [{ label, value, kind: 'primary'|'danger'|'ghost' }].
  * Resolves with the chosen action value, or null when dismissed.
  */
-export function modal({ title, body, actions = [{ label: 'Close', value: null, kind: 'ghost' }], onOpen } = {}) {
+export function modal({ title, body, actions = [{ label: 'Fechar', value: null, kind: 'ghost' }], onOpen } = {}) {
   return new Promise((resolve) => {
     const root = document.getElementById('modal-root') || document.body;
     let done = false;
@@ -45,7 +45,7 @@ export function modal({ title, body, actions = [{ label: 'Close', value: null, k
         'div',
         { class: 'modal__head' },
         h('div', { class: 'modal__title' }, title),
-        h('button', { class: 'btn btn--ghost btn--icon', type: 'button', 'aria-label': 'Close', onClick: () => close(null) }, icon('x')),
+        h('button', { class: 'btn btn--ghost btn--icon', type: 'button', 'aria-label': 'Fechar', onClick: () => close(null) }, icon('x')),
       ),
       h('div', { class: 'modal__body' }, body),
       actions.length ? foot : null,
@@ -57,12 +57,12 @@ export function modal({ title, body, actions = [{ label: 'Close', value: null, k
   });
 }
 
-export async function confirmDialog(title, text, okLabel = 'Confirm', danger = false) {
+export async function confirmDialog(title, text, okLabel = 'Confirmar', danger = false) {
   const r = await modal({
     title,
     body: h('p', {}, text),
     actions: [
-      { label: 'Cancel', value: false, kind: 'ghost' },
+      { label: 'Cancelar', value: false, kind: 'ghost' },
       { label: okLabel, value: true, kind: danger ? 'danger' : 'primary' },
     ],
   });
@@ -75,7 +75,7 @@ export async function promptDialog(title, label, initial = '', okLabel = 'OK') {
     title,
     body: h('label', { class: 'field' }, h('span', { class: 'field__label' }, label), input),
     actions: [
-      { label: 'Cancel', value: null, kind: 'ghost' },
+      { label: 'Cancelar', value: null, kind: 'ghost' },
       { label: okLabel, value: 'ok', kind: 'primary' },
     ],
     onOpen: ({ close }) => {
@@ -91,21 +91,21 @@ export async function promptDialog(title, label, initial = '', okLabel = 'OK') {
 }
 
 const GROUPS = [
-  { title: 'Buttons', types: ['button'] },
-  { title: 'Trigger & Grip', types: ['analog'] },
-  { title: 'Joystick axes', types: ['stick_axis'] },
-  { title: 'Joystick directions', types: ['stick_direction'] },
+  { title: 'Botões', types: ['button'] },
+  { title: 'Gatilho e grip', types: ['analog'] },
+  { title: 'Joystick', types: ['stick_axis'] },
+  { title: 'Direções do joystick', types: ['stick_direction'] },
 ];
 
 /** Lets the user choose a virtual Quest input. Resolves with a target id or null. */
-export function pickTarget(catalog, { sourceKind = 'digital', title = 'Assign to virtual input', sourceLabel } = {}) {
+export function pickTarget(catalog, { sourceKind = 'digital', title = 'O que esse botão faz?', sourceLabel } = {}) {
   return new Promise((resolve) => {
     let closeFn = null;
     const column = (hand) =>
       h(
         'div',
         { class: 'stack stack--sm' },
-        h('div', { class: 'section-title' }, hand === 'left' ? 'Left controller' : 'Right controller'),
+        h('div', { class: 'section-title' }, hand === 'left' ? 'Controle esquerdo' : 'Controle direito'),
         GROUPS.map((g) => {
           const items = catalog.targets.filter((t) => t.hand === hand && g.types.includes(t.type));
           if (!items.length) return null;
@@ -121,14 +121,14 @@ export function pickTarget(catalog, { sourceKind = 'digital', title = 'Assign to
                   class: 'picker-option',
                   type: 'button',
                   disabled: !ok,
-                  title: ok ? '' : 'Mouse movement can only drive joystick axes',
+                  title: ok ? '' : 'Movimento do mouse só pode mover o joystick',
                   onClick: () => {
                     resolve(t.id);
                     closeFn?.(t.id);
                   },
                 },
                 t.label,
-                t.control === 'system' ? h('small', {}, 'Usually reserved by the runtime') : null,
+                t.control === 'system' ? h('small', {}, 'Nem todo jogo aceita') : null,
               );
             }),
           );
@@ -139,10 +139,10 @@ export function pickTarget(catalog, { sourceKind = 'digital', title = 'Assign to
       body: h(
         'div',
         { class: 'stack' },
-        sourceLabel ? h('p', {}, 'Physical input: ', h('b', {}, sourceLabel), ` (${kindLabel(sourceKind)})`) : null,
+        sourceLabel ? h('p', {}, 'No VR Box: ', h('b', {}, sourceLabel)) : null,
         h('div', { class: 'picker-hands' }, column('left'), column('right')),
       ),
-      actions: [{ label: 'Cancel', value: null, kind: 'ghost' }],
+      actions: [{ label: 'Cancelar', value: null, kind: 'ghost' }],
       onOpen: ({ close }) => {
         closeFn = close;
       },
@@ -154,28 +154,28 @@ export function pickTarget(catalog, { sourceKind = 'digital', title = 'Assign to
 
 /** Common Android inputs offered before they are identified on the device. */
 export const COMMON_SOURCES = [
-  ['mouse:btn:primary', 'Mouse Button Left', 'digital'],
-  ['mouse:btn:secondary', 'Mouse Button Right', 'digital'],
-  ['mouse:x', 'Mouse Movement X', 'relative'],
-  ['mouse:y', 'Mouse Movement Y', 'relative'],
-  ['key:BUTTON_A', 'Gamepad Button A', 'digital'],
-  ['key:BUTTON_B', 'Gamepad Button B', 'digital'],
-  ['key:BUTTON_X', 'Gamepad Button X', 'digital'],
-  ['key:BUTTON_Y', 'Gamepad Button Y', 'digital'],
-  ['key:BUTTON_1', 'Button 1', 'digital'],
-  ['key:BUTTON_2', 'Button 2', 'digital'],
-  ['key:BUTTON_3', 'Button 3', 'digital'],
-  ['key:BUTTON_4', 'Button 4', 'digital'],
-  ['key:VOLUME_UP', 'Volume Up', 'digital'],
-  ['key:VOLUME_DOWN', 'Volume Down', 'digital'],
-  ['axis:X', 'Joystick Axis X', 'analog'],
-  ['axis:Y', 'Joystick Axis Y', 'analog'],
-  ['key:DPAD_UP', 'D-pad Up', 'digital'],
-  ['key:DPAD_DOWN', 'D-pad Down', 'digital'],
+  ['mouse:btn:primary', 'Botão esquerdo do mouse', 'digital'],
+  ['mouse:btn:secondary', 'Botão direito do mouse', 'digital'],
+  ['mouse:x', 'Movimento do mouse (X)', 'relative'],
+  ['mouse:y', 'Movimento do mouse (Y)', 'relative'],
+  ['key:BUTTON_A', 'Botão A (gamepad)', 'digital'],
+  ['key:BUTTON_B', 'Botão B (gamepad)', 'digital'],
+  ['key:BUTTON_X', 'Botão X (gamepad)', 'digital'],
+  ['key:BUTTON_Y', 'Botão Y (gamepad)', 'digital'],
+  ['key:BUTTON_1', 'Botão 1', 'digital'],
+  ['key:BUTTON_2', 'Botão 2', 'digital'],
+  ['key:BUTTON_3', 'Botão 3', 'digital'],
+  ['key:BUTTON_4', 'Botão 4', 'digital'],
+  ['key:VOLUME_UP', 'Volume +', 'digital'],
+  ['key:VOLUME_DOWN', 'Volume −', 'digital'],
+  ['axis:X', 'Eixo X do joystick', 'analog'],
+  ['axis:Y', 'Eixo Y do joystick', 'analog'],
+  ['key:DPAD_UP', 'D-pad cima', 'digital'],
+  ['key:DPAD_DOWN', 'D-pad baixo', 'digital'],
 ];
 
 /** Picks a physical source among identified and common inputs. */
-export function pickSource(identified, { targetType = 'button', title = 'Choose physical input' } = {}) {
+export function pickSource(identified, { targetType = 'button', title = 'Escolha o botão do VR Box' } = {}) {
   return new Promise((resolve) => {
     let closeFn = null;
     const known = new Set(identified.map((i) => i.id));
@@ -193,7 +193,7 @@ export function pickSource(identified, { targetType = 'button', title = 'Choose 
           },
         },
         label,
-        h('small', {}, `${kindLabel(kind)}${meta ? ` · ${meta}` : ''}`),
+        meta ? h('small', {}, meta) : null,
       );
     };
     modal({
@@ -201,18 +201,18 @@ export function pickSource(identified, { targetType = 'button', title = 'Choose 
       body: h(
         'div',
         { class: 'stack' },
-        h('div', { class: 'section-title' }, 'Identified on this controller'),
+        h('div', { class: 'section-title' }, 'Já vistos neste controle'),
         identified.length
-          ? h('div', { class: 'picker-group' }, identified.map((i) => option(i.id, i.label, i.kind, `seen ${i.count}×`)))
-          : h('div', { class: 'empty' }, 'Nothing identified yet. Use LEARN or Automatic Input Detection.'),
-        h('div', { class: 'section-title' }, 'Common Android inputs'),
+          ? h('div', { class: 'picker-group' }, identified.map((i) => option(i.id, i.label, i.kind, `apertado ${i.count}×`)))
+          : h('div', { class: 'empty' }, 'Nenhum ainda. Use "Aprender" ou a tela Detectar botões.'),
+        h('div', { class: 'section-title' }, 'Outros botões comuns'),
         h(
           'div',
           { class: 'picker-group' },
-          COMMON_SOURCES.filter(([id]) => !known.has(id)).map(([id, label, kind]) => option(id, label, kind, 'not identified yet')),
+          COMMON_SOURCES.filter(([id]) => !known.has(id)).map(([id, label, kind]) => option(id, label, kind, '')),
         ),
       ),
-      actions: [{ label: 'Cancel', value: null, kind: 'ghost' }],
+      actions: [{ label: 'Cancelar', value: null, kind: 'ghost' }],
       onOpen: ({ close }) => {
         closeFn = close;
       },
@@ -226,12 +226,12 @@ export function pickSource(identified, { targetType = 'button', title = 'Choose 
  * LEARN: waits for the next physical input from the controller.
  * Resolves with { id, kind, label } or null when cancelled.
  */
-export function learnInput(ctx, { targetType = 'button', title = 'Learn physical input' } = {}) {
+export function learnInput(ctx, { targetType = 'button', title = 'Aprender botão' } = {}) {
   return new Promise((resolve) => {
     let finished = false;
     let unsub = null;
     let closeFn = null;
-    const status = h('p', { class: 'muted small' }, 'Waiting for input…');
+    const status = h('p', { class: 'muted small' }, 'Esperando…');
     const finish = (value) => {
       if (finished) return;
       finished = true;
@@ -253,7 +253,7 @@ export function learnInput(ctx, { targetType = 'button', title = 'Learn physical
         choice = { id: analogAlt.id, kind: 'analog', label: analogAlt.label };
       }
       if (!isCompatible(choice.kind, targetType)) {
-        status.textContent = `${choice.label} cannot drive this control. Press another input.`;
+        status.textContent = `${choice.label} não serve para isso. Tente outro botão.`;
         return;
       }
       finish(choice);
@@ -264,10 +264,10 @@ export function learnInput(ctx, { targetType = 'button', title = 'Learn physical
         'div',
         { class: 'stack learn' },
         h('div', { class: 'learn__radar', 'aria-hidden': 'true' }, h('span'), h('span'), h('i')),
-        h('p', { class: 'learn__text' }, targetType === 'stick_axis' ? 'Move the joystick or press a button on the VR Box.' : 'Press a button on the VR Box controller.'),
+        h('p', { class: 'learn__text' }, targetType === 'stick_axis' ? 'Mexa o joystick do VR Box' : 'Aperte o botão no VR Box'),
         status,
       ),
-      actions: [{ label: 'Cancel', value: null, kind: 'ghost' }],
+      actions: [{ label: 'Cancelar', value: null, kind: 'ghost' }],
       onOpen: ({ close }) => {
         closeFn = close;
       },

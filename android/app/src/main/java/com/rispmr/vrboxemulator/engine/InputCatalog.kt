@@ -52,22 +52,29 @@ object InputCatalog {
         }
     }
 
+    /** Human label in Portuguese (pt-BR), e.g. "Botão A (gamepad)", "Botão esquerdo do mouse". */
     fun labelOf(sourceId: String): String {
         val parts = sourceId.split(':')
         return when (parts.firstOrNull()) {
             "key" -> keyLabel(parts.getOrElse(1) { "?" })
             "mouse" -> when (parts.getOrNull(1)) {
-                "x" -> "Mouse Movement X"
-                "y" -> "Mouse Movement Y"
-                "btn" -> "Mouse Button " + when (parts.getOrNull(2)) {
-                    "primary" -> "Left"
-                    "secondary" -> "Right"
-                    "tertiary" -> "Middle"
-                    "back" -> "Back"
-                    "forward" -> "Forward"
+                "x" -> "Movimento do mouse (X)"
+                "y" -> "Movimento do mouse (Y)"
+                "btn" -> when (parts.getOrNull(2)) {
+                    "primary" -> "Botão esquerdo do mouse"
+                    "secondary" -> "Botão direito do mouse"
+                    "tertiary" -> "Botão do meio do mouse"
+                    "back" -> "Botão voltar do mouse"
+                    "forward" -> "Botão avançar do mouse"
+                    else -> "Botão do mouse"
+                }
+                "wheel" -> "Roda do mouse " + when (parts.getOrNull(2)) {
+                    "up" -> "para cima"
+                    "down" -> "para baixo"
+                    "left" -> "para a esquerda"
+                    "right" -> "para a direita"
                     else -> "?"
                 }
-                "wheel" -> "Mouse Wheel " + pretty(parts.getOrElse(2) { "?" })
                 else -> sourceId
             }
             "axis" -> axisLabel(parts.getOrElse(1) { "?" }, parts.getOrNull(2))
@@ -75,57 +82,83 @@ object InputCatalog {
         }
     }
 
-    private val SPECIAL_KEYS = mapOf(
-        "THUMBL" to "Left Thumb",
-        "THUMBR" to "Right Thumb",
-        "PLAY_PAUSE" to "Play/Pause",
+    private val GAMEPAD_BUTTONS = mapOf(
+        "THUMBL" to "Clique do analógico esquerdo",
+        "THUMBR" to "Clique do analógico direito",
+        "START" to "Botão Start",
+        "SELECT" to "Botão Select",
+        "MODE" to "Botão Mode",
+    )
+
+    private val KEYS = mapOf(
+        "DPAD_UP" to "D-pad cima",
+        "DPAD_DOWN" to "D-pad baixo",
+        "DPAD_LEFT" to "D-pad esquerda",
+        "DPAD_RIGHT" to "D-pad direita",
+        "DPAD_CENTER" to "D-pad centro",
+        "VOLUME_UP" to "Volume +",
+        "VOLUME_DOWN" to "Volume −",
+        "VOLUME_MUTE" to "Mudo",
+        "MEDIA_PLAY_PAUSE" to "Play/pause",
+        "MEDIA_PLAY" to "Play",
+        "MEDIA_PAUSE" to "Pause",
+        "MEDIA_STOP" to "Parar mídia",
+        "MEDIA_NEXT" to "Próxima faixa",
+        "MEDIA_PREVIOUS" to "Faixa anterior",
+        "BACK" to "Tecla voltar",
+        "ENTER" to "Tecla Enter",
+        "SPACE" to "Tecla espaço",
+        "ESCAPE" to "Tecla Esc",
+        "MENU" to "Tecla menu",
+        "PAGE_UP" to "Page Up",
+        "PAGE_DOWN" to "Page Down",
     )
 
     private fun keyLabel(name: String): String {
-        if (name.all { it.isDigit() }) return "Key Code $name"
+        if (name.all { it.isDigit() }) return "Tecla código $name"
+        KEYS[name]?.let { return it }
         return when {
             name.startsWith("BUTTON_") -> {
                 val b = name.removePrefix("BUTTON_")
-                if (b.all { it.isDigit() }) "Button $b" else "Gamepad Button ${pretty(b)}"
+                when {
+                    b.all { it.isDigit() } -> "Botão $b"
+                    GAMEPAD_BUTTONS.containsKey(b) -> GAMEPAD_BUTTONS.getValue(b)
+                    else -> "Botão $b (gamepad)"
+                }
             }
-            name.startsWith("DPAD_") -> "D-pad ${pretty(name.removePrefix("DPAD_"))}"
-            name.startsWith("VOLUME_") -> "Volume ${pretty(name.removePrefix("VOLUME_"))}"
-            name.startsWith("MEDIA_") -> "Media ${pretty(name.removePrefix("MEDIA_"))}"
-            name == "BACK" -> "Back Key"
-            else -> "Keyboard ${pretty(name)}"
+            name.startsWith("MEDIA_") -> "Mídia ${pretty(name.removePrefix("MEDIA_"))}"
+            else -> "Tecla ${pretty(name)}"
         }
     }
 
     private fun axisLabel(name: String, direction: String?): String {
         val base = when (name) {
-            "X", "Y", "Z", "RX", "RY", "RZ" -> "Joystick Axis $name"
-            "HAT_X" -> "D-pad Hat X"
-            "HAT_Y" -> "D-pad Hat Y"
-            "LTRIGGER" -> "Analog Trigger L"
-            "RTRIGGER" -> "Analog Trigger R"
-            "GAS" -> "Analog Gas"
-            "BRAKE" -> "Analog Brake"
-            else -> if (name.all { it.isDigit() }) "Axis $name" else "Axis ${pretty(name)}"
+            "X", "Y", "Z", "RX", "RY", "RZ" -> "Eixo $name do joystick"
+            "HAT_X" -> "D-pad horizontal"
+            "HAT_Y" -> "D-pad vertical"
+            "LTRIGGER" -> "Gatilho analógico L"
+            "RTRIGGER" -> "Gatilho analógico R"
+            "GAS" -> "Acelerador analógico"
+            "BRAKE" -> "Freio analógico"
+            else -> "Eixo $name"
         }
         if (direction == null) return base
         val horizontal = name == "X" || name == "Z" || name == "RX" || name == "HAT_X"
         val vertical = name == "Y" || name == "RZ" || name == "RY" || name == "HAT_Y"
         val hint = when {
-            horizontal -> if (direction == "+") " (right)" else " (left)"
+            horizontal -> if (direction == "+") "direita" else "esquerda"
             // Android vertical axes are positive downwards.
-            vertical -> if (direction == "+") " (down)" else " (up)"
-            else -> ""
+            vertical -> if (direction == "+") "baixo" else "cima"
+            else -> if (direction == "+") "positivo" else "negativo"
         }
-        return "$base$direction$hint"
+        return "$base → $hint"
     }
 
-    private fun pretty(raw: String): String {
-        SPECIAL_KEYS[raw]?.let { return it }
-        return raw.split('_').filter { it.isNotEmpty() }.joinToString(" ") { word ->
+    private fun pretty(raw: String): String =
+        raw.split('_').filter { it.isNotEmpty() }.joinToString(" ") { word ->
             // Keep short codes such as "L1", "R2" or single letters; title-case real words.
             if (word.length == 1 || word.any { it.isDigit() }) word else word.lowercase(Locale.ROOT).replaceFirstChar { it.titlecase(Locale.ROOT) }
         }
-    }
 }
 
 /** A control on a virtual Quest Touch controller. */
@@ -163,11 +196,11 @@ object VirtualTargets {
             val p = hand.key
             add(VirtualTarget("$p.stick.x", hand, "stick", "Joystick X", TargetType.STICK_AXIS, axis = 0))
             add(VirtualTarget("$p.stick.y", hand, "stick", "Joystick Y", TargetType.STICK_AXIS, axis = 1))
-            add(VirtualTarget("$p.stick.up", hand, "stick", "Joystick Up", TargetType.STICK_DIRECTION, axis = 1, direction = 1))
-            add(VirtualTarget("$p.stick.down", hand, "stick", "Joystick Down", TargetType.STICK_DIRECTION, axis = 1, direction = -1))
-            add(VirtualTarget("$p.stick.left", hand, "stick", "Joystick Left", TargetType.STICK_DIRECTION, axis = 0, direction = -1))
-            add(VirtualTarget("$p.stick.right", hand, "stick", "Joystick Right", TargetType.STICK_DIRECTION, axis = 0, direction = 1))
-            add(VirtualTarget("$p.$STICK_CLICK", hand, STICK_CLICK, "Joystick Click", TargetType.BUTTON))
+            add(VirtualTarget("$p.stick.up", hand, "stick", "Joystick para cima", TargetType.STICK_DIRECTION, axis = 1, direction = 1))
+            add(VirtualTarget("$p.stick.down", hand, "stick", "Joystick para baixo", TargetType.STICK_DIRECTION, axis = 1, direction = -1))
+            add(VirtualTarget("$p.stick.left", hand, "stick", "Joystick para a esquerda", TargetType.STICK_DIRECTION, axis = 0, direction = -1))
+            add(VirtualTarget("$p.stick.right", hand, "stick", "Joystick para a direita", TargetType.STICK_DIRECTION, axis = 0, direction = 1))
+            add(VirtualTarget("$p.$STICK_CLICK", hand, STICK_CLICK, "Clique do joystick", TargetType.BUTTON))
             when (hand) {
                 Hand.LEFT -> {
                     add(VirtualTarget("left.x", hand, "x", "X", TargetType.BUTTON))
@@ -177,10 +210,10 @@ object VirtualTargets {
                 Hand.RIGHT -> {
                     add(VirtualTarget("right.a", hand, "a", "A", TargetType.BUTTON))
                     add(VirtualTarget("right.b", hand, "b", "B", TargetType.BUTTON))
-                    add(VirtualTarget("right.system", hand, "system", "System", TargetType.BUTTON))
+                    add(VirtualTarget("right.system", hand, "system", "Sistema", TargetType.BUTTON))
                 }
             }
-            add(VirtualTarget("$p.$TRIGGER", hand, TRIGGER, "Trigger", TargetType.ANALOG))
+            add(VirtualTarget("$p.$TRIGGER", hand, TRIGGER, "Gatilho", TargetType.ANALOG))
             add(VirtualTarget("$p.$GRIP", hand, GRIP, "Grip", TargetType.ANALOG))
         }
     }
@@ -195,10 +228,14 @@ object VirtualTargets {
         SourceKind.DIGITAL, SourceKind.ANALOG -> true
     }
 
-    /** Upper-case label used in event logs, e.g. "BUTTON A", "JOYSTICK CLICK". */
+    /** Label used in event logs, e.g. "botão A", "clique do joystick". */
     fun logLabel(control: String): String = when (control) {
-        STICK_CLICK -> "JOYSTICK CLICK"
-        "x", "y", "a", "b" -> "BUTTON ${control.uppercase(Locale.ROOT)}"
-        else -> control.uppercase(Locale.ROOT)
+        STICK_CLICK -> "clique do joystick"
+        "x", "y", "a", "b" -> "botão ${control.uppercase(Locale.ROOT)}"
+        TRIGGER -> "gatilho"
+        GRIP -> "grip"
+        "menu" -> "menu"
+        "system" -> "sistema"
+        else -> control
     }
 }

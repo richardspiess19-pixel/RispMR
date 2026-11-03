@@ -44,7 +44,8 @@
 | `android/.../bluetooth/` | Adaptador, pareados, classe Bluetooth, broadcasts ACL. |
 | `android/.../bridge/` | `CommandRouter` (puro, testado) e `WebBridge` (transporte WebView). |
 | `android/.../integration/` | `VrbqProtocol` (codificador puro, testado) e `UdpStreamer`. |
-| `android/.../demo/` | `DemoScript`: entradas **simuladas** do DEMO MODE. |
+| `android/.../demo/` | `DemoScript`: entradas **simuladas** do modo demonstração. |
+| `android/.../game/` | Modo jogo: `GameModeService` (acessibilidade), `GestureComposer` (dedos virtuais com `continueStroke`), `GameModeBus` (estado compartilhado com a tela do app). O planejamento dos toques (`engine/GameMode.kt`) é Kotlin puro e testado. |
 | `android/.../PermissionManager.kt` | Permissões por versão do Android. |
 | `config/` | Perfis iniciais e modelo de configurações (copiados para o APK). |
 | `integration/` | Pesquisa OpenXR, projetos de integração, protocolo VRBQ + decodificadores de referência. |
@@ -54,6 +55,23 @@
 > fluxo de eventos ao navegar. Os nomes `BluetoothManager.kt`/`ControllerMapper.kt`/... foram
 > mantidos quando não colidem com classes do Android (`BluetoothDeviceManager` evita conflito
 > com `android.bluetooth.BluetoothManager`).
+
+## Modo jogo
+
+```
+ VR Box ──► AccessibilityService.onKeyEvent / onMotionEvent (Android 14+)
+              │ só o controle escolhido; só teclas usadas no perfil são consumidas
+              ▼
+        InputProcessor → ControllerMapper → VirtualControllerManager   (mesmo motor)
+              ▼
+        TouchPlanner: botão → dedo segurado ou toque rápido; joystick → arrasto no círculo
+              ▼
+        GestureComposer → dispatchGesture (um gesto com todos os dedos; atualiza só quando muda)
+```
+
+Enquanto a tela do app está aberta, o serviço deixa tudo passar e o próprio app lê o controle.
+O serviço usa o perfil e as configurações que a tela publica no `GameModeBus`; com o app fechado,
+lê os arquivos salvos (somente leitura).
 
 ## Modelo de threads
 

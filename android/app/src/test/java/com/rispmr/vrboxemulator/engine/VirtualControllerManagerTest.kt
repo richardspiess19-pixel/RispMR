@@ -32,13 +32,13 @@ class VirtualControllerManagerTest {
         assertTrue(events.isEmpty())
         state.analog["axis:LTRIGGER"] = 0.6f
         m.onPhysicalState(state, 0)
-        assertEquals("LEFT TRIGGER PRESSED (0.60)", events.single().describe())
+        assertEquals("Esquerdo · gatilho pressionado (0,60)", events.single().describe())
         state.analog["axis:LTRIGGER"] = 0.4f // above 0.5 * 0.7: still pressed
         m.onPhysicalState(state, 0)
         assertEquals(1, events.size)
         state.analog["axis:LTRIGGER"] = 0.2f
         m.onPhysicalState(state, 0)
-        assertEquals("LEFT TRIGGER RELEASED", events.last().describe())
+        assertEquals("Esquerdo · gatilho solto", events.last().describe())
     }
 
     @Test
@@ -66,8 +66,8 @@ class VirtualControllerManagerTest {
         val snap = m.snapshot()
         assertFalse(snap.right.pressed("a"))
         assertEquals(0f, snap.right.grip, 0f)
-        assertTrue(events.any { it.describe() == "RIGHT BUTTON A RELEASED" })
-        assertTrue(events.any { it.describe() == "RIGHT GRIP RELEASED" })
+        assertTrue(events.any { it.describe() == "Direito · botão A solto" })
+        assertTrue(events.any { it.describe() == "Direito · grip solto" })
     }
 
     @Test

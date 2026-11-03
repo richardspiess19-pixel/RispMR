@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -8,7 +8,7 @@
       content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-src 'none'"
     />
     <meta name="theme-color" content="#05060a" />
-    <title>VR BOX TO META QUEST EMULATOR</title>
+    <title>VR Box → Quest</title>
     <link rel="icon" href="icons/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="styles/tokens.css" />
     <link rel="stylesheet" href="styles/base.css" />
@@ -18,19 +18,19 @@
   <body>
     <div class="shell">
       <header class="topbar">
-        <a class="topbar__brand" href="#/dashboard" aria-label="Dashboard">
+        <a class="topbar__brand" href="#/dashboard" aria-label="Início">
           <img class="topbar__mark" src="assets/logo.svg" alt="" />
-          <span class="topbar__name"><b>VR BOX</b><span>TO META QUEST EMULATOR</span></span>
+          <span class="topbar__name">VR Box <span>→ Quest</span></span>
         </a>
-        <div class="topbar__status" id="topChips" aria-label="Status"></div>
+        <div class="topbar__status" id="topChips" aria-label="Situação"></div>
       </header>
       <div id="banner" class="mode-banner" hidden></div>
-      <nav class="nav" id="nav" aria-label="Main"></nav>
+      <nav class="nav" id="nav" aria-label="Menu"></nav>
       <main id="view" class="view" tabindex="-1"></main>
     </div>
     <div id="toasts" class="toasts" aria-live="polite"></div>
     <div id="modal-root"></div>
-    <noscript>JavaScript is required.</noscript>
+    <noscript>Ative o JavaScript.</noscript>
     <script type="module" src="scripts/main.js"></script>
   </body>
 </html>

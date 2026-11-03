@@ -9,8 +9,8 @@ package com.rispmr.vrboxemulator.engine
 
 /** Which virtual Quest Touch controller a virtual target belongs to. */
 enum class Hand(val key: String, val label: String) {
-    LEFT("left", "LEFT"),
-    RIGHT("right", "RIGHT");
+    LEFT("left", "Esquerdo"),
+    RIGHT("right", "Direito");
 
     companion object {
         fun fromKey(key: String?): Hand? = entries.firstOrNull { it.key == key }

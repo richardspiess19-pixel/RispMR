@@ -33,6 +33,8 @@ const P = {
   external: '<path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5.5H4.5V5H10"/>',
   eye: '<path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z"/><circle cx="12" cy="12" r="3"/>',
   pause: '<path d="M8 5v14M16 5v14"/>',
+  target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',
+  phone: '<rect x="3" y="6.5" width="18" height="11" rx="2.5"/><path d="M18 10.5v3"/>',
   mouse: '<rect x="6.5" y="3" width="11" height="18" rx="5.5"/><path d="M12 7v3"/>',
 };
 

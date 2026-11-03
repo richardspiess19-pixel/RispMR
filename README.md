@@ -1,74 +1,62 @@
-# VR BOX TO META QUEST EMULATOR
+# VR Box → Quest
 
-Aplicativo **Android** que lê um controle Bluetooth **VR Box** e converte seus comandos em dois
-controles virtuais no estilo **Meta Quest Touch** (esquerdo e direito), com mapeamento
-personalizável, joysticks virtuais, gatilhos/grip analógicos, testador em tempo real, perfis e um
-protocolo de integração documentado para aplicações VR compatíveis.
+App Android que pega um controle Bluetooth **VR Box** (aquele controlinho que vem com os óculos
+VR de celular) e transforma os botões dele em dois controles no estilo **Meta Quest Touch** —
+esquerdo e direito, com joystick, gatilho, grip e botões A/B/X/Y.
 
-Interface em HTML5/CSS3/JavaScript/SVG dentro de uma WebView; lógica nativa em Kotlin.
+Com o **Modo jogo**, esses comandos viram toques na tela do jogo que estiver aberto no celular.
+Assim funciona em jogos de Cardboard (o botão do óculos toca no centro da tela) e em jogos com
+botões e joystick desenhados na tela.
 
-> **Importante — leia [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md).** Um app Android comum
-> **não consegue** registrar controles Quest Touch virtuais para todos os jogos: no OpenXR só o
-> runtime cria controles. O app entrega os controles virtuais por meio do protocolo **VRBQ**
-> (UDP) para apps que o implementem, e nunca afirma ter emulado um dispositivo no sistema.
+## Como usar
 
-## O que está implementado
+1. Pareie o VR Box no Bluetooth do celular.
+2. Abra o app e toque em **Conectar controle**.
+3. Em **Detectar botões**, aperte cada botão do controle e escolha o que ele faz.
+4. Em **Modo jogo**, ative o serviço de acessibilidade e marque onde cada botão toca na tela.
+5. Toque em **Iniciar emulação** e abra o jogo.
 
-| Recurso | Status |
-| --- | --- |
-| Detecção do VR Box (como o Android o apresenta: mouse / teclado / gamepad), VID/PID, eixos, desconexão e reconexão | Implementado |
-| Bluetooth: estado do adaptador, permissões por versão, dispositivos pareados, classe Bluetooth, link ACL | Implementado |
-| Leitura de teclas, botões de gamepad, D-pad, volume/mídia, botões e movimento do mouse (pointer capture), roda, eixos de joystick | Implementado |
-| Automatic Input Detection (evento, código, PRESSED/RELEASED, atribuição) | Implementado |
-| Controller Mapping (criar/alterar/remover, LEARN, testar ao vivo, salvar, restaurar padrão) | Implementado |
-| Dois controles virtuais independentes (joystick, click, X/Y/A/B, Menu/System, trigger e grip 0–1) | Implementado |
-| Joystick virtual: modos Relative Mouse e Virtual Stick, sensibilidade, deadzone, curva, suavização, retorno, inversão, limite por eixo | Implementado |
-| Virtual Controllers (SVG ao vivo) e Controller Tester (eventos, eixos, Hz, latência) | Implementado |
-| Perfis: criar, renomear, duplicar, excluir, exportar, importar, restaurar; 4 perfis iniciais | Implementado |
-| Saída VRBQ por UDP (JSON ou binário) + decodificadores de referência C e Python | Implementado |
-| DEMO MODE (entrada simulada, claramente identificada) | Implementado |
-| Camada OpenXR / telefone como gamepad Bluetooth | Não disponível ainda (projetos em `integration/`) |
-| Registrar controles Touch no runtime de outros apps, injeção global de entrada | Impossível sem privilégios (ver LIMITATIONS) |
+Detalhes da instalação, inclusive o aviso do Play Protect, em [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
-## Estrutura
+## O que o app faz
 
-```
-frontend/      Interface (index.html, styles/, scripts/, assets/, icons/)
-android/       Projeto Gradle (Kotlin): app/src/main/java/com/rispmr/vrboxemulator/
-config/        default-profile.json, controller-profiles.json
-integration/   OpenXRResearch/, RuntimeIntegration/, InputProtocol/ (spec, C, Python, fixtures)
-docs/          INSTALLATION, ARCHITECTURE, COMPATIBILITY, LIMITATIONS, TESTING
-tests/         Testes da interface (node:test, Playwright)
-```
+- Encontra o VR Box e mostra como o Android enxerga ele (mouse, teclado ou gamepad).
+- Detecta cada botão apertado e solto, o movimento do mouse e os eixos do joystick.
+- Liga qualquer botão do VR Box a qualquer comando dos dois controles virtuais.
+- Converte o movimento do mouse em joystick, com dois modos e ajuste de sensibilidade,
+  zona morta, curva, suavização, retorno ao centro, inversão e limite.
+- Mostra os controles virtuais em tempo real e tem uma tela de teste com taxa e atraso.
+- Guarda perfis (criar, renomear, duplicar, exportar, importar).
+- **Modo jogo**: toques na tela do jogo pelo serviço de acessibilidade.
+- Opcional: manda o estado dos controles pela rede (UDP) para outros programas.
+- Modo demonstração, para testar sem o controle.
 
-## Começo rápido
+## O que não dá para fazer
+
+Um app comum de celular **não consegue** registrar controles Quest de verdade para outros jogos:
+quem cria controles no OpenXR é o sistema do headset. Por isso o app usa toques na tela para
+falar com os jogos do celular. Explicação completa em [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+
+## Compilar
 
 ```bash
-cd android && ./gradlew assembleDebug     # APK: android/app/build/outputs/apk/debug/app-debug.apk
-./gradlew testDebugUnitTest               # testes Kotlin
-cd .. && npm test                         # testes JS
+cd android
+./gradlew assembleDebug        # APK em android/app/build/outputs/apk/debug/app-debug.apk
+./gradlew testDebugUnitTest    # testes
+cd .. && npm test              # testes da interface
 ```
 
-Detalhes: [INSTALLATION](docs/INSTALLATION.md) · [ARCHITECTURE](docs/ARCHITECTURE.md) ·
-[COMPATIBILITY](docs/COMPATIBILITY.md) · [TESTING](docs/TESTING.md) ·
-[Protocolo VRBQ](integration/InputProtocol/PROTOCOL.md)
+## Pastas
 
-## Etapas
+```
+frontend/      interface (HTML, CSS, JavaScript)
+android/       app Android em Kotlin
+config/        perfis que vêm com o app
+integration/   protocolo de rede VRBQ, exemplos em C e Python, pesquisa sobre OpenXR
+docs/          instalação, arquitetura, compatibilidade, limitações, testes
+tests/         testes da interface
+```
 
-| Etapa | Situação |
-| --- | --- |
-| 1 Interface | Concluída |
-| 2 App Android (WebView + ponte JS) | Concluída |
-| 3 Bluetooth / leitura de comandos | Concluída (validar com hardware real: roteiro em TESTING) |
-| 4 Mapeamento | Concluída |
-| 5 Joystick | Concluída |
-| 6 Controles virtuais | Concluída |
-| 7 Integração VR | Protocolo VRBQ concluído; OpenXR documentado como não disponível |
-| 8 Testes | Automatizados concluídos; testes com VR Box real pendentes |
-| 9 APK | Debug e release (assinatura via `keystore.properties`) |
-
-## Identidade visual
-
-O logo (`frontend/assets/logo.svg`, ícone Android em `res/drawable/ic_launcher_foreground.xml`)
-foi criado para o projeto. Para usar outro logo, substitua esses arquivos mantendo os nomes.
-Fonte Chakra Petch (SIL OFL 1.1, `frontend/assets/fonts/OFL.txt`).
+O logo fica em `frontend/assets/logo.svg` e o ícone em
+`android/app/src/main/res/drawable/ic_launcher_foreground.xml`; para usar outro, é só trocar os
+arquivos. Fonte do logo: Chakra Petch (licença SIL OFL 1.1).

@@ -29,6 +29,8 @@ data class AppSettings(
     val keepScreenOn: Boolean = true,
     val udp: UdpSettings = UdpSettings(),
     val lastDeviceKey: String? = null,
+    /** Modo jogo: touches performed in the game by the accessibility service. */
+    val game: GameModeConfig = GameModeConfig.cardboard(),
 )
 
 class SettingsException(message: String) : Exception(message)
@@ -47,6 +49,7 @@ object AppSettingsCodec {
         put("logSize", s.logSize)
         put("keepScreenOn", s.keepScreenOn)
         put("lastDeviceKey", s.lastDeviceKey ?: JSONObject.NULL)
+        put("game", GameModeCodec.encode(s.game))
         put(
             "udp",
             JSONObject()
@@ -85,29 +88,32 @@ object AppSettingsCodec {
         )
         if (patch.has("logSize")) {
             val v = patch.optInt("logSize", -1)
-            if (v in 50..1000) s = s.copy(logSize = v) else if (strict) throw SettingsException("Log size must be between 50 and 1000")
+            if (v in 50..1000) s = s.copy(logSize = v) else if (strict) throw SettingsException("O histórico deve ter entre 50 e 1000 eventos")
         }
         if (patch.has("lastDeviceKey")) {
             s = s.copy(lastDeviceKey = if (patch.isNull("lastDeviceKey")) null else patch.optString("lastDeviceKey").take(300))
+        }
+        patch.optJSONObject("game")?.let { g ->
+            s = s.copy(game = GameModeCodec.decode(g, s.game))
         }
         patch.optJSONObject("udp")?.let { u ->
             var udp = s.udp
             if (u.has("enabled")) udp = udp.copy(enabled = u.optBoolean("enabled", udp.enabled))
             if (u.has("host")) {
                 val h = u.optString("host").trim()
-                if (HOST.matches(h)) udp = udp.copy(host = h) else if (strict) throw SettingsException("Invalid host")
+                if (HOST.matches(h)) udp = udp.copy(host = h) else if (strict) throw SettingsException("Endereço inválido")
             }
             if (u.has("port")) {
                 val p = u.optInt("port", -1)
-                if (p in 1..65535) udp = udp.copy(port = p) else if (strict) throw SettingsException("Port must be between 1 and 65535")
+                if (p in 1..65535) udp = udp.copy(port = p) else if (strict) throw SettingsException("A porta deve estar entre 1 e 65535")
             }
             if (u.has("rateHz")) {
                 val r = u.optInt("rateHz", -1)
-                if (r in 10..250) udp = udp.copy(rateHz = r) else if (strict) throw SettingsException("Rate must be between 10 and 250 Hz")
+                if (r in 10..250) udp = udp.copy(rateHz = r) else if (strict) throw SettingsException("A taxa deve estar entre 10 e 250 Hz")
             }
             if (u.has("format")) {
                 val f = u.optString("format")
-                if (f == "json" || f == "binary") udp = udp.copy(format = f) else if (strict) throw SettingsException("Format must be json or binary")
+                if (f == "json" || f == "binary") udp = udp.copy(format = f) else if (strict) throw SettingsException("O formato deve ser json ou binary")
             }
             s = s.copy(udp = udp)
         }

@@ -23,7 +23,7 @@ class ProfileRepositoryTest {
     fun firstLaunchSeedsTheFourInitialProfiles() {
         val storage = MemoryStorage()
         val r = repo(storage)
-        assertEquals(listOf("Default VR Box", "Quest Touch Left", "Quest Touch Right", "Custom Profile"), r.all.map { it.name })
+        assertEquals(listOf("VR Box padrão", "Quest Touch esquerdo", "Quest Touch direito", "Perfil personalizado"), r.all.map { it.name })
         assertEquals("default-vr-box", r.active().id)
         assertTrue("seed is persisted", storage.writes > 0)
         assertTrue(r.all.all { it.builtin })
@@ -51,7 +51,7 @@ class ProfileRepositoryTest {
         val renamed = r.rename(p.id, "Racing V2")
         assertEquals("Racing V2", renamed.name)
         val copy = r.duplicate(p.id)
-        assertEquals("Racing V2 Copy", copy.name)
+        assertEquals("Racing V2 (cópia)", copy.name)
         assertNotEquals(p.id, copy.id)
         assertEquals("unique names keep the typed casing", "racing v2 (2)", r.create("racing v2").name)
         r.delete(copy.id)
@@ -66,7 +66,7 @@ class ProfileRepositoryTest {
             r.delete(r.all.single().id)
             fail("expected ProfileException")
         } catch (e: ProfileException) {
-            assertEquals("At least one profile must exist", e.message)
+            assertEquals("Precisa existir pelo menos um perfil", e.message)
         }
     }
 
@@ -88,7 +88,7 @@ class ProfileRepositoryTest {
         val original = r.get("quest-touch-right")!!
         assertEquals(original.mappings, imported.profile.mappings)
         assertEquals(original.right, imported.profile.right)
-        assertEquals("Quest Touch Right (2)", imported.profile.name)
+        assertEquals("Quest Touch direito (2)", imported.profile.name)
         assertFalse(imported.profile.builtin)
     }
 
@@ -131,7 +131,7 @@ class ProfileRepositoryTest {
         val custom = r.create("Mine")
         r.update(r.get("quest-touch-left")!!.copy(name = "Changed"))
         r.restoreDefaults()
-        assertEquals("Quest Touch Left", r.get("quest-touch-left")!!.name)
+        assertEquals("Quest Touch esquerdo", r.get("quest-touch-left")!!.name)
         assertNotNull("custom profiles are kept", r.get(custom.id))
     }
 
