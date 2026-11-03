@@ -13,15 +13,14 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import android.util.Log
-import com.rispmr.vrboxemulator.engine.ControllerSnapshot
-import com.rispmr.vrboxemulator.engine.VirtualGamepad
+import org.json.JSONObject
 import rikka.shizuku.Shizuku
 
 /**
- * Owns the virtual gamepad: talks to Shizuku, starts [UhidUserService] in the Shizuku process
- * and forwards input reports to it.
+ * App side of the virtual gamepad: talks to Shizuku and to [ShizukuUserService], which runs in
+ * the Shizuku process, reads the VR Box while a game is open and drives the virtual gamepad.
  *
- * Main thread only. The accessibility service and the activity share this object (same process).
+ * Main thread only.
  */
 object VirtualGamepadManager {
 
@@ -53,39 +52,48 @@ object VirtualGamepadManager {
 
     data class Status(val state: State, val message: String = "", val uid: Int? = null)
 
+    /** What the service reports about the VR Box (see IVirtualGamepad.status). */
+    data class Remote(val reading: Boolean, val grabbed: Boolean, val nodes: Int, val events: Long, val error: String)
+
     const val SHIZUKU_PACKAGE = "moe.shizuku.privileged.api"
     private const val TAG = "VRBQ-gamepad"
     private const val PERMISSION_REQUEST = 7317
 
     private val main = Handler(Looper.getMainLooper())
+
     // Application context only: lives as long as the process, so it cannot leak an activity.
     @SuppressLint("StaticFieldLeak")
     private lateinit var app: Context
     private val listeners = LinkedHashSet<() -> Unit>()
 
-    /** True while emulation wants the controller to exist. */
+    /** Called when the service was already running from an earlier session (the app was closed). */
+    var onFoundRunning: (() -> Unit)? = null
+
     private var wanted = false
+    private var config: String? = null
+    private var reading = false
     private var service: IVirtualGamepad? = null
     private var binding = false
     private var created = false
     private var error: String? = null
     private var serviceUid: Int? = null
-    private var lastReport: ByteArray? = null
+    private var peeked = false
 
-    private val args by lazy {
+    private val args: Shizuku.UserServiceArgs by lazy {
         val info = app.applicationInfo
         val version = runCatching {
             @Suppress("DEPRECATION")
             app.packageManager.getPackageInfo(app.packageName, 0).versionCode
         }.getOrDefault(1)
-        Shizuku.UserServiceArgs(ComponentName(app.packageName, UhidUserService::class.java.name))
-            .daemon(false)
+        Shizuku.UserServiceArgs(ComponentName(app.packageName, ShizukuUserService::class.java.name))
+            .daemon(true) // keeps the game's controller when Android closes this app
+            .tag("vrbq-gamepad")
             .processNameSuffix("gamepad")
             .debuggable(info.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0)
             .version(version)
     }
 
-    private val connection = object : ServiceConnection {
+    private val connection: ServiceConnection = object : ServiceConnection {
         override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
             binding = false
             if (binder == null || !binder.pingBinder()) {
@@ -93,9 +101,21 @@ object VirtualGamepadManager {
                 changed()
                 return
             }
-            service = IVirtualGamepad.Stub.asInterface(binder)
-            serviceUid = runCatching { service?.uid() }.getOrNull()
-            if (wanted) createDevice()
+            val s = IVirtualGamepad.Stub.asInterface(binder)
+            service = s
+            serviceUid = runCatching { s.uid() }.getOrNull()
+            if (wanted) {
+                startRemote()
+            } else if (runCatching { JSONObject(s.status()).optBoolean("active") }.getOrDefault(false)) {
+                // Still running from before (the app was closed during a game): adopt it.
+                wanted = true
+                created = true
+                onFoundRunning?.invoke()
+            } else {
+                // An idle service left behind: end it.
+                runCatching { Shizuku.unbindUserService(args, connection, true) }
+                service = null
+            }
             changed()
         }
 
@@ -107,21 +127,22 @@ object VirtualGamepadManager {
         }
     }
 
-    private val binderReceived = Shizuku.OnBinderReceivedListener {
-        if (wanted) connect()
+    private val binderReceived: Shizuku.OnBinderReceivedListener = Shizuku.OnBinderReceivedListener {
+        if (wanted) connect() else peek()
         changed()
     }
 
-    private val binderDead = Shizuku.OnBinderDeadListener {
+    private val binderDead: Shizuku.OnBinderDeadListener = Shizuku.OnBinderDeadListener {
         service = null
         binding = false
         created = false
+        peeked = false
         changed()
     }
 
-    private val permissionResult = Shizuku.OnRequestPermissionResultListener { code, _ ->
+    private val permissionResult: Shizuku.OnRequestPermissionResultListener = Shizuku.OnRequestPermissionResultListener { code, _ ->
         if (code == PERMISSION_REQUEST) {
-            if (wanted) connect()
+            if (wanted) connect() else peek()
             changed()
         }
     }
@@ -160,6 +181,15 @@ object VirtualGamepadManager {
         }
     }
 
+    /** What the service sees of the VR Box right now, or null when it is not running. */
+    fun remote(): Remote? {
+        val s = service ?: return null
+        return runCatching {
+            val o = JSONObject(s.status())
+            Remote(o.optBoolean("reading"), o.optBoolean("grabbed"), o.optJSONArray("nodes")?.length() ?: 0, o.optLong("events"), o.optString("error"))
+        }.getOrNull()
+    }
+
     /** Asks Shizuku for permission (shows Shizuku's dialog). Returns false when Shizuku is not running. */
     fun requestPermission(): Boolean {
         if (!runCatching { Shizuku.pingBinder() }.getOrDefault(false)) return false
@@ -182,20 +212,34 @@ object VirtualGamepadManager {
         }
     }
 
-    /** Emulation started: create the virtual controller as soon as Shizuku allows it. */
-    fun start() {
+    /** Emulation started: create the virtual controller with this configuration (BackgroundConfigCodec). */
+    fun start(config: String, reading: Boolean) {
         wanted = true
         error = null
-        connect()
+        this.config = config
+        this.reading = reading
+        if (service != null) startRemote() else connect()
         changed()
     }
 
-    /** Emulation stopped: remove the virtual controller (games see it disconnect). */
+    /** New profile or controller while running. */
+    fun configure(config: String) {
+        this.config = config
+        if (created) runCatching { service?.configure(config) }
+    }
+
+    /** true while the app is in the background (the service reads the VR Box for the game). */
+    fun setReading(on: Boolean) {
+        reading = on
+        if (created) runCatching { service?.setReading(on) }
+    }
+
+    /** Emulation stopped: remove the virtual controller and end the service. */
     fun stop() {
         wanted = false
         error = null
-        lastReport = null
-        if (created) runCatching { service?.close() }
+        config = null
+        if (created) runCatching { service?.stop() }
         created = false
         if (service != null || binding) {
             runCatching { Shizuku.unbindUserService(args, connection, true) }
@@ -207,32 +251,30 @@ object VirtualGamepadManager {
 
     val isActive: Boolean get() = created
 
-    /** Sends the state of the two virtual Quest controllers as a gamepad report (only when it changed). */
-    fun send(snapshot: ControllerSnapshot, analogThreshold: Float) = sendReport(VirtualGamepad.report(snapshot, analogThreshold))
-
-    /** Releases everything on the virtual controller. */
-    fun sendIdle() = sendReport(VirtualGamepad.idleReport())
-
-    private fun sendReport(report: ByteArray) {
+    private fun startRemote() {
         val s = service ?: return
-        if (!created) return
-        if (lastReport?.contentEquals(report) == true) return
-        lastReport = report
-        try {
-            s.send(report)
+        val c = config ?: return
+        val message = try {
+            s.start(c)
         } catch (e: Exception) {
-            Log.w(TAG, "send failed", e)
+            "O serviço do controle parou: ${e.message}"
+        }
+        if (message.isNullOrEmpty()) {
+            created = true
+            error = null
+            runCatching { s.setReading(reading) }
+        } else {
+            created = false
+            error = message
         }
     }
 
     private fun connect() {
         if (service != null) {
-            if (!created) createDevice()
+            if (!created) startRemote()
             return
         }
-        if (binding) return
-        if (!runCatching { Shizuku.pingBinder() }.getOrDefault(false) || !hasPermission()) return
-        if (runCatching { Shizuku.isPreV11() }.getOrDefault(true)) return
+        if (binding || !ready()) return
         binding = true
         try {
             Shizuku.bindUserService(args, connection)
@@ -242,23 +284,15 @@ object VirtualGamepadManager {
         }
     }
 
-    private fun createDevice() {
-        val s = service ?: return
-        val message = try {
-            s.create(VirtualGamepad.NAME, VirtualGamepad.VENDOR_ID, VirtualGamepad.PRODUCT_ID, VirtualGamepad.DESCRIPTOR)
-        } catch (e: Exception) {
-            "O serviço do controle parou: ${e.message}"
-        }
-        if (message.isNullOrEmpty()) {
-            created = true
-            error = null
-            lastReport = null
-            sendIdle()
-        } else {
-            created = false
-            error = message
-        }
+    /** Connects to a service left running by an earlier session, without starting a new one. */
+    private fun peek() {
+        if (peeked || service != null || binding || !ready()) return
+        peeked = true
+        runCatching { Shizuku.peekUserService(args, connection) }.onFailure { Log.i(TAG, "peek failed", it) }
     }
+
+    private fun ready(): Boolean =
+        runCatching { Shizuku.pingBinder() }.getOrDefault(false) && hasPermission() && !runCatching { Shizuku.isPreV11() }.getOrDefault(true)
 
     private fun hasPermission(): Boolean =
         runCatching { Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED }.getOrDefault(false)

@@ -63,23 +63,61 @@ export function modeOf(sourceId, previous = null) {
   return previous;
 }
 
+/**
+ * Keys a joystick sends per direction in the usual VR Box modes, keyed by what "right" sends.
+ * Used when a direction was skipped, so the stick always moves to every side.
+ */
+const KEY_DIRECTIONS = {
+  'key:MEDIA_NEXT': { left: 'key:MEDIA_PREVIOUS', up: 'key:VOLUME_UP', down: 'key:VOLUME_DOWN' },
+  'key:MEDIA_FAST_FORWARD': { left: 'key:MEDIA_REWIND', up: 'key:VOLUME_UP', down: 'key:VOLUME_DOWN' },
+  'key:D': { left: 'key:A', up: 'key:W', down: 'key:S' },
+  'key:PAGE_DOWN': { left: 'key:PAGE_UP' },
+};
+
+/** Source of each joystick direction for a joystick that sends keys (exported for tests). */
+export function keyDirections(learned) {
+  const right = learned.joystick?.source;
+  const guess = KEY_DIRECTIONS[right] || {};
+  const dirs = { right };
+  for (const s of DIRECTION_STEPS) dirs[s.direction] = learned[s.id]?.source || guess[s.direction] || null;
+  return dirs;
+}
+
 /** Turns what was learned into mapping rules (exported for tests). */
 export function buildMappings(learned, functions) {
   const rules = [];
   const stick = learned.joystick;
   const hand = functions.joystick;
+  const used = new Set(BASE_STEPS.filter((st) => st.id !== 'joystick' && functions[st.id]).map((st) => learned[st.id]?.source).filter(Boolean));
+  const add = (source, target) => {
+    if (!used.has(source) && !rules.some((r) => r.source === source)) rules.push({ source, target });
+  };
+  // Arrows (D-pad) and the hat are how many controllers send the same stick in other modes:
+  // mapping them too means the stick still moves to every side after a mode change.
+  const dpad = () => {
+    for (const d of ['UP', 'DOWN', 'LEFT', 'RIGHT']) add(`key:DPAD_${d}`, `${hand}.stick.${d.toLowerCase()}`);
+  };
+  const axes = (axis) => {
+    const [x, y] = PAIRS[axis] || [axis];
+    add(`axis:${x}`, `${hand}.stick.x`);
+    if (y) add(`axis:${y}`, `${hand}.stick.y`);
+  };
   if (stick && hand) {
     if (stick.kind === 'mouse') {
-      rules.push({ source: 'mouse:x', target: `${hand}.stick.x` }, { source: 'mouse:y', target: `${hand}.stick.y` });
+      add('mouse:x', `${hand}.stick.x`);
+      add('mouse:y', `${hand}.stick.y`);
+      dpad();
     } else if (stick.kind === 'axis') {
-      const [x, y] = PAIRS[stick.axis] || [stick.axis];
-      rules.push({ source: `axis:${x}`, target: `${hand}.stick.x` });
-      if (y) rules.push({ source: `axis:${y}`, target: `${hand}.stick.y` });
+      axes(stick.axis);
+      if (stick.axis !== 'HAT_X' && stick.axis !== 'HAT_Y') axes('HAT_X');
+      dpad();
     } else if (stick.kind === 'dpad') {
-      for (const d of ['UP', 'DOWN', 'LEFT', 'RIGHT']) rules.push({ source: `key:DPAD_${d}`, target: `${hand}.stick.${d.toLowerCase()}` });
+      dpad();
+      axes('HAT_X');
     } else {
-      rules.push({ source: stick.source, target: `${hand}.stick.right` });
-      for (const s of DIRECTION_STEPS) if (learned[s.id]) rules.push({ source: learned[s.id].source, target: `${hand}.stick.${s.direction}` });
+      const dirs = keyDirections(learned);
+      for (const [dir, source] of Object.entries(dirs)) if (source) add(source, `${hand}.stick.${dir}`);
+      dpad();
     }
   }
   for (const step of BASE_STEPS) {
@@ -93,8 +131,22 @@ export function buildMappings(learned, functions) {
   return rules;
 }
 
+const STICK_PRIORITY = { axis: 0, mouse: 1, dpad: 2, key: 3 };
+
+/**
+ * The joystick can send several signals at once (an axis and an arrow key, for example). Analog
+ * axes win: they give every direction and every angle (exported for tests).
+ */
+export function pickStick(detections) {
+  let best = null;
+  for (const d of detections) {
+    if (!best || STICK_PRIORITY[stickFrom(d).kind] < STICK_PRIORITY[stickFrom(best).kind]) best = d;
+  }
+  return best;
+}
+
 /** Classifies a joystick detection. */
-function stickFrom(d) {
+export function stickFrom(d) {
   if (d.sourceId.startsWith('mouse:')) return { kind: 'mouse', source: d.sourceId, label: 'Movimento do mouse' };
   const analog = (d.alternatives || []).find((a) => a.kind === 'analog');
   if (analog || d.sourceId.startsWith('axis:')) {
@@ -152,6 +204,8 @@ export default {
     let functions = { ...DEFAULTS };
     let advanceTimer = null;
     let idleTimer = null;
+    let joyTimer = null;
+    let joySeen = [];
     let mode = null;
     let signalTimer = null;
     let round = 0; // how many modes were configured in this visit
@@ -278,6 +332,15 @@ export default {
       signalTimer = setTimeout(() => signalDot.classList.remove('is-ok'), 900);
     };
 
+    const learnStick = (d) => {
+      const stick = stickFrom(d);
+      accept('joystick', stick, stick.kind === 'axis' || stick.kind === 'dpad' || stick.kind === 'mouse' ? `${stick.label} — todas as direções` : stick.label);
+      // One key per direction: learn the other three directions too.
+      steps = stick.kind === 'key' ? [BASE_STEPS[0], ...DIRECTION_STEPS, ...BASE_STEPS.slice(1)] : [...BASE_STEPS];
+      note.classList.remove('hidden');
+      render(note, icon('info'), h('div', {}, MODE_TEXT[modeOf(d.sourceId, mode)] || ''));
+    };
+
     const onDetected = (d) => {
       showMode(modeOf(d.sourceId, mode));
       if (d.state === 'MOVED') pulseSignal(d.label);
@@ -285,14 +348,20 @@ export default {
       const step = steps[index];
       if (step.id === 'joystick') {
         if (d.state === 'RELEASED') return;
-        const stick = stickFrom(d);
-        accept('joystick', stick, stick.label);
-        // One key per direction: learn the other three directions too.
-        steps = stick.kind === 'key' ? [BASE_STEPS[0], ...DIRECTION_STEPS, ...BASE_STEPS.slice(1)] : [...BASE_STEPS];
-        note.classList.remove('hidden');
-        render(note, icon('info'), h('div', {}, MODE_TEXT[modeOf(d.sourceId, mode)] || ''));
+        // Listen a little longer: an analog axis may come right after an arrow key.
+        joySeen.push(d);
+        if (joyTimer) return;
+        setText(stepStatus, 'Lendo o joystick…');
+        stepStatus.className = 'setup__status';
+        joyTimer = setTimeout(() => {
+          joyTimer = null;
+          const best = pickStick(joySeen);
+          joySeen = [];
+          if (best && !finished && steps[index]?.id === 'joystick') learnStick(best);
+        }, 500);
         return;
       }
+
       if (d.state !== 'PRESSED' && !(step.direction && d.state === 'MOVED')) return;
       if (step.direction) {
         const used = [learned.joystick?.source, ...DIRECTION_STEPS.filter((s) => s.id !== step.id).map((s) => learned[s.id]?.source)];
@@ -360,6 +429,9 @@ export default {
       learned = {};
       functions = { ...DEFAULTS };
       mode = null;
+      clearTimeout(joyTimer);
+      joyTimer = null;
+      joySeen = [];
       modeChip.classList.add('hidden');
       note.classList.add('hidden');
       go(0);
@@ -411,6 +483,7 @@ export default {
         clearTimeout(advanceTimer);
         clearTimeout(idleTimer);
         clearTimeout(signalTimer);
+        clearTimeout(joyTimer);
         ctx.keepDetection = false;
         ctx.bridge.call('detect.stop').catch(() => {});
       },

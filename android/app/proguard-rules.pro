@@ -4,4 +4,4 @@
 }
 
 # The virtual gamepad service is started by name inside the Shizuku process.
--keep class com.rispmr.vrboxemulator.gamepad.UhidUserService { *; }
+-keep class com.rispmr.vrboxemulator.gamepad.ShizukuUserService { *; }

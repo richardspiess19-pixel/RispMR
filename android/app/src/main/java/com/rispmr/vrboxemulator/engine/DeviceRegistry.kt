@@ -132,7 +132,9 @@ data class DeviceGroup(val key: String, val name: String, val vendorId: Int, val
     }
 
     companion object {
-        fun keyOf(d: InputDeviceInfo) = "${d.name}#%04x:%04x".format(Locale.ROOT, d.vendorId, d.productId)
+        fun keyOf(d: InputDeviceInfo) = keyOf(d.name, d.vendorId, d.productId)
+
+        fun keyOf(name: String, vendorId: Int, productId: Int) = "$name#%04x:%04x".format(Locale.ROOT, vendorId, productId)
     }
 }
 

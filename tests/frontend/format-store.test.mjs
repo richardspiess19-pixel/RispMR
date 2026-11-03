@@ -28,11 +28,8 @@ test('indicators never claim features that are not active', () => {
   assert.equal(f.handIndicator({ left: { configured: false, mappings: 0 } }, 'left').value, 'Não configurado');
   assert.equal(f.handIndicator({ right: { configured: true, mappings: 1 } }, 'right').hint, '1 botão');
   // Modo jogo is only "Pronto" when the service is on and there is somewhere to touch.
-  assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: false, bindings: 2 } }).value, 'Falta ativar');
-  assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: true, bindings: 0 } }).value, 'Sem toques');
-  assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: true, bindings: 2 }, emulation: { running: true } }).value, 'Pronto');
   assert.equal(f.gameIndicator({ game: { enabled: false } }).value, 'Desligado');
-  const pad = (state) => f.gameIndicator({ game: { enabled: true, serviceEnabled: true, output: 'gamepad', bindings: 0, gamepad: { state } } });
+  const pad = (state, reader = null) => f.gameIndicator({ game: { enabled: true, output: 'gamepad', gamepad: { state }, reader } });
   assert.equal(pad('active').value, 'Controle virtual');
   assert.equal(pad('active').tone, 'ok');
   assert.equal(pad('ready').value, 'Pronto');
@@ -40,6 +37,8 @@ test('indicators never claim features that are not active', () => {
   assert.equal(pad('not_running').value, 'Shizuku parado');
   assert.equal(pad('no_permission').value, 'Falta permitir');
   assert.equal(pad('error').tone, 'err');
+  assert.equal(pad('active', { reading: true, nodes: 1 }).hint, 'Lendo o VR Box no jogo');
+  assert.equal(pad('active', { reading: true, nodes: 0 }).tone, 'warn');
 });
 
 test('compatibility mirrors the native rule', () => {

@@ -4,7 +4,7 @@
 
 | Comando | Cobre |
 | --- | --- |
-| `cd android && ./gradlew testDebugUnitTest` | 84 testes JVM/Robolectric: Modo jogo (planejador de toques, compositor de gestos com serviço falso), mapeamento, conversão de eixos, joystick virtual (2 modos, deadzone, curva, suavização, retorno, inversão, limite), estados dos botões e gatilhos, processador de entrada (detecção, hysteresis, pulsos, soltura geral), perfis (CRUD, importação/exportação, arquivo corrompido, restauração), configuração padrão (`config/*.json`), registro de dispositivos (agrupamento, desconexão/reconexão), leitura HID (`KeyEvent`/`MotionEvent` → eventos), ponte Kotlin (`CommandRouter`), protocolo VRBQ (fixtures) e `UdpStreamer` com socket UDP real. |
+| `cd android && ./gradlew testDebugUnitTest` | 93 testes JVM/Robolectric: controle virtual (descritor HID, relatório, mensagens uhid), leitura evdev (teclas, eixos, mouse, `getevent -p`), motor de fundo, mapeamento, conversão de eixos, joystick virtual (2 modos, deadzone, curva, suavização, retorno, inversão, limite), estados dos botões e gatilhos, processador de entrada (detecção, hysteresis, pulsos, soltura geral), perfis (CRUD, importação/exportação, arquivo corrompido, restauração), configuração padrão (`config/*.json`), registro de dispositivos (agrupamento, desconexão/reconexão), leitura HID (`KeyEvent`/`MotionEvent` → eventos), ponte Kotlin (`CommandRouter`), protocolo VRBQ (fixtures) e `UdpStreamer` com socket UDP real. |
 | `node --test tests/frontend/*.test.mjs` | Lado JS da ponte (ids, erros, timeout, pushes, fallback), formatação/indicadores, store. |
 | `node tests/frontend/ui-smoke.mjs` | Playwright: as 10 telas em celular, tablet e navegador; falha em erro de console ou rolagem horizontal; testa Iniciar emulação, detecção, seletor de função e arrastar um toque no Modo jogo. |
 | `python3 -m unittest discover -s integration/InputProtocol/receiver` | Receptor Python lendo as fixtures binária e JSON. |
@@ -38,6 +38,7 @@ Não executado neste ambiente (sem hardware). Registre os resultados por modelo/
 9. **Saída** — `python3 integration/InputProtocol/receiver/vrbq_receiver.py` no PC, host = IP do
    PC, START EMULATION: estados aparecem no terminal.
 10. **Foco** — trocar de app com botão pressionado: estados voltam a solto.
-11. **Modo jogo** — ativar a acessibilidade, modelo "Cardboard", Iniciar emulação, abrir um jogo
-    de Cardboard: o gatilho do VR Box (modo gamepad) dispara o clique no centro. Ligar
-    "Mostrar toques" nas Opções do desenvolvedor ajuda a ver onde o app toca.
+11. **Modo jogo** — Shizuku ligado e permitido, Iniciar emulação, abrir um app de teste de
+    controle (ou um jogo com suporte a controle): aparece "VR Box -> Quest (controle virtual)" e o
+    joystick do VR Box move o analógico esquerdo em todas as direções. Na tela Jogo, "Lendo o VR
+    Box no jogo" mostra o número de sinais recebidos.

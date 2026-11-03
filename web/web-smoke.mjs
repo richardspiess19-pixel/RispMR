@@ -65,7 +65,7 @@ await page.getByRole('button', { name: 'Configurar meu VR Box' }).click();
 await page.waitForTimeout(300);
 await shot(page, 'web-setup');
 await tap(page, [], [1, 0, 0, 0]); // joystick right
-await page.waitForTimeout(800);
+await page.waitForTimeout(1400); // the joystick is listened to a little longer
 for (const b of [7, 6, 0, 1, 2, 3]) {
   // gatilho de cima = R2, gatilho de baixo = L2, then A, B, C (X), D (Y)
   await tap(page, [b]);
@@ -111,7 +111,9 @@ await page.waitForSelector('#view > *');
 const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('vrbq.profiles') || 'null'));
 const mine = saved?.profiles?.find((p) => p.name === 'Meu VR Box');
 if (!mine || saved.activeProfileId !== mine.id) errors.push('"Meu VR Box" was not saved as the active profile');
-if (mine && mine.mappings.length !== 9) errors.push(`"Meu VR Box" has ${mine?.mappings.length} mappings`);
+if (mine && mine.mappings.length < 9) errors.push(`"Meu VR Box" has ${mine?.mappings.length} mappings`);
+// The joystick must move to every side: both axes are mapped.
+for (const t of ['left.stick.x', 'left.stick.y']) if (mine && !mine.mappings.some((m) => m.target === t)) errors.push(`joystick has no ${t}`);
 await page.close();
 
 // ---------------------------------------------------------------- mouse/keyboard mode

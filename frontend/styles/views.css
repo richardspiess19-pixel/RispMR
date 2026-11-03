@@ -268,88 +268,6 @@
 
 .profile-item__actions { margin-top: 10px; }
 
-/* ------------------------------------------------------------------ modo jogo */
-
-.game-screen {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 16 / 9;
-  border-radius: 18px;
-  background:
-    linear-gradient(90deg, transparent 49.8%, rgba(138, 144, 166, 0.12) 50%, transparent 50.2%),
-    radial-gradient(circle at 50% 50%, #1b2234, #0d1019 70%);
-  border: 6px solid #232838;
-  overflow: hidden;
-  touch-action: none;
-  user-select: none;
-}
-
-.game-screen__hint {
-  position: absolute;
-  left: 10px;
-  bottom: 8px;
-  font-size: 12px;
-  color: var(--muted);
-  pointer-events: none;
-}
-
-.game-marker {
-  position: absolute;
-  display: grid;
-  place-items: center;
-  min-width: 40px;
-  height: 40px;
-  padding: 0 6px;
-  border-radius: 999px;
-  transform: translate(-50%, -50%);
-  background: rgba(59, 139, 255, 0.9);
-  color: #fff;
-  font-size: 12px;
-  font-weight: 700;
-  box-shadow: 0 0 0 3px rgba(7, 8, 12, 0.6);
-  cursor: grab;
-  touch-action: none;
-}
-
-.game-marker--tap { background: rgba(139, 92, 246, 0.92); }
-.game-marker.is-selected { box-shadow: 0 0 0 3px #fff; }
-.game-marker.is-pressed { background: #fff; color: var(--bg); }
-
-.game-stick {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  border: 2px dashed rgba(121, 174, 255, 0.8);
-  background: rgba(59, 139, 255, 0.1);
-  cursor: grab;
-  touch-action: none;
-}
-
-.game-stick span {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 30%;
-  height: 30%;
-  border-radius: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(121, 174, 255, 0.7);
-}
-
-.game-stick em {
-  position: absolute;
-  left: 50%;
-  top: -22px;
-  transform: translateX(-50%);
-  font-style: normal;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--blue-2);
-  white-space: nowrap;
-}
-
-.game-stick.is-selected { border-color: #fff; }
-
 .game-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line); }
 .game-row:first-child { border-top: 0; }
 .game-row__label { flex: 1; min-width: 0; font-weight: 600; }
@@ -425,24 +343,7 @@
   .setup__drawing .vb { width: min(62vw, 230px); }
 }
 
-/* Modo jogo: how the game receives the VR Box. */
-.choice-grid { display: grid; gap: 10px; grid-template-columns: 1fr; }
-@media (min-width: 560px) { .choice-grid { grid-template-columns: 1fr 1fr; } }
-.choice {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px;
-  text-align: left;
-  border: 1px solid var(--line);
-  border-radius: var(--r);
-  background: var(--surface-2);
-  color: var(--text);
-}
-.choice small { color: var(--muted); font-size: 13px; line-height: 1.4; }
-.choice__title { display: flex; align-items: center; gap: 8px; font-weight: 650; }
-.choice__title svg { width: 18px; height: 18px; }
-.choice.is-on { border-color: var(--blue-2); background: var(--blue-soft); }
+/* Modo jogo: how the virtual controls reach the game. */
 .gp-map { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; margin: 0; font-size: 14px; }
 .gp-map dt { color: var(--text-2); }
 .gp-map dd { margin: 0; font-weight: 600; text-align: right; }

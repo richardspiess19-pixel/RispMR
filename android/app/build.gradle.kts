@@ -32,8 +32,8 @@ android {
         applicationId = "com.rispmr.vrboxemulator"
         minSdk = 26 // Android 8.0: pointer capture API
         targetSdk = 35
-        versionCode = 7
-        versionName = "0.5.2"
+        versionCode = 8
+        versionName = "0.6.0"
     }
 
     signingConfigs {

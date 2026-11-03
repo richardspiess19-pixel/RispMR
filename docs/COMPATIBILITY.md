@@ -17,10 +17,9 @@ cai para `addJavascriptInterface` automaticamente.
 
 | Recurso | Android |
 | --- | --- |
-| Botões do VR Box (teclas/gamepad) virando toques | 8.0+ |
-| Joystick analógico do VR Box dentro do jogo | 14+ (antes disso: use o D-pad ligado às direções) |
-| VR Box em modo mouse | Não é interceptado fora do app; o clique já vira toque pelo próprio Android |
-| Opção de acessibilidade cinza | Android 13+: Informações do app → ⋮ → Permitir configurações restritas |
+| Controle virtual (Shizuku + `/dev/uhid`) | 11+ com o Shizuku pela depuração sem fio (antes: Shizuku iniciado por um PC) |
+| Joystick, botões e modo mouse do VR Box dentro do jogo | Lidos pelo Shizuku em `/dev/input`, qualquer versão suportada |
+| Jogo só vê o controle virtual | Quando o celular deixa segurar o VR Box (EVIOCGRAB); senão o app avisa |
 
 ## Modos típicos do VR Box
 

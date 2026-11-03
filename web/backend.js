@@ -7,7 +7,7 @@
 
 import * as E from './engine.js';
 
-const VERSION = '0.5.2';
+const VERSION = '0.6.0';
 const KM_KEY = 'web:km';
 const STORE = { profiles: 'vrbq.profiles', settings: 'vrbq.settings', identified: 'vrbq.identified' };
 
@@ -491,7 +491,7 @@ export function installWebBackend(win, rawDefaults) {
       right: handInfo('right'),
       integration: { udpEnabled: false, streaming: false, packets: 0, lastError: null, target: '—', format: 'json' },
       profile: { id: working.id, name: working.name, dirty },
-      game: { enabled: false, serviceEnabled: false, serviceConnected: false, joystickSupported: false, bindings: 0, touches: 0, web: true },
+      game: { enabled: false, output: 'gamepad', gamepad: null, reader: null, web: true },
       identifiedCount: Object.keys(identified[demo ? 'demo' : selectedKey] || {}).length,
       demo: Boolean(demo),
     };
@@ -843,9 +843,10 @@ export function installWebBackend(win, rawDefaults) {
     },
 
     'integration.configure': APP_ONLY,
-    'game.openAccessibility': APP_ONLY,
     'game.update': APP_ONLY,
-    'game.preset': APP_ONLY,
+    'gamepad.permission': APP_ONLY,
+    'gamepad.retry': APP_ONLY,
+    'gamepad.openShizuku': APP_ONLY,
 
     'settings.update': (patch) => {
       for (const k of ['autoSelectLastDevice', 'selectedDeviceOnly', 'consumeControllerInput', 'autoPointerCapture', 'showInternalDevices', 'reduceMotion', 'showRawCodes', 'keepScreenOn']) {

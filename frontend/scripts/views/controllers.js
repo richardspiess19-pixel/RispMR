@@ -93,12 +93,14 @@ export default {
       const e = status?.emulation;
       let text;
       const game = status?.game;
+      const pad = game?.enabled && game?.gamepad?.state === 'active';
       if (!ctx.store.state.native) text = 'Prévia no navegador.';
-      else if (e?.running && game?.enabled && game?.serviceEnabled) text = 'Emulação ligada: com o jogo aberto, estes controles viram toques na tela (Modo jogo).';
-      else if (e?.running) text = 'Emulação ligada, mas o Modo jogo não está pronto — os jogos ainda não recebem nada.';
-      else text = 'Isto é uma prévia dentro do app. Para os jogos reagirem, ligue o Modo jogo e inicie a emulação.';
+      else if (game?.web) text = e?.running ? 'Ligada só dentro deste app. Outros jogos precisam do app Android.' : 'Prévia dentro desta página.';
+      else if (e?.running && pad) text = 'Emulação ligada: com o jogo aberto, estes controles chegam nele como um controle virtual.';
+      else if (e?.running) text = 'Emulação ligada, mas o controle virtual não está pronto — os jogos ainda não recebem nada.';
+      else text = 'Isto é uma prévia dentro do app. Para os jogos receberem, inicie a emulação.';
       render(notice, icon('info'), h('div', {}, text));
-      notice.className = `notice ${e?.running && status?.game?.serviceEnabled ? '' : 'notice--warn'}`;
+      notice.className = `notice ${e?.running && pad ? '' : 'notice--warn'}`;
     };
 
     const renderFrame = (frame) => {

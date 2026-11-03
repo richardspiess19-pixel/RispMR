@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">VR Box → Quest</string>
-    <string name="game_service_label">VR Box → Quest: Modo jogo</string>
-    <string name="game_service_description">Deixa o VR Box controlar o jogo que estiver aberto: os botões do controle viram toques na tela do jogo (por exemplo, o botão do Cardboard no centro). O serviço só lê o controle VR Box que você escolheu no app, não lê o conteúdo da tela e não guarda nem envia nada. Só funciona enquanto a emulação estiver ligada no app.</string>
 </resources>

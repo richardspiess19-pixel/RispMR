@@ -29,8 +29,8 @@ data class AppSettings(
     val keepScreenOn: Boolean = true,
     val udp: UdpSettings = UdpSettings(),
     val lastDeviceKey: String? = null,
-    /** Modo jogo: touches performed in the game by the accessibility service. */
-    val game: GameModeConfig = GameModeConfig.cardboard(),
+    /** Modo jogo: the virtual gamepad for the game that is open. */
+    val game: GameModeConfig = GameModeConfig(),
 )
 
 class SettingsException(message: String) : Exception(message)

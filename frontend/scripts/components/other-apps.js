@@ -22,10 +22,9 @@ export function otherAppsInfo() {
     h(
       'ol',
       { class: 'steps' },
-      h('li', {}, 'Instale o app Android "VR Box → Quest" (o APK). Instale pelo computador com ADB: o Play Protect não bloqueia instalação por ADB.'),
-      h('li', {}, 'No app, abra Jogo e ative o Modo jogo (acessibilidade).'),
-      h('li', {}, 'Marque onde cada botão do VR Box toca na tela do jogo.'),
-      h('li', {}, 'Toque em Iniciar emulação e abra o jogo.'),
+      h('li', {}, 'Instale o app Android "VR Box → Quest" (o APK).'),
+      h('li', {}, 'Ligue o Shizuku e permita o app: o próprio app mostra o passo a passo quando abre.'),
+      h('li', {}, 'Toque em Iniciar emulação e abra o jogo. Ele recebe um controle virtual com os seus botões.'),
     ),
     h('p', { class: 'text-2' }, 'O app Android também lê os botões que não chegam aqui (volume, música) e o joystick no modo mouse sem parar na borda da tela.'),
     h('p', { class: 'text-2' }, 'Jogo que já aceita controle Bluetooth não precisa de app nenhum: coloque o VR Box no modo Gamepad e abra o jogo.'),

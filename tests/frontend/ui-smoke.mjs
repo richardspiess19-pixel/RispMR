@@ -85,18 +85,6 @@ async function run(label, { mock, width, height }) {
     await page.waitForTimeout(300);
     if (!(await page.getByText('Os jogos estão vendo um controle').count())) errors.push(`[${label}] virtual gamepad not shown as connected`);
     await page.screenshot({ path: path.join(outDir, `${label}-game-gamepad.png`), fullPage: true });
-    // Touch output: drag a touch marker and check that the layout is saved.
-    await page.getByRole('radio', { name: /Toques na tela/ }).click();
-    await page.waitForTimeout(300);
-    if (await page.locator('[data-output="touch"]').evaluate((el) => el.classList.contains('hidden'))) errors.push(`[${label}] touch editor still hidden`);
-    const marker = page.locator('.game-marker').first();
-    const box = await marker.boundingBox();
-    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-    await page.mouse.down();
-    await page.mouse.move(box.x + 60, box.y + 30, { steps: 5 });
-    await page.mouse.up();
-    await page.waitForTimeout(200);
-    if (!(await page.evaluate(() => window.__mockCalls)).includes('game.update')) errors.push(`[${label}] dragging a game marker did not save`);
     await page.evaluate(() => (location.hash = '#/detect'));
     await page.waitForTimeout(200);
     const calls2 = await page.evaluate(() => window.__mockCalls);

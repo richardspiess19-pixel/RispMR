@@ -4,23 +4,18 @@ App Android que pega um controle Bluetooth **VR Box** (aquele controlinho que ve
 VR de celular) e transforma os botões dele em dois controles no estilo **Meta Quest Touch** —
 esquerdo e direito, com joystick, gatilho, grip e botões A/B/X/Y.
 
-Com o **Modo jogo**, o jogo aberto no celular recebe esses comandos de um de dois jeitos:
-
-- **Controle virtual** (com o app [Shizuku](https://shizuku.rikka.app)): o app cria um controle de
-  jogo de verdade e o Android entrega esse controle para todos os jogos, com os botões do seu
-  mapeamento.
-- **Toques na tela**: cada botão toca num ponto da tela. Serve para jogos de Cardboard e jogos sem
-  suporte a controle.
+Com o **Modo jogo**, o app cria um **controle de jogo virtual** (com o app
+[Shizuku](https://shizuku.rikka.app)) e o Android entrega esse controle para todos os jogos do
+celular, com os botões do seu mapeamento. Enquanto o jogo está aberto, o VR Box é lido direto pelo
+Shizuku, em qualquer modo do controle (gamepad, teclado, música ou mouse). Não usa acessibilidade.
 
 ## Como usar
 
 1. Pareie o VR Box no Bluetooth do celular.
 2. Abra o app. Ele fica bloqueado até o [Shizuku](https://shizuku.rikka.app) estar ligado e
    permitir o app: a tela inicial mostra o passo a passo. Depois, toque em **Conectar controle**.
-3. Em **Detectar botões**, aperte cada botão do controle e escolha o que ele faz.
-4. Em **Modo jogo**, ative o serviço de acessibilidade e escolha **Controle virtual** (ligue o
-   Shizuku e permita o app) ou **Toques na tela** (marque onde cada botão toca).
-5. Toque em **Iniciar emulação** e abra o jogo.
+3. Em **Configurar**, aperte cada botão do controle quando o app pedir.
+4. Toque em **Iniciar emulação** e abra o jogo.
 
 Detalhes da instalação, inclusive o aviso do Play Protect, em [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
@@ -42,8 +37,8 @@ app se quiser usar nos jogos.
   zona morta, curva, suavização, retorno ao centro, inversão e limite.
 - Mostra os controles virtuais em tempo real e tem uma tela de teste com taxa e atraso.
 - Guarda perfis (criar, renomear, duplicar, exportar, importar).
-- **Modo jogo**: controle virtual para todos os jogos (Shizuku + `/dev/uhid`) ou toques na tela
-  do jogo pelo serviço de acessibilidade.
+- **Modo jogo**: controle virtual para todos os jogos (Shizuku: lê o VR Box em `/dev/input` e cria
+  o controle em `/dev/uhid`).
 - Opcional: manda o estado dos controles pela rede (UDP) para outros programas.
 - Modo demonstração, para testar sem o controle.
 
@@ -51,7 +46,7 @@ app se quiser usar nos jogos.
 
 Um app comum de celular **não consegue** registrar controles Quest de verdade para outros jogos:
 quem cria controles no OpenXR é o sistema do headset. Para os jogos do celular, o app cria um
-controle de jogo comum (precisa do Shizuku, que dá a permissão do ADB) ou usa toques na tela. Explicação completa em [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+controle de jogo comum (precisa do Shizuku, que dá a permissão do ADB). Explicação completa em [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Compilar
 

@@ -144,16 +144,10 @@ class VirtualGamepadTest {
     }
 
     @Test
-    fun outputIsSavedAndDefaultsToTheVirtualGamepad() {
-        assertEquals(GameOutput.GAMEPAD, GameModeConfig.cardboard().output)
-        // Settings saved before this option existed.
-        assertEquals(GameOutput.GAMEPAD, GameModeCodec.decode(JSONObject().put("enabled", true)).output)
-        val touch = GameModeConfig.cardboard().copy(output = GameOutput.TOUCH)
-        assertEquals(touch, GameModeCodec.decode(GameModeCodec.encode(touch)))
-        // A patch with only the output keeps the touch layout.
-        val patched = GameModeCodec.decode(JSONObject().put("output", "touch"), GameModeConfig.cardboard())
-        assertEquals(GameOutput.TOUCH, patched.output)
-        assertEquals(GameModeConfig.cardboard().buttons, patched.buttons)
-        assertEquals(GameOutput.GAMEPAD, GameModeCodec.decode(JSONObject().put("output", "nope")).output)
+    fun gameSettingsFromOlderVersionsKeepOnlyTheSwitch() {
+        val old = JSONObject().put("enabled", false).put("output", "touch").put("buttons", JSONObject().put("right.a", JSONObject().put("action", "hold")))
+        assertEquals(GameModeConfig(enabled = false), GameModeCodec.decode(old))
+        assertEquals(GameModeConfig(), GameModeCodec.decode(null))
+        assertEquals(GameModeConfig(enabled = false), GameModeCodec.decode(GameModeCodec.encode(GameModeConfig(enabled = false))))
     }
 }

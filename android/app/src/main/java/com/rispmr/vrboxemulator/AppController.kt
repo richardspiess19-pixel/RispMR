@@ -22,24 +22,22 @@ import com.rispmr.vrboxemulator.bridge.CommandException
 import com.rispmr.vrboxemulator.bridge.CommandRouter
 import com.rispmr.vrboxemulator.bridge.WebBridge
 import com.rispmr.vrboxemulator.demo.DemoScript
-import com.rispmr.vrboxemulator.game.GameModeBus
-import com.rispmr.vrboxemulator.game.GameModeService
 import com.rispmr.vrboxemulator.gamepad.VirtualGamepadManager
-import android.content.ComponentName
 import com.rispmr.vrboxemulator.engine.AppSettings
 import com.rispmr.vrboxemulator.engine.AppSettingsCodec
+import com.rispmr.vrboxemulator.engine.BackgroundConfig
+import com.rispmr.vrboxemulator.engine.BackgroundConfigCodec
 import com.rispmr.vrboxemulator.engine.ButtonConfig
 import com.rispmr.vrboxemulator.engine.Clock
 import com.rispmr.vrboxemulator.engine.DefaultProfiles
 import com.rispmr.vrboxemulator.engine.DeviceClassifier
 import com.rispmr.vrboxemulator.engine.DeviceGroup
+import com.rispmr.vrboxemulator.engine.DeviceIdentity
 import com.rispmr.vrboxemulator.engine.DeviceRegistry
 import com.rispmr.vrboxemulator.engine.Detection
 import com.rispmr.vrboxemulator.engine.EventLog
 import com.rispmr.vrboxemulator.engine.FileTextStorage
 import com.rispmr.vrboxemulator.engine.GameModeCodec
-import com.rispmr.vrboxemulator.engine.GameModeConfig
-import com.rispmr.vrboxemulator.engine.GameOutput
 import com.rispmr.vrboxemulator.engine.Hand
 import com.rispmr.vrboxemulator.engine.HandSnapshot
 import com.rispmr.vrboxemulator.engine.IdGenerator
@@ -181,12 +179,18 @@ class AppController(private val activity: Activity, private val webView: WebView
             log.add(EventLog.SYSTEM, "Bluetooth ${if (connected) "conectado" else "desconectado"}: $name", clock.wallMs())
         }
         router.onInternalError = { cmd, e -> Log.e(TAG, "Command $cmd failed", e) }
-        GameModeBus.onState(busListener)
-        if (GameModeBus.emulationActive) {
-            // The screen was recreated while Modo jogo kept running.
-            emulationRunning = true
-            emulationStartedAt = clock.wallMs()
-            if (settings.udp.enabled) streamer.start(settings.udp)
+        VirtualGamepadManager.onFoundRunning = {
+            // The app was closed during a game while the virtual gamepad kept running.
+            if (!emulationRunning) {
+                emulationRunning = true
+                emulationStartedAt = clock.wallMs()
+                if (settings.udp.enabled) streamer.start(settings.udp)
+                log.add(EventLog.SYSTEM, "O controle virtual continuava ligado", clock.wallMs())
+            }
+            pushBackgroundConfig()
+            VirtualGamepadManager.setReading(!resumed)
+            statusDirty = true
+            scheduleFrame()
         }
         registerCommands()
         log.add(EventLog.SYSTEM, "App aberto", clock.wallMs())
@@ -194,7 +198,20 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     // ---------------------------------------------------------------- lifecycle
 
-    private fun publishToGameMode() = GameModeBus.publish(settings, working)
+    /** Linux scan code -> Android key name of the selected controller (from KeyEvent.getScanCode). */
+    private val scanCodes = HashMap<Int, String>()
+    private var scanCodesKey: String? = null
+
+    /** What the Shizuku service needs to read the VR Box like the app does. */
+    private fun backgroundConfig(): String? {
+        val device = DeviceIdentity.fromKey(settings.lastDeviceKey) ?: return null
+        return BackgroundConfigCodec.encode(BackgroundConfig(device, working, if (scanCodesKey == settings.lastDeviceKey) HashMap(scanCodes) else emptyMap()))
+    }
+
+    private fun pushBackgroundConfig() {
+        if (!emulationRunning || !VirtualGamepadManager.isActive) return
+        backgroundConfig()?.let { VirtualGamepadManager.configure(it) }
+    }
 
     fun onPageStarted() {
         pageReady = false
@@ -203,7 +220,8 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     fun onResume() {
         resumed = true
-        GameModeBus.setUiResumed(true)
+        // On screen: the app reads the VR Box itself and the virtual gamepad rests.
+        VirtualGamepadManager.setReading(false)
         hid.start(
             onAdded = { id -> hid.describe(id)?.let { handleRegistry(registry.put(it)) } },
             onRemoved = { id ->
@@ -223,7 +241,8 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     fun onPause() {
         resumed = false
-        GameModeBus.setUiResumed(false)
+        // A game is (probably) opening: the Shizuku service reads the VR Box now.
+        if (emulationRunning) VirtualGamepadManager.setReading(true)
         hid.stop()
         bluetooth.stop()
         main.removeCallbacks(statsRunnable)
@@ -233,9 +252,8 @@ class AppController(private val activity: Activity, private val webView: WebView
     }
 
     fun onDestroy() {
-        GameModeBus.offState(busListener)
         VirtualGamepadManager.removeListener(busListener)
-        GameModeBus.setUiResumed(false)
+        VirtualGamepadManager.onFoundRunning = null
         stopDemo()
         streamer.shutdown()
         io.shutdown()
@@ -269,6 +287,7 @@ class AppController(private val activity: Activity, private val webView: WebView
     /** @return true when the event was consumed (it then does not reach the UI). */
     fun onKeyEvent(event: KeyEvent): Boolean = safeInput(false) {
         val key = acceptDevice(event.deviceId) ?: return@safeInput false
+        learnScanCode(key, event)
         rawBuffer.clear()
         translator.translateKey(event, key, rawBuffer)
         dispatchRaw(rawBuffer)
@@ -297,6 +316,17 @@ class AppController(private val activity: Activity, private val webView: WebView
      * Odd controllers send odd events. A problem with one event is logged and ignored: reading
      * input must never close the app.
      */
+    /** The background reader sees Linux codes; remember how Android named them for this controller. */
+    private fun learnScanCode(deviceKey: String, event: KeyEvent) {
+        if (event.scanCode <= 0 || event.keyCode == KeyEvent.KEYCODE_UNKNOWN) return
+        if (scanCodesKey != deviceKey) {
+            scanCodes.clear()
+            scanCodesKey = deviceKey
+        }
+        val name = AndroidInputTranslator.keyName(event.keyCode)
+        if (scanCodes.put(event.scanCode, name) != name) pushBackgroundConfig()
+    }
+
     private inline fun safeInput(fallback: Boolean, block: () -> Boolean): Boolean = try {
         block()
     } catch (e: Exception) {
@@ -516,17 +546,11 @@ class AppController(private val activity: Activity, private val webView: WebView
         }
         emulationRunning = true
         emulationStartedAt = clock.wallMs()
-        GameModeBus.setEmulationActive(true)
         if (settings.udp.enabled) streamer.start(settings.udp)
         applyVirtualGamepad()
         applyKeepScreenOn()
         val output = if (settings.udp.enabled) "rede UDP ${settings.udp.host}:${settings.udp.port} (${settings.udp.format})" else "nenhuma saída de rede"
-        val game = when {
-            !settings.game.enabled -> "Modo jogo desligado"
-            !gameServiceEnabled() -> "Modo jogo precisa do serviço de acessibilidade"
-            gamepadOutput() -> "controle virtual: ${gamepadLabel(VirtualGamepadManager.status())}"
-            else -> "Modo jogo pronto (abra o jogo)"
-        }
+        val game = if (gamepadOutput()) "controle virtual: ${gamepadLabel(VirtualGamepadManager.status())}" else "Modo jogo desligado"
         log.add(EventLog.SYSTEM, "Emulação iniciada — $game; $output", clock.wallMs())
         statusDirty = true
         afterStateChange()
@@ -535,7 +559,6 @@ class AppController(private val activity: Activity, private val webView: WebView
     private fun stopEmulation() {
         if (!emulationRunning) return
         emulationRunning = false
-        GameModeBus.setEmulationActive(false)
         streamer.stop()
         VirtualGamepadManager.stop()
         applyKeepScreenOn()
@@ -544,12 +567,13 @@ class AppController(private val activity: Activity, private val webView: WebView
         scheduleFrame()
     }
 
-    private fun gamepadOutput() = settings.game.enabled && settings.game.output == GameOutput.GAMEPAD
+    private fun gamepadOutput() = settings.game.enabled
 
     /** The virtual gamepad exists while emulation runs with Modo jogo set to "Controle virtual". */
     private fun applyVirtualGamepad() {
-        if (emulationRunning && gamepadOutput()) {
-            if (!VirtualGamepadManager.isActive) VirtualGamepadManager.start()
+        val config = backgroundConfig()
+        if (emulationRunning && gamepadOutput() && config != null) {
+            if (VirtualGamepadManager.isActive) VirtualGamepadManager.configure(config) else VirtualGamepadManager.start(config, reading = !resumed)
         } else {
             VirtualGamepadManager.stop()
         }
@@ -617,7 +641,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         controllers.configure(working.mappings, working.buttons, working.left, working.right)
         controllers.onPhysicalState(processor.state, clock.uptimeMs())
         statusDirty = true
-        publishToGameMode()
+        pushBackgroundConfig()
     }
 
     private fun editWorking(updated: Profile): JSONObject {
@@ -651,16 +675,6 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     private fun saveSettings() {
         writeAsync(settingsStorage, AppSettingsCodec.encode(settings).toString())
-        publishToGameMode()
-    }
-
-    /** Whether the user turned on our accessibility service in Android settings. */
-    private fun gameServiceEnabled(): Boolean {
-        val enabled = Settings.Secure.getString(activity.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
-        val component = ComponentName(activity, GameModeService::class.java)
-        return enabled.split(':').any {
-            it.equals(component.flattenToString(), ignoreCase = true) || it.equals(component.flattenToShortString(), ignoreCase = true)
-        }
     }
 
     // ---------------------------------------------------------------- commands
@@ -997,10 +1011,6 @@ class AppController(private val activity: Activity, private val webView: WebView
         }
 
         // Modo jogo
-        on("game.openAccessibility") {
-            startSafely(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS))
-            null
-        }
         on("gamepad.permission") {
             if (!VirtualGamepadManager.requestPermission()) {
                 throw CommandException("O Shizuku não está ligado. Abra o Shizuku e toque em Iniciar.", "shizuku_off")
@@ -1019,16 +1029,6 @@ class AppController(private val activity: Activity, private val webView: WebView
         }
         on("game.update") { args ->
             settings = settings.copy(game = GameModeCodec.decode(args, settings.game))
-            onSettingsChanged()
-            JSONObject().put("settings", AppSettingsCodec.encode(settings)).put("status", statusJson())
-        }
-        on("game.preset") { args ->
-            val preset = when (args.optString("name")) {
-                "cardboard" -> GameModeConfig.cardboard().copy(enabled = settings.game.enabled)
-                "clear" -> GameModeConfig(enabled = settings.game.enabled)
-                else -> throw CommandException("Modelo desconhecido", "invalid")
-            }
-            settings = settings.copy(game = preset)
             onSettingsChanged()
             JSONObject().put("settings", AppSettingsCodec.encode(settings)).put("status", statusJson())
         }
@@ -1314,13 +1314,14 @@ class AppController(private val activity: Activity, private val webView: WebView
                 "game",
                 JSONObject()
                     .put("enabled", settings.game.enabled)
-                    .put("output", settings.game.output.key)
+                    .put("output", "gamepad")
                     .put("gamepad", VirtualGamepadManager.status().let { g -> JSONObject().put("state", g.state.key).put("message", g.message).put("uid", g.uid ?: JSONObject.NULL) })
-                    .put("serviceEnabled", gameServiceEnabled())
-                    .put("serviceConnected", GameModeBus.serviceConnected)
-                    .put("joystickSupported", Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-                    .put("bindings", settings.game.buttons.count { it.value.action != com.rispmr.vrboxemulator.engine.TouchAction.OFF } + (if (settings.game.leftStick.enabled) 1 else 0) + (if (settings.game.rightStick.enabled) 1 else 0))
-                    .put("touches", GameModeBus.touchesPerformed),
+                    .put(
+                        "reader",
+                        VirtualGamepadManager.remote()?.let { r ->
+                            JSONObject().put("reading", r.reading).put("grabbed", r.grabbed).put("nodes", r.nodes).put("events", r.events).put("error", r.error)
+                        } ?: JSONObject.NULL,
+                    ),
             )
             .put("identifiedCount", identified.count(identifiedKey()))
             .put("demo", demoRunning)

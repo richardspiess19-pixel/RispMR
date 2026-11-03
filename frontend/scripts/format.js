@@ -85,29 +85,28 @@ export function handIndicator(status, hand) {
   return { value: 'Não configurado', hint: '', tone: 'off' };
 }
 
-/** Modo jogo readiness: the thing that makes phone games react. */
+/** Modo jogo readiness: the virtual gamepad the games see. */
 export function gameIndicator(status) {
   const g = status?.game;
   if (!g) return { value: '—', hint: '', tone: 'off' };
   if (g.web) return { value: 'Só no app', hint: 'Precisa do app Android', tone: 'off' };
   if (!g.enabled) return { value: 'Desligado', hint: '', tone: 'off' };
-  if (!g.serviceEnabled) return { value: 'Falta ativar', hint: 'Ative a acessibilidade', tone: 'warn' };
-  if (g.output === 'gamepad') {
-    const st = g.gamepad?.state;
-    if (st === 'active') return { value: 'Controle virtual', hint: 'Os jogos veem o controle', tone: 'ok' };
-    if (st === 'ready' || st === 'connecting') return { value: 'Pronto', hint: status.emulation?.running ? 'Criando o controle' : 'Inicie a emulação', tone: 'ok' };
-    const NEED = {
-      not_installed: ['Falta o Shizuku', 'Instale o Shizuku'],
-      not_running: ['Shizuku parado', 'Abra o Shizuku e inicie'],
-      old_shizuku: ['Atualize o Shizuku', ''],
-      no_permission: ['Falta permitir', 'Permita o app no Shizuku'],
-      error: ['Erro no controle', g.gamepad?.message || ''],
-    };
-    const [value, hint] = NEED[st] || NEED.not_running;
-    return { value, hint, tone: st === 'error' ? 'err' : 'warn' };
+  const st = g.gamepad?.state;
+  if (st === 'active') {
+    const r = g.reader;
+    const hint = r?.reading ? (r.nodes ? 'Lendo o VR Box no jogo' : 'Procurando o VR Box') : 'Abra o jogo';
+    return { value: 'Controle virtual', hint, tone: r?.reading && !r.nodes ? 'warn' : 'ok' };
   }
-  if (!g.bindings) return { value: 'Sem toques', hint: 'Escolha onde tocar', tone: 'warn' };
-  return { value: 'Pronto', hint: status.emulation?.running ? 'Abra o jogo' : 'Inicie a emulação', tone: 'ok' };
+  if (st === 'ready' || st === 'connecting') return { value: 'Pronto', hint: status.emulation?.running ? 'Criando o controle' : 'Inicie a emulação', tone: 'ok' };
+  const NEED = {
+    not_installed: ['Falta o Shizuku', 'Instale o Shizuku'],
+    not_running: ['Shizuku parado', 'Abra o Shizuku e inicie'],
+    old_shizuku: ['Atualize o Shizuku', ''],
+    no_permission: ['Falta permitir', 'Permita o app no Shizuku'],
+    error: ['Erro no controle', g.gamepad?.message || ''],
+  };
+  const [value, hint] = NEED[st] || NEED.not_running;
+  return { value, hint, tone: st === 'error' ? 'err' : 'warn' };
 }
 
 export function integrationIndicator(status) {

@@ -45,7 +45,7 @@
 | `android/.../bridge/` | `CommandRouter` (puro, testado) e `WebBridge` (transporte WebView). |
 | `android/.../integration/` | `VrbqProtocol` (codificador puro, testado) e `UdpStreamer`. |
 | `android/.../demo/` | `DemoScript`: entradas **simuladas** do modo demonstração. |
-| `android/.../game/` | Modo jogo: `GameModeService` (acessibilidade), `GestureComposer` (dedos virtuais com `continueStroke`), `GameModeBus` (estado compartilhado com a tela do app). O planejamento dos toques (`engine/GameMode.kt`) é Kotlin puro e testado. |
+| `android/.../gamepad/` | Modo jogo: `ShizukuUserService` (roda no processo do Shizuku: lê o VR Box em `/dev/input`, roda o motor e escreve o controle virtual em `/dev/uhid`) e `VirtualGamepadManager` (Shizuku, permissão, ligação). Tradução evdev, motor de fundo e relatório HID (`engine/Evdev.kt`, `engine/Background.kt`, `engine/VirtualGamepad.kt`) são Kotlin puro e testados. |
 | `android/.../PermissionManager.kt` | Permissões por versão do Android. |
 | `config/` | Perfis iniciais e modelo de configurações (copiados para o APK). |
 | `integration/` | Pesquisa OpenXR, projetos de integração, protocolo VRBQ + decodificadores de referência. |
@@ -59,19 +59,20 @@
 ## Modo jogo
 
 ```
- VR Box ──► AccessibilityService.onKeyEvent / onMotionEvent (Android 14+)
-              │ só o controle escolhido; só teclas usadas no perfil são consumidas
+ VR Box ──► /dev/input/eventN (EVIOCGRAB: o Android deixa de receber o VR Box)
+              │ processo do Shizuku (uid shell), ShizukuUserService
+              ▼
+        EvdevTranslator (Generic.kl + scan codes vistos pelo app) → RawEvent
               ▼
         InputProcessor → ControllerMapper → VirtualControllerManager   (mesmo motor)
               ▼
-        TouchPlanner: botão → dedo segurado ou toque rápido; joystick → arrasto no círculo
-              ▼
-        GestureComposer → dispatchGesture (um gesto com todos os dedos; atualiza só quando muda)
+        VirtualGamepad.report → /dev/uhid (UHID_INPUT2) → controle HID que todos os apps veem
 ```
 
-Enquanto a tela do app está aberta, o serviço deixa tudo passar e o próprio app lê o controle.
-O serviço usa o perfil e as configurações que a tela publica no `GameModeBus`; com o app fechado,
-lê os arquivos salvos (somente leitura).
+Enquanto a tela do app está aberta, o serviço solta o VR Box e o próprio app lê o controle; o
+controle virtual fica parado. O app manda o perfil e o controle escolhido ao serviço
+(`BackgroundConfigCodec`). O serviço é *daemon*: se o Android fechar o app durante o jogo, o
+controle continua, e o app reencontra o serviço ao abrir.
 
 ## Modelo de threads
 

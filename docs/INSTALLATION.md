@@ -38,28 +38,18 @@ Se você vai distribuir o app, registre-se no Android Developer Console (existe 
 gratuita para distribuição limitada, pensada para estudantes e hobby). Registre o pacote
 `com.rispmr.vrboxemulator` e compile o release com a **sua** chave (veja "Release assinado").
 
-### Sobre o Modo jogo e o Play Protect
+### Sem acessibilidade
 
-O Modo jogo usa um **serviço de acessibilidade**. No Brasil, o Play Protect também pode barrar
-apps com acessibilidade quando o APK vem do navegador, do WhatsApp ou de um gerenciador de
-arquivos. **Instalar por ADB evita os dois bloqueios.**
-
-Depois de instalar (Android 13 ou mais novo), a acessibilidade pode mostrar **"Configuração
-restrita"**. Isso não é o Play Protect: é uma trava do Android para apps instalados fora da loja.
-Tente ativar uma vez (o aviso precisa aparecer antes), depois vá em Configurações → Apps →
-VR Box → Quest → ⋮ → **Permitir configurações restritas**, confirme com a senha, volte em
-Acessibilidade e ative "VR Box → Quest: Modo jogo".
+O app não usa serviço de acessibilidade: não aparece "Configuração restrita" e a proteção do Play
+Protect contra apps com acessibilidade não se aplica. Continua valendo o aviso de app de fora da
+loja (veja acima).
 
 ## Primeiro uso
 
-1. Ligue o VR Box (normalmente segurando o `@` por 3 segundos).
-2. Para o Modo jogo, use o VR Box no **modo gamepad ou teclado** (combinação `@` + letra, varia
-   por modelo). No modo mouse o próprio Android já transforma o clique em toque.
-3. Pareie no Bluetooth do celular e abra o app → **Conectar controle**.
-4. **Detectar botões** → aperte cada botão → escolha o que ele faz → **Salvar**.
-5. **Modo jogo** → ative a acessibilidade → escolha **Controle virtual** (veja abaixo) ou
-   **Toques na tela** (o modelo "Cardboard" já deixa o gatilho tocando no centro).
-6. **Iniciar emulação** → abra o jogo.
+1. Ligue o VR Box (normalmente segurando o `@` por 3 segundos). Qualquer modo funciona.
+2. Pareie no Bluetooth do celular e abra o app: ele pede o Shizuku (veja abaixo).
+3. **Conectar controle** → **Configurar** → aperte cada botão quando o app pedir → **Salvar**.
+4. **Iniciar emulação** → abra o jogo.
 
 ### Controle virtual (Shizuku)
 
@@ -71,13 +61,12 @@ o app Android abre bloqueado, mostrando estes passos, e só libera depois que o 
 2. Em Configurações → Sobre o telefone, toque 7 vezes em **Número da versão**.
 3. Em Opções do desenvolvedor, ative **Depuração por Wi-Fi**.
 4. No Shizuku, toque em **Parear**, digite o código da Depuração por Wi-Fi e depois em **Iniciar**.
-5. No app, **Modo jogo → Controle virtual → Permitir**.
+5. No app, toque em **Permitir**.
 6. **Iniciar emulação**: os jogos passam a ver o controle **"VR Box -> Quest (controle virtual)"**.
 
-O Shizuku para quando o celular reinicia: repita o passo 4. Melhor modo do VR Box: um em que o
-joystick manda setas (teclado), assim o jogo só vê o controle virtual. No modo Gamepad do VR Box,
-o joystick dele chega direto no jogo, porque o Android não deixa um app interceptar o joystick sem
-também engolir o do controle virtual.
+O Shizuku para quando o celular reinicia: repita o passo 4. Com o jogo na frente, o serviço do app
+no Shizuku lê o VR Box direto do kernel e o "segura" (EVIOCGRAB), então o jogo só vê o controle
+virtual. Se o celular não deixar segurar, o app avisa: o jogo vê os dois controles.
 
 ## Compilar
 
