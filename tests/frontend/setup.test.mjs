@@ -33,3 +33,28 @@ test('mouse mode and D-pad mode', () => {
 test('"Nada" and skipped buttons produce no rule', () => {
   assert.deepEqual(buildMappings({ B: { source: 'key:BUTTON_B' }, C: null }, { ...fns, B: '' }), []);
 });
+
+test('keyboard/music mode: one key per joystick direction', async () => {
+  const { buildMappings: build } = await import('../../frontend/scripts/views/setup.js');
+  const rules = build(
+    { joystick: { kind: 'key', source: 'key:MEDIA_NEXT' }, joyLeft: { source: 'key:MEDIA_PREVIOUS' }, joyUp: { source: 'key:VOLUME_UP' }, joyDown: null },
+    { joystick: 'left' },
+  );
+  assert.deepEqual(rules, [
+    { source: 'key:MEDIA_NEXT', target: 'left.stick.right' },
+    { source: 'key:MEDIA_PREVIOUS', target: 'left.stick.left' },
+    { source: 'key:VOLUME_UP', target: 'left.stick.up' },
+  ]);
+});
+
+test('mode of each signal', async () => {
+  const { modeOf } = await import('../../frontend/scripts/views/setup.js');
+  assert.equal(modeOf('mouse:x'), 'mouse');
+  assert.equal(modeOf('key:BUTTON_A'), 'gamepad');
+  assert.equal(modeOf('axis:X:+'), 'gamepad');
+  assert.equal(modeOf('key:VOLUME_UP'), 'music');
+  assert.equal(modeOf('key:ENTER'), 'keyboard');
+  assert.equal(modeOf('key:DPAD_UP'), 'keyboard');
+  assert.equal(modeOf('key:DPAD_UP', 'gamepad'), 'gamepad');
+  assert.equal(modeOf('key:BACK', 'gamepad'), 'gamepad');
+});

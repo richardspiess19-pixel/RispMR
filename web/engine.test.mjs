@@ -100,6 +100,11 @@ test('browser keys and gamepad buttons map to the app ids', () => {
   assert.equal(E.keyNameFromEvent('Enter', 'Enter'), 'ENTER');
   assert.equal(E.keyNameFromEvent('KeyB', 'b'), 'B');
   assert.equal(E.keyNameFromEvent('', 'AudioVolumeUp'), 'VOLUME_UP');
+  // Android WebView: buttons without a name keep a distinct id from their key code.
+  assert.equal(E.keyNameFromEvent('', 'Unidentified', 96), '96');
+  assert.equal(E.labelOf('key:96'), 'Tecla código 96');
+  assert.equal(E.keyNameFromEvent('', 'Unidentified', 0), null);
+  assert.equal(E.keyNameFromEvent('', 'GoBack', 4), 'BACK');
   assert.equal(E.gamepadButtonName(0, true), 'BUTTON_A');
   assert.equal(E.gamepadButtonName(12, true), 'DPAD_UP');
   assert.equal(E.gamepadButtonName(0, false), 'BUTTON_1');

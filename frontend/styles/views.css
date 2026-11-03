@@ -400,3 +400,27 @@
 .setup-cta__icon { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 14px; background: var(--blue-soft); color: var(--blue-2); }
 .setup-cta__icon svg { width: 26px; height: 26px; }
 .setup-cta__text { flex: 1; min-width: 0; }
+
+.setup__signal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: var(--r);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--text-2);
+}
+
+.setup__signal .dot { width: 10px; height: 10px; transition: background var(--t-fast); }
+.setup__signal .badge { margin-left: auto; }
+.setup__modes summary { cursor: pointer; }
+.setup__modes p, .setup__modes ul { margin-top: 10px; }
+
+/* Phones: the step comes first, the drawing below and smaller. */
+@media (max-width: 719px) {
+  .setup__drawing { order: 2; padding: 0; }
+  .setup__drawing .vb { width: min(62vw, 230px); }
+}

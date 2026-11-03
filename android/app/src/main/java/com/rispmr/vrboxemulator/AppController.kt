@@ -262,29 +262,41 @@ class AppController(private val activity: Activity, private val webView: WebView
     // ---------------------------------------------------------------- input entry points
 
     /** @return true when the event was consumed (it then does not reach the UI). */
-    fun onKeyEvent(event: KeyEvent): Boolean {
-        val key = acceptDevice(event.deviceId) ?: return false
+    fun onKeyEvent(event: KeyEvent): Boolean = safeInput(false) {
+        val key = acceptDevice(event.deviceId) ?: return@safeInput false
         rawBuffer.clear()
         translator.translateKey(event, key, rawBuffer)
         dispatchRaw(rawBuffer)
-        return settings.consumeControllerInput
+        // The controller's BACK must never close the app or leave the current screen.
+        settings.consumeControllerInput || event.keyCode == KeyEvent.KEYCODE_BACK
     }
 
-    fun onMotionEvent(event: MotionEvent): Boolean {
-        if (event.isFromSource(InputDevice.SOURCE_TOUCHSCREEN)) return false
-        val key = acceptDevice(event.deviceId) ?: return false
+    fun onMotionEvent(event: MotionEvent): Boolean = safeInput(false) {
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHSCREEN)) return@safeInput false
+        val key = acceptDevice(event.deviceId) ?: return@safeInput false
         rawBuffer.clear()
         translator.translateMotion(event, key, captured = false, out = rawBuffer)
         dispatchRaw(rawBuffer)
-        return settings.consumeControllerInput
+        settings.consumeControllerInput
     }
 
-    fun onCapturedPointer(event: MotionEvent): Boolean {
-        val key = acceptDevice(event.deviceId) ?: return true
+    fun onCapturedPointer(event: MotionEvent): Boolean = safeInput(true) {
+        val key = acceptDevice(event.deviceId) ?: return@safeInput true
         rawBuffer.clear()
         translator.translateMotion(event, key, captured = true, out = rawBuffer)
         dispatchRaw(rawBuffer)
-        return true
+        true
+    }
+
+    /**
+     * Odd controllers send odd events. A problem with one event is logged and ignored: reading
+     * input must never close the app.
+     */
+    private inline fun safeInput(fallback: Boolean, block: () -> Boolean): Boolean = try {
+        block()
+    } catch (e: Exception) {
+        Log.e(TAG, "Input event failed", e)
+        fallback
     }
 
     /** Decides whether events of this Android input device are read. Returns its group key. */
@@ -300,8 +312,8 @@ class AppController(private val activity: Activity, private val webView: WebView
         val key = DeviceGroup.keyOf(info)
         val selected = selectedKey
         // Built-in keys (phone volume buttons...) never count. Android < 10 does not report
-        // isExternal, so there a vendor id is required.
-        val external = info.isExternal == true || (info.isExternal == null && info.vendorId != 0)
+        // isExternal, so there the name tells internal devices apart.
+        val external = info.isExternal == true || (info.isExternal == null && !looksInternal(info.name))
         val candidate = external && DeviceClassifier.isInputCandidate(info.sources)
         return when {
             selected != null && key == selected -> key
@@ -418,6 +430,11 @@ class AppController(private val activity: Activity, private val webView: WebView
         identifiedDirty = true
         updatePointerCapture()
         afterStateChange()
+    }
+
+    private fun looksInternal(name: String): Boolean {
+        val n = name.lowercase()
+        return INTERNAL_HINTS.any { n.contains(it) }
     }
 
     private fun releaseController() {
@@ -769,7 +786,10 @@ class AppController(private val activity: Activity, private val webView: WebView
             val name = ProfileCodec.cleanName(args.optString("name")) ?: "Meu VR Box"
             val existing = profiles.all.firstOrNull { it.name == name }
             val base = existing ?: catching { profiles.create(name, null) }
-            val saved = catching { profiles.update(base.copy(mappings = rules, description = "Criado no passo a passo")) }
+            // merge: keep what other modes of the controller learned (they send other signals).
+            val fresh = rules.map { it.source }.toSet()
+            val kept = if (args.optBoolean("merge", false)) base.mappings.filterNot { it.source in fresh } else emptyList()
+            val saved = catching { profiles.update(base.copy(mappings = kept + rules, description = "Criado no passo a passo")) }
             working = catching { profiles.setActive(saved.id) }
             dirty = false
             applyWorking()
@@ -1325,6 +1345,7 @@ class AppController(private val activity: Activity, private val webView: WebView
     companion object {
         private const val TAG = "VRBQ"
         const val TICK_MS = 8L
+        private val INTERNAL_HINTS = listOf("gpio", "pon", "keypad", "touch", "power", "volume", "hall", "sensor", "fingerprint", "qwerty", "virtual", "headset", "hdmi")
         const val FRAME_MS = 16L
     }
 }

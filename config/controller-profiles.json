@@ -173,6 +173,46 @@
           "id": "d33",
           "source": "axis:HAT_Y",
           "target": "left.stick.y"
+        },
+        {
+          "id": "d34",
+          "source": "key:BACK",
+          "target": "right.b"
+        },
+        {
+          "id": "d35",
+          "source": "key:MEDIA_NEXT",
+          "target": "right.grip"
+        },
+        {
+          "id": "d36",
+          "source": "key:MEDIA_PREVIOUS",
+          "target": "left.grip"
+        },
+        {
+          "id": "d37",
+          "source": "key:BUTTON_C",
+          "target": "left.y"
+        },
+        {
+          "id": "d38",
+          "source": "key:BUTTON_SELECT",
+          "target": "left.menu"
+        },
+        {
+          "id": "d39",
+          "source": "key:DPAD_CENTER",
+          "target": "right.trigger"
+        },
+        {
+          "id": "d40",
+          "source": "key:ESCAPE",
+          "target": "right.b"
+        },
+        {
+          "id": "d41",
+          "source": "key:SPACE",
+          "target": "right.trigger"
         }
       ]
     },

@@ -778,19 +778,35 @@ const CODE_TO_KEY = {
   Enter: 'ENTER', NumpadEnter: 'ENTER', Space: 'SPACE', Escape: 'ESCAPE', Backspace: 'DEL', Tab: 'TAB',
   MediaPlayPause: 'MEDIA_PLAY_PAUSE', MediaTrackNext: 'MEDIA_NEXT', MediaTrackPrevious: 'MEDIA_PREVIOUS', MediaStop: 'MEDIA_STOP',
   AudioVolumeUp: 'VOLUME_UP', AudioVolumeDown: 'VOLUME_DOWN', AudioVolumeMute: 'VOLUME_MUTE',
-  BrowserBack: 'BACK', PageUp: 'PAGE_UP', PageDown: 'PAGE_DOWN', ContextMenu: 'MENU',
+  BrowserBack: 'BACK', GoBack: 'BACK', PageUp: 'PAGE_UP', PageDown: 'PAGE_DOWN', ContextMenu: 'MENU',
+  MediaFastForward: 'MEDIA_FAST_FORWARD', MediaRewind: 'MEDIA_REWIND', MediaPlay: 'MEDIA_PLAY', MediaPause: 'MEDIA_PAUSE',
+  Select: 'DPAD_CENTER', Camera: 'CAMERA', Home: 'MOVE_HOME', End: 'MOVE_END',
 };
 
-/** Browser KeyboardEvent -> Android-style key name (same ids as the app). */
-export function keyNameFromEvent(code, key) {
+const NO_NAME = new Set(['', 'Unidentified', 'Dead', 'Process']);
+
+/**
+ * Browser KeyboardEvent -> Android-style key name (same ids as the app).
+ * Inside an Android WebView many VR Box buttons arrive without a name ("Unidentified");
+ * then the numeric key code keeps each button distinct ("Tecla código 96").
+ */
+export function keyNameFromEvent(code, key, keyCode = 0) {
   if (CODE_TO_KEY[code]) return CODE_TO_KEY[code];
   if (CODE_TO_KEY[key]) return CODE_TO_KEY[key];
   let m = /^Key([A-Z])$/.exec(code || '');
   if (m) return m[1];
   m = /^(?:Digit|Numpad)(\d)$/.exec(code || '');
   if (m) return m[1];
-  const fallback = String(key || code || '').toUpperCase().replace(/[^A-Z0-9_]/g, '_').slice(0, 48);
-  return fallback && /[A-Z0-9]/.test(fallback) ? fallback : null;
+  const clean = (v) => String(v).toUpperCase().replace(/[^A-Z0-9_]/g, '_').replace(/^_+|_+$/g, '').slice(0, 48);
+  if (code && !NO_NAME.has(code)) {
+    const c = clean(code);
+    if (/[A-Z0-9]/.test(c)) return c;
+  }
+  if (key && !NO_NAME.has(key)) {
+    const k = clean(key);
+    if (/[A-Z0-9]/.test(k)) return k;
+  }
+  return keyCode > 0 ? String(keyCode) : null;
 }
 
 const STANDARD_BUTTONS = ['BUTTON_A', 'BUTTON_B', 'BUTTON_X', 'BUTTON_Y', 'BUTTON_L1', 'BUTTON_R1', 'BUTTON_L2', 'BUTTON_R2', 'BUTTON_SELECT', 'BUTTON_START', 'BUTTON_THUMBL', 'BUTTON_THUMBR', 'DPAD_UP', 'DPAD_DOWN', 'DPAD_LEFT', 'DPAD_RIGHT', 'BUTTON_MODE'];

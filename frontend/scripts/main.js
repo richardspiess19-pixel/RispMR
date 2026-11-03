@@ -22,13 +22,13 @@ const VIEWS = { dashboard, devices, detect, mapping, controllers, tester, profil
 
 const NAV_MAIN = [
   ['dashboard', 'Início', 'home'],
-  ['devices', 'Controle', 'bluetooth'],
-  ['mapping', 'Botões', 'sliders'],
-  ['game', 'Jogo', 'target'],
+  ['setup', 'Configurar', 'wand'],
   ['tester', 'Testar', 'activity'],
+  ['game', 'Jogo', 'target'],
 ];
 const NAV_MORE = [
-  ['setup', 'Configurar controle', 'wand'],
+  ['devices', 'Controle', 'bluetooth'],
+  ['mapping', 'Botões (manual)', 'sliders'],
   ['detect', 'Detectar botões', 'radar'],
   ['controllers', 'Controles virtuais', 'gamepad'],
   ['profiles', 'Perfis', 'layers'],
@@ -68,7 +68,20 @@ let current = null;
 
 function buildNav() {
   const item = ([id, label, ic]) =>
-    h('a', { class: 'nav__item', href: `#/${id}`, dataset: { nav: id } }, icon(ic), h('span', {}, label));
+    h(
+      'a',
+      {
+        class: 'nav__item',
+        href: `#/${id}`,
+        dataset: { nav: id },
+        onClick: (e) => {
+          e.preventDefault();
+          nav(id);
+        },
+      },
+      icon(ic),
+      h('span', {}, label),
+    );
   render(
     navEl,
     NAV_MAIN.map(item),
@@ -94,7 +107,11 @@ function openMore() {
           {
             class: 'more-grid__item',
             href: `#/${id}`,
-            onClick: () => document.querySelector('.modal-backdrop')?.click(),
+            onClick: (e) => {
+              e.preventDefault();
+              document.querySelector('.modal-backdrop')?.click();
+              nav(id);
+            },
           },
           icon(ic),
           h('span', {}, label),
@@ -105,11 +122,29 @@ function openMore() {
   });
 }
 
+/**
+ * Screens replace the history entry instead of adding one: Android's BACK (which the VR Box
+ * sends in several modes) must not walk back through screens or close the app.
+ */
 function nav(id) {
   const hash = `#/${id}`;
-  if (location.hash !== hash) location.hash = hash;
-  else route();
+  if (location.hash !== hash) history.replaceState(history.state, '', hash);
+  route();
 }
+
+/** Back gesture / BACK: close a dialog, else go to Início. Returns false on Início. */
+window.__vrbqBack = () => {
+  const backdrop = document.querySelector('.modal-backdrop');
+  if (backdrop) {
+    backdrop.click();
+    return true;
+  }
+  if (current && current.id !== 'dashboard') {
+    nav('dashboard');
+    return true;
+  }
+  return false;
+};
 
 function route() {
   const id = location.hash.replace(/^#\/?/, '') || 'dashboard';

@@ -71,14 +71,25 @@ for (const b of [7, 6, 0, 1, 2, 3]) {
   await tap(page, [b]);
   await page.waitForTimeout(800);
 }
-await page.getByRole('button', { name: 'Pular' }).click(); // @ only changes the mode
+// The VR Box's BACK (Android goes back in history) must not leave the setup: it is an input.
+const before = page.url();
+await page.evaluate(() => history.back());
+await page.waitForTimeout(400);
+if (page.url() !== before) errors.push(`BACK left the setup screen: ${page.url()}`);
+const backStatus = await page.locator('.setup__status').innerText();
+if (!backStatus.includes('Tecla voltar')) errors.push(`BACK was not recognized: ${backStatus}`);
+if (!(await page.locator('.setup__signal .badge').innerText()).includes('Gamepad')) errors.push('mode chip does not show the gamepad mode');
+await page.waitForTimeout(800);
 await page.waitForTimeout(200);
 await shot(page, 'web-setup-summary');
 const summary = await page.locator('.game-row').allInnerTexts();
 if (summary.length !== 8) errors.push(`summary has ${summary.length} rows`);
+if (!summary[7].includes('Tecla voltar')) errors.push(`@ step learned: ${summary[7]}`);
 if (!summary[0].includes('Eixo X')) errors.push(`joystick learned as: ${summary[0]}`);
 await page.getByRole('button', { name: 'Salvar e usar' }).click();
 await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'Testar agora' }).click();
+await page.waitForTimeout(300);
 
 // The new profile is active: A on the VR Box lights A on the right controller,
 // gatilho de cima (R2, analog) drives the right trigger.
@@ -100,7 +111,7 @@ await page.waitForSelector('#view > *');
 const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('vrbq.profiles') || 'null'));
 const mine = saved?.profiles?.find((p) => p.name === 'Meu VR Box');
 if (!mine || saved.activeProfileId !== mine.id) errors.push('"Meu VR Box" was not saved as the active profile');
-if (mine && mine.mappings.length !== 8) errors.push(`"Meu VR Box" has ${mine?.mappings.length} mappings`);
+if (mine && mine.mappings.length !== 9) errors.push(`"Meu VR Box" has ${mine?.mappings.length} mappings`);
 await page.close();
 
 // ---------------------------------------------------------------- mouse/keyboard mode
@@ -121,6 +132,15 @@ await km.waitForTimeout(100);
 const key = await km.locator('.detected__event').innerText().catch(() => '');
 if (key !== 'Tecla Enter') errors.push(`keyboard detection shows "${key}"`);
 await km.keyboard.up('Enter');
+// A WebView key without a name: still recognized by its code.
+await km.evaluate(() => {
+  const ev = new KeyboardEvent('keydown', { key: 'Unidentified', bubbles: true });
+  Object.defineProperty(ev, 'keyCode', { get: () => 96 });
+  window.dispatchEvent(ev);
+});
+await km.waitForTimeout(150);
+const unnamed = await km.locator('.detected__event').innerText().catch(() => '');
+if (unnamed !== 'Tecla código 96') errors.push(`unnamed key shows "${unnamed}"`);
 await go(km, 'game');
 if (!(await km.getByText('Só no app Android.').count())) errors.push('game screen does not explain the web limit');
 

@@ -7,7 +7,7 @@
 
 import * as E from './engine.js';
 
-const VERSION = '0.3.0';
+const VERSION = '0.4.0';
 const KM_KEY = 'web:km';
 const STORE = { profiles: 'vrbq.profiles', settings: 'vrbq.settings', identified: 'vrbq.identified' };
 
@@ -272,7 +272,7 @@ export function installWebBackend(win, rawDefaults) {
 
   const onKey = (down) => (e) => {
     if (typing(e.target) || e.repeat) return;
-    const name = E.keyNameFromEvent(e.code, e.key);
+    const name = E.keyNameFromEvent(e.code, e.key, e.keyCode || e.which || 0);
     if (!name || !accept(KM_KEY)) return;
     dispatch([{ type: 'button', id: `key:${name}`, pressed: down, t: e.timeStamp, device: KM_KEY }]);
     if (settings.consumeControllerInput) e.preventDefault();
@@ -341,6 +341,48 @@ export function installWebBackend(win, rawDefaults) {
     processor.releaseAll('página perdeu o foco');
     mouseButtons = 0;
     dirtyFlags.frame = dirtyFlags.status = true;
+  });
+
+  // The VR Box sends the Android BACK key in several modes. In an app made from this page,
+  // BACK makes the WebView go back in history (or close the app when there is none). Keep one
+  // history entry above the page so BACK never closes it, and turn it into a controller input
+  // on the screens where buttons are being read.
+  const READING_VIEWS = new Set(['setup', 'detect', 'tester', 'controllers', 'mapping']);
+  // Screens change with replaceState (see main.js); remember the current address so a BACK
+  // can put it right back before the hashchange reaches the router.
+  let lastHref = win.location.href;
+  const replaceState = win.history.replaceState.bind(win.history);
+  win.history.replaceState = (state, title, url) => {
+    replaceState(state, title, url);
+    lastHref = win.location.href;
+  };
+  win.addEventListener('hashchange', () => (lastHref = win.location.href));
+  const armBackGuard = (href) => {
+    try {
+      win.history.pushState({ vrbqGuard: true }, '', href);
+    } catch {
+      /* no history API (some file:// contexts): nothing to guard */
+    }
+  };
+  // History: [base (marked)] [guard]. BACK lands on the base entry; plain "#" changes also
+  // fire popstate in Chrome, but never with the base marker.
+  try {
+    replaceState({ vrbqBase: true }, '', lastHref);
+  } catch {
+    /* ignore */
+  }
+  armBackGuard(lastHref);
+  win.addEventListener('popstate', (e) => {
+    if (!e.state?.vrbqBase) return;
+    const href = lastHref;
+    armBackGuard(href); // back on the same screen, before the router sees the hashchange
+    const view = new URL(href).hash.replace(/^#\/?/, '') || 'dashboard';
+    if (READING_VIEWS.has(view) && !demo) {
+      if (!selectedKey) select(KM_KEY, true);
+      dispatch([{ type: 'pulse', id: 'key:BACK', t: win.performance.now(), device: selectedKey }]);
+    } else {
+      win.__vrbqBack?.();
+    }
   });
 
   function pollGamepads() {
@@ -632,7 +674,7 @@ export function installWebBackend(win, rawDefaults) {
       const base = baseOf(working);
       return editWorking({ ...working, sticks: structuredClone(base.sticks), buttons: { ...base.buttons } });
     },
-    'profile.fromSetup': ({ mappings, name }) => {
+    'profile.fromSetup': ({ mappings, name, merge }) => {
       const rules = (Array.isArray(mappings) ? mappings : []).map((m, i) => E.decodeRule({ ...m, id: `s${i + 1}` }, i)).filter(Boolean);
       if (!rules.length) throw new WebError('Nenhum botão foi configurado', 'empty');
       const clean = E.cleanName(name) || 'Meu VR Box';
@@ -641,7 +683,10 @@ export function installWebBackend(win, rawDefaults) {
         p = { ...structuredClone(defaults.template), id: randomId('p-'), name: clean, baseId: null, builtin: false };
         profiles.push(p);
       }
-      const saved = { ...p, mappings: rules, description: 'Criado no passo a passo', updatedAt: Date.now() };
+      // merge: keep what other modes of the controller already learned (different signals).
+      const fresh = new Set(rules.map((r) => r.source));
+      const kept = merge ? p.mappings.filter((m) => !fresh.has(m.source)) : [];
+      const saved = { ...p, mappings: [...kept, ...rules], description: 'Criado no passo a passo', updatedAt: Date.now() };
       replaceStored(saved);
       activeId = saved.id;
       working = structuredClone(saved);

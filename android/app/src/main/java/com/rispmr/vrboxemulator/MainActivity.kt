@@ -146,11 +146,11 @@ class MainActivity : Activity() {
         app.onActivityResult(requestCode, resultCode, data)
     }
 
-    @Deprecated("Platform back handling; the web UI keeps its own history")
+    /** The phone's back gesture: the web UI closes a dialog or returns to Início first. */
+    @Deprecated("Platform back handling")
     override fun onBackPressed() {
-        if (webView.canGoBack()) webView.goBack() else {
-            @Suppress("DEPRECATION")
-            super.onBackPressed()
+        webView.evaluateJavascript("(window.__vrbqBack && window.__vrbqBack()) ? 'y' : 'n'") { result ->
+            if (result != "\"y\"") finish()
         }
     }
 }
