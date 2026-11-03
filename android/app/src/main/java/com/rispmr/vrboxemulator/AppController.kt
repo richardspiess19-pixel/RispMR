@@ -299,11 +299,16 @@ class AppController(private val activity: Activity, private val webView: WebView
         if (info.isVirtual) return null
         val key = DeviceGroup.keyOf(info)
         val selected = selectedKey
+        // Built-in keys (phone volume buttons...) never count. Android < 10 does not report
+        // isExternal, so there a vendor id is required.
+        val external = info.isExternal == true || (info.isExternal == null && info.vendorId != 0)
+        val candidate = external && DeviceClassifier.isInputCandidate(info.sources)
         return when {
             selected != null && key == selected -> key
-            selected != null && !settings.selectedDeviceOnly && info.isExternal != false &&
-                DeviceClassifier.isInputCandidate(info.sources) -> key
-            selected == null && detecting && info.isExternal != false && DeviceClassifier.isInputCandidate(info.sources) -> {
+            selected != null && !settings.selectedDeviceOnly && candidate -> key
+            // Nothing chosen yet, or the chosen controller is off (e.g. the VR Box changed mode
+            // and now shows up as another device): the first controller that sends input wins.
+            candidate && (selected == null || !registry.isConnected(selected)) -> {
                 select(key, auto = true)
                 key
             }
@@ -753,6 +758,24 @@ class AppController(private val activity: Activity, private val webView: WebView
         on("profile.resetSettings") {
             val base = profiles.baseOf(working)
             editWorking(working.copy(left = base.left, right = base.right, buttons = base.buttons))
+        }
+        // Guided setup ("Configurar meu VR Box"): saves the result as a profile and uses it.
+        on("profile.fromSetup") { args ->
+            val arr = args.optJSONArray("mappings") ?: JSONArray()
+            val rules = (0 until arr.length()).mapNotNull { i ->
+                arr.optJSONObject(i)?.let { o -> ProfileCodec.decodeRule(JSONObject(o.toString()).put("id", "s${i + 1}"), i) }
+            }
+            if (rules.isEmpty()) throw CommandException("Nenhum botão foi configurado", "empty")
+            val name = ProfileCodec.cleanName(args.optString("name")) ?: "Meu VR Box"
+            val existing = profiles.all.firstOrNull { it.name == name }
+            val base = existing ?: catching { profiles.create(name, null) }
+            val saved = catching { profiles.update(base.copy(mappings = rules, description = "Criado no passo a passo")) }
+            working = catching { profiles.setActive(saved.id) }
+            dirty = false
+            applyWorking()
+            afterStateChange()
+            log.add(EventLog.SYSTEM, "Controle configurado: ${working.name}", clock.wallMs())
+            JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
         }
         on("profile.save") {
             working = profiles.update(working)

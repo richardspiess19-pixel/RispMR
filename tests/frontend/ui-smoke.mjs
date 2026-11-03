@@ -35,7 +35,7 @@ const server = http.createServer((req, res) => {
 await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const base = `http://127.0.0.1:${server.address().port}`;
 
-const ROUTES = ['dashboard', 'devices', 'detect', 'mapping', 'game', 'controllers', 'tester', 'profiles', 'settings', 'integration'];
+const ROUTES = ['dashboard', 'devices', 'setup', 'detect', 'mapping', 'game', 'controllers', 'tester', 'profiles', 'settings', 'integration'];
 const errors = [];
 const browser = await chromium.launch();
 
@@ -64,7 +64,7 @@ async function run(label, { mock, width, height }) {
     // Interactions: start emulation from the dashboard and open the target picker.
     await page.evaluate(() => (location.hash = '#/dashboard'));
     await page.waitForTimeout(200);
-    await page.locator('.hero__actions .btn').first().click();
+    await page.locator('.hero__actions').getByRole('button', { name: 'Iniciar emulação' }).click();
     await page.waitForTimeout(200);
     const calls = await page.evaluate(() => window.__mockCalls);
     if (!calls.includes('emulation.start')) errors.push(`[${label}] Iniciar emulação did not call the bridge`);

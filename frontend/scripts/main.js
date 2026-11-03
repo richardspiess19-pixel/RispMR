@@ -16,8 +16,9 @@ import profiles from './views/profiles.js';
 import settings from './views/settings.js';
 import integration from './views/integration.js';
 import game from './views/game.js';
+import setup from './views/setup.js';
 
-const VIEWS = { dashboard, devices, detect, mapping, controllers, tester, profiles, settings, integration, game };
+const VIEWS = { dashboard, devices, detect, mapping, controllers, tester, profiles, settings, integration, game, setup };
 
 const NAV_MAIN = [
   ['dashboard', 'Início', 'home'],
@@ -27,6 +28,7 @@ const NAV_MAIN = [
   ['tester', 'Testar', 'activity'],
 ];
 const NAV_MORE = [
+  ['setup', 'Configurar controle', 'wand'],
   ['detect', 'Detectar botões', 'radar'],
   ['controllers', 'Controles virtuais', 'gamepad'],
   ['profiles', 'Perfis', 'layers'],

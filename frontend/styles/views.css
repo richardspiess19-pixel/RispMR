@@ -355,3 +355,48 @@
 .game-row__label { flex: 1; min-width: 0; font-weight: 600; }
 .game-row__label small { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; }
 .game-row.is-selected .game-row__label { color: var(--blue-2); }
+
+/* ------------------------------------------------------------------ configurar controle */
+
+.setup { display: grid; grid-template-columns: 1fr; gap: var(--gap); align-items: start; }
+
+@media (min-width: 720px) {
+  .setup { grid-template-columns: 280px 1fr; }
+}
+
+.setup__drawing { display: grid; place-items: center; padding: 8px; }
+.setup__drawing .vb { width: min(78vw, 270px); height: auto; }
+.setup__progress { font-size: 13px; color: var(--muted); margin-bottom: 4px; }
+.setup__title { font-size: 21px; font-weight: 700; }
+.setup__status { margin: 10px 0 12px; font-weight: 600; color: var(--text-2); }
+.setup__status.is-ok { color: var(--blue-2); }
+.setup__status.is-warn { color: var(--purple-2); }
+.setup__card .notice { margin-bottom: 12px; }
+.setup__save { margin-top: 14px; }
+
+.vb { overflow: visible; }
+.vb__body { fill: #f1eee9; stroke: #cfcac2; stroke-width: 1.5; }
+.vb__stick-base { fill: #e3dfd8; stroke: #cfcac2; stroke-width: 1.5; }
+.vb__stick-cap { fill: #f7f5f1; stroke: #bdb7ae; stroke-width: 1.5; }
+.vb__btn circle { fill: #f7f5f1; stroke: #bdb7ae; stroke-width: 1.5; }
+.vb__btn text { fill: #8f897f; font-size: 13px; font-weight: 700; font-family: var(--font-body); pointer-events: none; }
+.vb__trigger { fill: #f7f5f1; stroke: #bdb7ae; stroke-width: 1.5; }
+.vb__caption { fill: var(--muted); font-size: 12px; font-family: var(--font-body); }
+
+.vb__part.is-done circle, .vb__part.is-done .vb__stick-cap, .vb__trigger.is-done { fill: #bcd6ff; stroke: var(--blue); }
+.vb__part.is-skipped { opacity: 0.45; }
+.vb__part.is-target circle, .vb__part.is-target .vb__stick-cap, .vb__trigger.is-target { fill: var(--blue); stroke: #fff; stroke-width: 2.5; }
+.vb__part.is-target text { fill: #fff; }
+.vb__part.is-target { animation: vb-pulse 1.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+
+@keyframes vb-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+.reduce-motion .vb__part.is-target { animation: none; }
+
+.setup-cta { display: flex; align-items: center; gap: 14px; }
+.setup-cta__icon { display: grid; place-items: center; width: 46px; height: 46px; flex: none; border-radius: 14px; background: var(--blue-soft); color: var(--blue-2); }
+.setup-cta__icon svg { width: 26px; height: 26px; }
+.setup-cta__text { flex: 1; min-width: 0; }

@@ -7,7 +7,7 @@
 
 import * as E from './engine.js';
 
-const VERSION = '0.2.0';
+const VERSION = '0.3.0';
 const KM_KEY = 'web:km';
 const STORE = { profiles: 'vrbq.profiles', settings: 'vrbq.settings', identified: 'vrbq.identified' };
 
@@ -222,11 +222,15 @@ export function installWebBackend(win, rawDefaults) {
     dirtyFlags.status = dirtyFlags.devices = dirtyFlags.identified = true;
   }
 
+  /**
+   * Whether input of this device is read. Nothing chosen yet, or the chosen controller is off
+   * (the VR Box changed mode and became another device): the first device that sends input wins.
+   */
   function accept(key) {
     if (demo) return false;
     if (selectedKey === key) return true;
     if (selectedKey && !settings.selectedDeviceOnly) return true;
-    if (!selectedKey && detecting) {
+    if (!selectedKey || !isConnected(selectedKey)) {
       select(key, true);
       return true;
     }
@@ -253,6 +257,9 @@ export function installWebBackend(win, rawDefaults) {
   });
 
   // ---------------------------------------------------------------- input
+
+  // On a phone the only mouse is the VR Box in mouse mode; on a computer it is the user's.
+  const touchDevice = () => (win.navigator.maxTouchPoints || 0) > 0;
 
   const typing = (el) => el && (el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA' || el.isContentEditable);
 
@@ -282,7 +289,7 @@ export function installWebBackend(win, rawDefaults) {
   ];
 
   function onPointer(e) {
-    if (e.pointerType !== 'mouse' || !accept(KM_KEY)) return;
+    if (e.pointerType !== 'mouse') return;
     const events = [];
     const buttons = e.type === 'pointercancel' ? 0 : e.buttons;
     if (buttons !== mouseButtons) {
@@ -292,11 +299,16 @@ export function installWebBackend(win, rawDefaults) {
       mouseButtons = buttons;
     }
     if (e.type === 'pointermove' && (e.movementX || e.movementY)) {
-      lastMouse = { dx: e.movementX, dy: e.movementY };
       events.push({ type: 'motion', dx: e.movementX, dy: e.movementY, t: e.timeStamp, samples: 1, device: KM_KEY });
     }
-    if (events.length) dispatch(events);
-    if (settings.consumeControllerInput && e.type !== 'pointermove') {
+    // Chromium also sends synthetic pointer moves (no movement, no buttons) after layout
+    // changes: those must never select "Teclado e mouse".
+    if (!events.length) return;
+    if (selectedKey !== KM_KEY && !touchDevice()) return; // desktop: pick it in the Controle screen
+    if (!accept(KM_KEY)) return;
+    if (e.movementX || e.movementY) lastMouse = { dx: e.movementX, dy: e.movementY };
+    dispatch(events);
+    if (settings.consumeControllerInput && touchDevice() && e.type !== 'pointermove') {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -307,7 +319,7 @@ export function installWebBackend(win, rawDefaults) {
   win.addEventListener(
     'click',
     (e) => {
-      if (e.pointerType === 'mouse' && settings.consumeControllerInput && selectedKey === KM_KEY && !demo) {
+      if (e.pointerType === 'mouse' && settings.consumeControllerInput && touchDevice() && selectedKey === KM_KEY && !demo) {
         e.preventDefault();
         e.stopPropagation();
       }
@@ -338,7 +350,6 @@ export function installWebBackend(win, rawDefaults) {
         knownGamepads.set(key, gamepadGroup(gp));
         dirtyFlags.devices = true;
       }
-      if (!accept(key)) continue;
       const standard = gp.mapping === 'standard';
       const prev = gamepadState.get(key) || { buttons: [], axes: [] };
       const events = [];
@@ -358,7 +369,16 @@ export function installWebBackend(win, rawDefaults) {
         prev.axes[i] = v;
       });
       gamepadState.set(key, prev);
-      if (events.length) dispatch(events);
+      if (!events.length) continue;
+      if (selectedKey !== key) {
+        // Only a real press (or a pushed stick) picks a controller.
+        const real = events.some((e) => (e.type === 'button' && e.pressed) || (e.type === 'axis' && Math.abs(e.value) > 0.5));
+        if (!real) continue;
+        // A gamepad is a better match than "Teclado e mouse": switch to it.
+        if (selectedKey === KM_KEY && !demo) select(key, true);
+        else if (!accept(key)) continue;
+      }
+      dispatch(events);
     }
   }
 
@@ -522,10 +542,13 @@ export function installWebBackend(win, rawDefaults) {
     'input.devices': () => devicesJson(),
     'input.connect': () => {
       if (demo) stopDemo();
+      // A gamepad that already pressed a button is visible; anything else is picked up by
+      // accept() on its first button press (the UI waits for it).
       const gp = groups().find((g) => g.key !== KM_KEY);
-      const best = (settings.lastDeviceKey && groupByKey(settings.lastDeviceKey) && isConnected(settings.lastDeviceKey) ? groupByKey(settings.lastDeviceKey) : null) || gp || null;
-      if (best) select(best.key, false);
-      return { selected: best, candidates: groups().length, bluetoothEnabled: null };
+      const current = selectedKey && isConnected(selectedKey) && selectedKey !== KM_KEY ? groupByKey(selectedKey) : null;
+      const best = current || gp || null;
+      if (best && best.key !== selectedKey) select(best.key, false);
+      return { selected: best, candidates: groups().length, bluetoothEnabled: null, listening: !best };
     },
     'input.select': ({ key }) => {
       if (demo) stopDemo();
@@ -608,6 +631,25 @@ export function installWebBackend(win, rawDefaults) {
     'profile.resetSettings': () => {
       const base = baseOf(working);
       return editWorking({ ...working, sticks: structuredClone(base.sticks), buttons: { ...base.buttons } });
+    },
+    'profile.fromSetup': ({ mappings, name }) => {
+      const rules = (Array.isArray(mappings) ? mappings : []).map((m, i) => E.decodeRule({ ...m, id: `s${i + 1}` }, i)).filter(Boolean);
+      if (!rules.length) throw new WebError('Nenhum botão foi configurado', 'empty');
+      const clean = E.cleanName(name) || 'Meu VR Box';
+      let p = profiles.find((x) => x.name === clean);
+      if (!p) {
+        p = { ...structuredClone(defaults.template), id: randomId('p-'), name: clean, baseId: null, builtin: false };
+        profiles.push(p);
+      }
+      const saved = { ...p, mappings: rules, description: 'Criado no passo a passo', updatedAt: Date.now() };
+      replaceStored(saved);
+      activeId = saved.id;
+      working = structuredClone(saved);
+      dirty = false;
+      saveProfiles();
+      applyWorking();
+      log.add('system', `Controle configurado: ${saved.name}`);
+      return { profile: profileUi(working), profiles: profilesJson() };
     },
     'profile.save': () => {
       working = { ...working, updatedAt: Date.now() };

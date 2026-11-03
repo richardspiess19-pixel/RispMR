@@ -187,6 +187,8 @@
       return { settings: settings(), status: status() };
     },
     'game.preset': () => ({ settings: settings(), status: status() }),
+    'profile.fromSetup': () => ({ profile: profile(), profiles: profiles() }),
+    'input.connect': () => ({ selected: group, candidates: 1, bluetoothEnabled: true }),
     'input.devices': () => ({ groups: [group], selectedKey: group.key, showInternal: false }),
     'detect.start': () => ({ selected: true }),
     'detect.stop': () => null,

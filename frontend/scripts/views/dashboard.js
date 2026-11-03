@@ -74,8 +74,8 @@ export default {
     const steps = [
       ['paired', 'Parear o VR Box no Bluetooth do celular'],
       ['selected', 'Conectar o controle aqui no app'],
-      ['identified', 'Apertar os botões em "Detectar botões"'],
-      ['mapped', 'Escolher o que cada botão faz'],
+      ['identified', 'Configurar o VR Box no passo a passo'],
+      ['mapped', 'Conferir o que cada botão faz'],
       ['game', 'Ativar o Modo jogo'],
       ['saved', 'Salvar o perfil'],
       ['emulating', 'Iniciar a emulação e abrir o jogo'],
@@ -142,6 +142,13 @@ export default {
         title = 'Modo demonstração';
         sub = 'Os comandos estão sendo simulados pelo app.';
         actions = [h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => startEmulation(ctx) }, icon('play'), 'Iniciar emulação')];
+      } else if (c?.selected && c.connected && !ctx.store.state.profiles.some((p) => p.name === 'Meu VR Box')) {
+        title = `${c.selected.name} conectado`;
+        sub = 'Agora ensine os botões ao app: leva 1 minuto.';
+        actions = [
+          h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => ctx.nav('setup') }, icon('wand'), 'Configurar meu VR Box'),
+          h('button', { class: 'btn btn--big', type: 'button', onClick: () => startEmulation(ctx) }, icon('play'), 'Iniciar emulação'),
+        ];
       } else if (c?.selected && c.connected) {
         title = `${c.selected.name} conectado`;
         sub = 'Tudo certo. Inicie a emulação e depois abra o jogo.';
@@ -152,11 +159,11 @@ export default {
         actions = [h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => connect(ctx) }, icon('plug'), 'Conectar controle')];
       } else if (ctx.store.state.info?.platform === 'web') {
         title = 'Nenhum controle conectado';
-        sub = 'Pareie o VR Box no Bluetooth do celular, aperte um botão dele e toque em Conectar. No modo mouse, escolha "Teclado e mouse".';
+        sub = 'Com o VR Box pareado no Bluetooth do celular, é só apertar qualquer botão dele.';
         actions = [h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => connect(ctx) }, icon('plug'), 'Conectar controle')];
       } else {
         title = 'Nenhum controle conectado';
-        sub = 'Pareie o VR Box no Bluetooth do celular e toque em Conectar.';
+        sub = 'Com o VR Box pareado no Bluetooth do celular, é só apertar qualquer botão dele.';
         actions = [h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => connect(ctx) }, icon('plug'), 'Conectar controle')];
       }
       setText(heroTitle, title);
@@ -223,6 +230,10 @@ export default {
   },
 };
 
+/**
+ * Connect: the app picks up the controller on its first button press, so this just waits
+ * for one (and closes by itself when it arrives).
+ */
 export async function connect(ctx) {
   const r = await ctx.run('input.connect');
   if (!r) return;
@@ -230,6 +241,40 @@ export async function connect(ctx) {
     ctx.toast(`${r.selected.name} conectado`);
     return;
   }
+  ctx.run('detect.start');
+  let off = null;
+  const found = await modal({
+    title: 'Aperte qualquer botão do VR Box',
+    body: h(
+      'div',
+      { class: 'stack learn' },
+      h('div', { class: 'learn__radar', 'aria-hidden': 'true' }, h('span'), h('span'), h('i')),
+      h('p', { class: 'learn__text' }, 'Procurando o controle…'),
+      h('p', { class: 'muted small' }, 'Ligue o VR Box (segure @ uns 3 segundos) e confira se ele está pareado no Bluetooth do celular. Qualquer botão serve, inclusive mexer o joystick.'),
+    ),
+    actions: [
+      ...(ctx.store.state.info?.platform === 'web' ? [] : [{ label: 'Abrir Bluetooth', value: 'bt', kind: 'ghost' }]),
+      { label: 'Cancelar', value: null, kind: 'ghost' },
+    ],
+    onOpen: ({ close }) => {
+      off = ctx.store.on('status', (s) => {
+        if (s?.controller?.selected && s.controller.connected) close('found');
+      });
+    },
+  });
+  off?.();
+  if (!ctx.keepDetection) ctx.run('detect.stop');
+  if (found === 'found') {
+    const st = ctx.store.state.status;
+    ctx.toast(`${st.controller.selected.name} conectado`);
+    if (!ctx.store.state.profiles.some((p) => p.name === 'Meu VR Box')) ctx.nav('setup');
+    return;
+  }
+  if (found === 'bt') ctx.run('bt.openSettings');
+}
+
+/** Old "not found" dialog, kept for the explicit Bluetooth help. */
+export async function connectHelp(ctx, r = {}) {
   const choice = await modal({
     title: 'Não achei o controle',
     body: h(
