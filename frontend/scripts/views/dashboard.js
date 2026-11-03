@@ -13,6 +13,7 @@ import {
 } from '../format.js';
 import { createStickView } from '../components/stick-view.js';
 import { modal } from '../ui.js';
+import { showOtherAppsHelp } from '../components/other-apps.js';
 
 const ROWS = [
   ['bluetooth', 'Bluetooth', bluetoothIndicator],
@@ -129,9 +130,12 @@ export default {
         sub = 'Instale o app no celular para usar o VR Box.';
         actions = [];
       } else if (running && ctx.store.state.info?.platform === 'web') {
-        title = 'Emulação ligada';
-        sub = 'Na versão web os controles virtuais funcionam dentro desta página. Para controlar jogos, use o app Android.';
-        actions = [h('button', { class: 'btn btn--big', type: 'button', onClick: () => ctx.run('emulation.stop') }, icon('stop'), 'Parar emulação')];
+        title = 'Ligada só dentro deste app';
+        sub = 'Os controles virtuais funcionam aqui dentro. Outros jogos não recebem nada desta versão: para eles, use o app Android.';
+        actions = [
+          h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => showOtherAppsHelp() }, icon('info'), 'Usar em outros jogos'),
+          h('button', { class: 'btn btn--big', type: 'button', onClick: () => ctx.run('emulation.stop') }, icon('stop'), 'Parar emulação'),
+        ];
       } else if (running) {
         title = 'Emulação ligada';
         const g = gameIndicator(status);
@@ -315,7 +319,7 @@ export async function startEmulation(ctx) {
   const r = await ctx.run('emulation.start');
   if (!r) return;
   const g = gameIndicator(r);
-  if (r.game?.web) ctx.toast('Emulação ligada nesta página.');
+  if (r.game?.web) ctx.toast('Ligada só dentro deste app. Outros jogos precisam do app Android.', 'info', 4200);
   else if (g.tone === 'ok') ctx.toast('Emulação ligada. Pode abrir o jogo.');
   else ctx.toast('Emulação ligada, mas falta configurar o Modo jogo para os jogos reagirem.', 'info', 4200);
 }

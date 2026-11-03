@@ -133,6 +133,22 @@ de gamepad Android, **não** controles Touch para OpenXR.
 4. **Shizuku** — injeção de eventos de gamepad Android no app em primeiro plano; exige
    configuração técnica do usuário.
 
+## Versão HTML dentro de um app conversor (WebView)
+
+Quando o `vr-box-to-quest.html` é transformado em APK por um conversor de sites, a página roda
+numa WebView e só enxerga o que a WebView repassa para o JavaScript:
+
+| Situação | Por quê | Saída |
+| --- | --- | --- |
+| Não funciona em outros apps/jogos | Uma página só recebe entrada enquanto está na tela e não pode tocar em outros apps | App Android + Modo jogo (acessibilidade) |
+| Botões de volume (C/D em vários modos do VR Box 2.0) não chegam | O Android trata volume e algumas teclas de sistema antes da página | App Android (`Activity.dispatchKeyEvent` recebe todas) |
+| Joystick no modo mouse para de responder | O cursor para na borda da tela e a WebView no Android não tem *pointer lock* | Modo Gamepad, ou app Android (`requestPointerCapture`) |
+| Botões de gamepad fora do layout padrão | A API Gamepad do Chromium só expõe o layout padrão | App Android |
+
+O app Android com acessibilidade é bloqueado pela proteção contra fraudes do Play Protect quando
+é instalado por navegador ou gerenciador de arquivos. A instalação por ADB não passa por esse
+bloqueio (veja [INSTALLATION.md](INSTALLATION.md)).
+
 ## Conclusão
 
 Não é possível disponibilizar controles Quest Touch virtuais para outros jogos **sem** um

@@ -3,6 +3,7 @@ import { icon } from '../icons.js';
 import { fixed } from '../format.js';
 import { startEmulation } from './dashboard.js';
 import { fillRange } from './mapping.js';
+import { otherAppsInfo } from '../components/other-apps.js';
 
 // Modo jogo: the VR Box touches the screen of the game that is open.
 
@@ -99,8 +100,8 @@ export default {
         h(
           'section',
           { class: 'card' },
-          h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, h('b', {}, 'Só no app Android. '), 'Uma página da web não pode tocar na tela de outros apps — isso precisa do serviço de acessibilidade do app.')),
-          h('p', { class: 'text-2' }, 'Aqui no navegador você pode detectar os botões, montar o mapeamento, testar e exportar o perfil. Depois é só importar o perfil no app.'),
+          otherAppsInfo(),
+          h('p', { class: 'text-2' }, 'Aqui você pode configurar e testar o VR Box e exportar o perfil. Depois é só importar o perfil no app Android.'),
           h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.nav('profiles') }, icon('download'), 'Exportar perfil')),
         ),
       );

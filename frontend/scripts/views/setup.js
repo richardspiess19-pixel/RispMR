@@ -157,6 +157,8 @@ export default {
     let round = 0; // how many modes were configured in this visit
     const hasProfile = () => ctx.store.state.profiles.some((p) => p.name === 'Meu VR Box');
     let keepOthers = hasProfile();
+    // Inside an app made from the HTML (WebView), Android keeps some keys to itself.
+    const web = ctx.store.state.info?.platform === 'web';
 
     root.append(
       h('header', { class: 'page-head' }, h('div', {}, h('h1', { class: 'page-title' }, 'Configurar meu VR Box'), h('p', { class: 'page-sub' }, 'Um botão de cada vez. No fim o app monta tudo no jeito do Quest.'))),
@@ -191,7 +193,12 @@ export default {
       clearTimeout(idleTimer);
       idleTimer = setTimeout(() => {
         if (finished || stepStatus.classList.contains('is-ok')) return;
-        setText(stepStatus, 'Nada chegou ainda. Esse botão pode não mandar sinal neste modo: toque em Pular ou troque o modo (segure @ e aperte outra letra).');
+        setText(
+          stepStatus,
+          web
+            ? 'Nada chegou ainda. Se esse botão mexe no volume do celular, ele não chega em app feito de HTML (só no app Android): toque em Pular ou troque o modo (segure @ e aperte outra letra).'
+            : 'Nada chegou ainda. Esse botão pode não mandar sinal neste modo: toque em Pular ou troque o modo (segure @ e aperte outra letra).',
+        );
         stepStatus.className = 'setup__status is-warn';
       }, 7000);
     };
@@ -372,6 +379,14 @@ export default {
         done,
         h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Pronto! Seu VR Box está configurado')),
         h('p', { class: 'text-2' }, `O perfil "Meu VR Box" já está em uso${mode ? ` (modo ${MODE_NAMES[mode].toLowerCase()})` : ''}.`),
+        web && learned.joystick?.source.startsWith('mouse:')
+          ? h(
+              'div',
+              { class: 'notice notice--warn' },
+              icon('info'),
+              h('div', {}, 'No modo mouse o joystick para de responder quando a seta chega na borda da tela. Para ele acompanhar o movimento o tempo todo, configure o modo Gamepad (ou use o app Android).'),
+            )
+          : null,
         h(
           'div',
           { class: 'row setup__save' },

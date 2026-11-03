@@ -143,6 +143,15 @@ const unnamed = await km.locator('.detected__event').innerText().catch(() => '')
 if (unnamed !== 'Tecla código 96') errors.push(`unnamed key shows "${unnamed}"`);
 await go(km, 'game');
 if (!(await km.getByText('Só no app Android.').count())) errors.push('game screen does not explain the web limit');
+// Starting here must say plainly that other games are not reached.
+await go(km, 'dashboard');
+await km.getByRole('button', { name: 'Iniciar emulação' }).first().tap();
+await km.waitForTimeout(300);
+if (!(await km.getByText('Ligada só dentro deste app').count())) errors.push('web emulation does not say it only works inside the app');
+await km.getByRole('button', { name: 'Usar em outros jogos' }).tap();
+await km.waitForSelector('.modal');
+if (!(await km.locator('.modal').getByText('Instale o app Android', { exact: false }).count())) errors.push('other-games help is missing');
+await shot(km, 'web-other-apps');
 
 await browser.close();
 if (errors.length) {
