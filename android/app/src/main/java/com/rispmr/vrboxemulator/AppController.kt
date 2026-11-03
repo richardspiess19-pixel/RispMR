@@ -1,0 +1,1244 @@
+package com.rispmr.vrboxemulator
+
+import android.app.Activity
+import android.bluetooth.BluetoothAdapter
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.Handler
+import android.os.Looper
+import android.os.SystemClock
+import android.provider.Settings
+import android.util.Log
+import android.view.InputDevice
+import android.view.KeyEvent
+import android.view.MotionEvent
+import android.view.WindowManager
+import android.webkit.WebView
+import com.rispmr.vrboxemulator.bluetooth.BluetoothDeviceManager
+import com.rispmr.vrboxemulator.bridge.CommandException
+import com.rispmr.vrboxemulator.bridge.CommandRouter
+import com.rispmr.vrboxemulator.bridge.WebBridge
+import com.rispmr.vrboxemulator.demo.DemoScript
+import com.rispmr.vrboxemulator.engine.AppSettings
+import com.rispmr.vrboxemulator.engine.AppSettingsCodec
+import com.rispmr.vrboxemulator.engine.ButtonConfig
+import com.rispmr.vrboxemulator.engine.Clock
+import com.rispmr.vrboxemulator.engine.DefaultProfiles
+import com.rispmr.vrboxemulator.engine.DeviceClassifier
+import com.rispmr.vrboxemulator.engine.DeviceGroup
+import com.rispmr.vrboxemulator.engine.DeviceRegistry
+import com.rispmr.vrboxemulator.engine.Detection
+import com.rispmr.vrboxemulator.engine.EventLog
+import com.rispmr.vrboxemulator.engine.FileTextStorage
+import com.rispmr.vrboxemulator.engine.Hand
+import com.rispmr.vrboxemulator.engine.HandSnapshot
+import com.rispmr.vrboxemulator.engine.IdGenerator
+import com.rispmr.vrboxemulator.engine.IdentifiedInputsStore
+import com.rispmr.vrboxemulator.engine.InputCatalog
+import com.rispmr.vrboxemulator.engine.InputProcessor
+import com.rispmr.vrboxemulator.engine.Profile
+import com.rispmr.vrboxemulator.engine.ProfileCodec
+import com.rispmr.vrboxemulator.engine.ProfileException
+import com.rispmr.vrboxemulator.engine.ProfileRepository
+import com.rispmr.vrboxemulator.engine.RawEvent
+import com.rispmr.vrboxemulator.engine.RegistryEvent
+import com.rispmr.vrboxemulator.engine.SettingsException
+import com.rispmr.vrboxemulator.engine.Sources
+import com.rispmr.vrboxemulator.engine.VirtualControllerManager
+import com.rispmr.vrboxemulator.engine.VirtualTargets
+import com.rispmr.vrboxemulator.input.AndroidInputTranslator
+import com.rispmr.vrboxemulator.input.HidInputManager
+import com.rispmr.vrboxemulator.integration.UdpStreamer
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
+import java.util.concurrent.ExecutorService
+import java.util.concurrent.Executors
+import kotlin.math.roundToInt
+
+/**
+ * Wires the engine to Android and to the web UI.
+ *
+ * Threading model: everything here runs on the main thread (input events are delivered there
+ * by Android anyway and the engine work per event is a few microseconds). File writes run on
+ * [io]; UDP output runs on the [UdpStreamer] thread. Nothing blocks the main thread.
+ */
+class AppController(private val activity: Activity, private val webView: WebView) {
+    private val main = Handler(Looper.getMainLooper())
+    private val io: ExecutorService = Executors.newSingleThreadExecutor()
+    private val clock = object : Clock {
+        override fun uptimeMs() = SystemClock.uptimeMillis()
+        override fun wallMs() = System.currentTimeMillis()
+    }
+
+    // Engine
+    private val log = EventLog()
+    private val controllers = VirtualControllerManager()
+    private val processor = InputProcessor(controllers, log, clock)
+    private val registry = DeviceRegistry()
+    private val translator = AndroidInputTranslator()
+    private val rawBuffer = ArrayList<RawEvent>(16)
+
+    // Platform
+    val permissions = PermissionManager(activity)
+    private val hid = HidInputManager(activity)
+    private val bluetooth = BluetoothDeviceManager(activity) { permissions.hasBluetooth() }
+    private val streamer = UdpStreamer()
+    private val router = CommandRouter()
+    private val bridge = WebBridge(webView, router)
+
+    // Storage
+    private val settingsStorage = FileTextStorage(File(activity.filesDir, "settings.json"))
+    private val profileStorage = FileTextStorage(File(activity.filesDir, "profiles.json"))
+    private val identifiedStorage = FileTextStorage(File(activity.filesDir, "identified-inputs.json"))
+    private var settings: AppSettings = AppSettingsCodec.decode(runCatching { settingsStorage.read() }.getOrNull())
+    private val profiles = ProfileRepository(
+        storage = profileStorage,
+        defaults = loadDefaults(),
+        persist = { text -> writeAsync(profileStorage, text) },
+    )
+    private val identified = IdentifiedInputsStore(identifiedStorage) { text -> writeAsync(identifiedStorage, text) }
+
+    // Session state
+    private lateinit var working: Profile
+    private var dirty = false
+    private var selectedKey: String? = null
+    private var emulationRunning = false
+    private var emulationStartedAt = 0L
+    private var demoRunning = false
+    private var demoStartedAt = 0L
+    private var demoScript = DemoScript()
+    private var detecting = false
+    private var pointerCaptured = false
+    private var windowFocused = false
+    private var resumed = false
+    private var pageReady = false
+    private var eventDeviceKey = ""
+    private var lastMotionDx = 0f
+    private var lastMotionDy = 0f
+
+    // UI push coalescing
+    private var frameScheduled = false
+    private var lastFrameAt = 0L
+    private var lastSentVersion = -1L
+    private var lastSentLogSeq = 0L
+    private var statusDirty = true
+    private var devicesDirty = true
+    private var physicalDirty = true
+    private var statsDirty = true
+    private var identifiedDirty = false
+    private var identifiedSaveScheduled = false
+    private val pendingDetections = ArrayList<JSONObject>()
+    private var tickScheduled = false
+    private val pendingResults = HashMap<Int, (Int, Intent?) -> Unit>()
+    private var nextRequestCode = 5000
+    private val ids = IdGenerator.RANDOM
+
+    init {
+        log.capacity = settings.logSize
+        profiles.load()
+        profiles.loadWarnings.forEach { log.add(EventLog.SYSTEM, it, clock.wallMs()) }
+        identified.load()
+        working = profiles.active()
+        applyWorking()
+
+        controllers.listener = com.rispmr.vrboxemulator.engine.VirtualEventListener { ev ->
+            log.add(EventLog.VIRTUAL, ev.describe(), clock.wallMs())
+        }
+        processor.detectionListener = { onDetection(it) }
+        processor.identifiedListener = { id, kind ->
+            val key = eventDeviceKey
+            if (key.isNotEmpty() && identified.record(key, id, kind, clock.wallMs())) {
+                statusDirty = true
+                identifiedDirty = true
+            }
+            scheduleIdentifiedSave()
+        }
+        bluetooth.onChanged = {
+            statusDirty = true
+            scheduleFrame()
+        }
+        bluetooth.onAclEvent = { name, connected ->
+            log.add(EventLog.SYSTEM, "Bluetooth link ${if (connected) "connected" else "disconnected"}: $name", clock.wallMs())
+        }
+        router.onInternalError = { cmd, e -> Log.e(TAG, "Command $cmd failed", e) }
+        registerCommands()
+        log.add(EventLog.SYSTEM, "App started", clock.wallMs())
+    }
+
+    // ---------------------------------------------------------------- lifecycle
+
+    fun onPageStarted() {
+        pageReady = false
+        bridge.onPageStarted()
+    }
+
+    fun onResume() {
+        resumed = true
+        hid.start(
+            onAdded = { id -> hid.describe(id)?.let { handleRegistry(registry.put(it)) } },
+            onRemoved = { id ->
+                translator.reset(id)
+                handleRegistry(registry.remove(id))
+            },
+            onChanged = { id -> hid.describe(id)?.let { handleRegistry(registry.put(it)) } },
+        )
+        handleRegistry(registry.replaceAll(hid.listDevices()))
+        bluetooth.start()
+        statusDirty = true
+        devicesDirty = true
+        main.removeCallbacks(statsRunnable)
+        main.postDelayed(statsRunnable, 1000)
+        scheduleFrame()
+    }
+
+    fun onPause() {
+        resumed = false
+        hid.stop()
+        bluetooth.stop()
+        main.removeCallbacks(statsRunnable)
+        processor.releaseAll("app in background")
+        afterStateChange()
+        identified.save()
+    }
+
+    fun onDestroy() {
+        stopDemo()
+        streamer.shutdown()
+        io.shutdown()
+    }
+
+    fun onWindowFocusChanged(hasFocus: Boolean) {
+        windowFocused = hasFocus
+        if (!hasFocus) {
+            // Android stops delivering events without focus: release everything so no
+            // virtual button stays stuck in the PRESSED state.
+            processor.releaseAll("window lost focus")
+            afterStateChange()
+        }
+        updatePointerCapture()
+        statusDirty = true
+        scheduleFrame()
+    }
+
+    fun onPointerCaptureChanged(hasCapture: Boolean) {
+        pointerCaptured = hasCapture
+        statusDirty = true
+        scheduleFrame()
+    }
+
+    fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        pendingResults.remove(requestCode)?.invoke(resultCode, data)
+    }
+
+    // ---------------------------------------------------------------- input entry points
+
+    /** @return true when the event was consumed (it then does not reach the UI). */
+    fun onKeyEvent(event: KeyEvent): Boolean {
+        val key = acceptDevice(event.deviceId) ?: return false
+        rawBuffer.clear()
+        translator.translateKey(event, key, rawBuffer)
+        dispatchRaw(rawBuffer)
+        return settings.consumeControllerInput
+    }
+
+    fun onMotionEvent(event: MotionEvent): Boolean {
+        if (event.isFromSource(InputDevice.SOURCE_TOUCHSCREEN)) return false
+        val key = acceptDevice(event.deviceId) ?: return false
+        rawBuffer.clear()
+        translator.translateMotion(event, key, captured = false, out = rawBuffer)
+        dispatchRaw(rawBuffer)
+        return settings.consumeControllerInput
+    }
+
+    fun onCapturedPointer(event: MotionEvent): Boolean {
+        val key = acceptDevice(event.deviceId) ?: return true
+        rawBuffer.clear()
+        translator.translateMotion(event, key, captured = true, out = rawBuffer)
+        dispatchRaw(rawBuffer)
+        return true
+    }
+
+    /** Decides whether events of this Android input device are read. Returns its group key. */
+    private fun acceptDevice(deviceId: Int): String? {
+        if (demoRunning) return null
+        var info = registry.device(deviceId)
+        if (info == null) {
+            val described = hid.describe(deviceId) ?: return null
+            handleRegistry(registry.put(described))
+            info = described
+        }
+        if (info.isVirtual) return null
+        val key = DeviceGroup.keyOf(info)
+        val selected = selectedKey
+        return when {
+            selected != null && key == selected -> key
+            selected != null && !settings.selectedDeviceOnly && info.isExternal != false &&
+                DeviceClassifier.isInputCandidate(info.sources) -> key
+            selected == null && detecting && info.isExternal != false && DeviceClassifier.isInputCandidate(info.sources) -> {
+                select(key, auto = true)
+                key
+            }
+            else -> null
+        }
+    }
+
+    private fun dispatchRaw(events: List<RawEvent>) {
+        if (events.isEmpty()) return
+        var changed = false
+        for (ev in events) {
+            eventDeviceKey = ev.deviceKey
+            if (ev is RawEvent.Motion) {
+                lastMotionDx = ev.dx
+                lastMotionDy = ev.dy
+            }
+            if (processor.process(ev)) changed = true
+            physicalDirty = true
+        }
+        if (changed) afterStateChange()
+        scheduleFrame()
+        scheduleTick()
+    }
+
+    private fun afterStateChange() {
+        if (emulationRunning) streamer.publish(controllers.snapshot(), demoRunning, controllerConnected())
+        scheduleFrame()
+        scheduleTick()
+    }
+
+    private val tickRunnable = Runnable {
+        tickScheduled = false
+        val now = clock.uptimeMs()
+        var changed = processor.tick(now)
+        if (controllers.tick(now)) changed = true
+        if (changed) {
+            physicalDirty = true
+            afterStateChange()
+        }
+        scheduleTick()
+    }
+
+    private fun scheduleTick() {
+        if (tickScheduled) return
+        if (controllers.needsTick() || processor.needsTick()) {
+            tickScheduled = true
+            main.postDelayed(tickRunnable, TICK_MS)
+        }
+    }
+
+    private val statsRunnable = object : Runnable {
+        override fun run() {
+            if (!resumed) return
+            if (processor.stats.roll(clock.uptimeMs())) statsDirty = true
+            if (emulationRunning) statusDirty = true // packet counter
+            scheduleFrame()
+            main.postDelayed(this, 1000)
+        }
+    }
+
+    // ---------------------------------------------------------------- devices
+
+    private fun handleRegistry(events: List<RegistryEvent>) {
+        if (events.isEmpty()) return
+        devicesDirty = true
+        statusDirty = true
+        for (e in events) {
+            when (e) {
+                is RegistryEvent.Connected -> {
+                    val g = e.group
+                    if (!g.isCandidate) continue
+                    val verb = if (e.reconnected) "reconnected" else "detected"
+                    log.add(EventLog.SYSTEM, "Input device $verb: ${g.name} (${g.roles.joinToString(" + ")})", clock.wallMs())
+                    if (g.key == selectedKey) {
+                        log.add(EventLog.SYSTEM, "Selected controller is back: ${g.name}", clock.wallMs())
+                        updatePointerCapture()
+                    } else if (selectedKey == null && !demoRunning && settings.autoSelectLastDevice && g.key == settings.lastDeviceKey) {
+                        select(g.key, auto = true)
+                    }
+                }
+                is RegistryEvent.Disconnected -> {
+                    val g = e.group
+                    if (!g.isCandidate) continue
+                    log.add(EventLog.SYSTEM, "Input device disconnected: ${g.name}", clock.wallMs())
+                    if (g.key == selectedKey) {
+                        processor.releaseAll("controller disconnected")
+                        afterStateChange()
+                    }
+                }
+            }
+        }
+        scheduleFrame()
+    }
+
+    private fun select(key: String, auto: Boolean) {
+        val group = registry.group(key) ?: throw CommandException("Device is not connected", "not_connected")
+        if (selectedKey != key) {
+            processor.releaseAll(null)
+            translator.reset()
+        }
+        selectedKey = key
+        settings = settings.copy(lastDeviceKey = key)
+        saveSettings()
+        log.add(EventLog.SYSTEM, "Controller selected${if (auto) " automatically" else ""}: ${group.name}", clock.wallMs())
+        statusDirty = true
+        devicesDirty = true
+        identifiedDirty = true
+        updatePointerCapture()
+        afterStateChange()
+    }
+
+    private fun releaseController() {
+        val name = registry.lastKnown(selectedKey)?.name
+        if (emulationRunning) stopEmulation()
+        selectedKey = null
+        detecting = false
+        processor.detecting = false
+        processor.releaseAll(null)
+        translator.reset()
+        if (name != null) log.add(EventLog.SYSTEM, "Controller released: $name (input reading stopped)", clock.wallMs())
+        statusDirty = true
+        devicesDirty = true
+        updatePointerCapture()
+        afterStateChange()
+    }
+
+    private fun controllerConnected(): Boolean = demoRunning || registry.isConnected(selectedKey)
+
+    private fun readingActive(): Boolean = demoRunning || (selectedKey != null && registry.isConnected(selectedKey))
+
+    private fun updatePointerCapture() {
+        val group = registry.group(selectedKey)
+        val wanted = settings.autoPointerCapture && !demoRunning && group != null && Sources.has(group.sources, Sources.MOUSE)
+        if (wanted && windowFocused && !webView.hasPointerCapture()) {
+            webView.requestFocus()
+            webView.requestPointerCapture()
+        } else if (!wanted && webView.hasPointerCapture()) {
+            webView.releasePointerCapture()
+        }
+    }
+
+    // ---------------------------------------------------------------- detection
+
+    private fun onDetection(d: Detection) {
+        val deviceName = if (d.deviceKey == DemoScript.DEVICE_KEY) DemoScript.DEVICE_NAME else registry.lastKnown(d.deviceKey)?.name ?: d.deviceKey
+        pendingDetections += JSONObject()
+            .put("sourceId", d.sourceId)
+            .put("label", d.label)
+            .put("kind", d.kind.key)
+            .put("state", d.state)
+            .put("value", round(d.value))
+            .put("device", deviceName)
+            .put("demo", d.deviceKey == DemoScript.DEVICE_KEY)
+            .put("t", clock.wallMs())
+            .put(
+                "alternatives",
+                JSONArray().apply {
+                    d.alternatives.forEach { id ->
+                        put(JSONObject().put("id", id).put("label", InputCatalog.labelOf(id)).put("kind", InputCatalog.kindOf(id)?.key))
+                    }
+                },
+            )
+        if (pendingDetections.size > 20) pendingDetections.removeAt(0)
+        scheduleFrame()
+    }
+
+    private fun identifiedKey(): String? = if (demoRunning) DemoScript.DEVICE_KEY else selectedKey
+
+    private fun scheduleIdentifiedSave() {
+        if (identifiedSaveScheduled) return
+        identifiedSaveScheduled = true
+        main.postDelayed({
+            identifiedSaveScheduled = false
+            identified.save()
+        }, 2000)
+    }
+
+    // ---------------------------------------------------------------- emulation
+
+    private fun startEmulation() {
+        if (!readingActive()) {
+            throw CommandException("Connect and select a controller first (or start DEMO MODE).", "no_controller")
+        }
+        emulationRunning = true
+        emulationStartedAt = clock.wallMs()
+        if (settings.udp.enabled) streamer.start(settings.udp)
+        applyKeepScreenOn()
+        val output = if (settings.udp.enabled) "VRBQ UDP -> ${settings.udp.host}:${settings.udp.port} (${settings.udp.format})" else "no output enabled (local preview only)"
+        log.add(EventLog.SYSTEM, "Emulation started — output: $output", clock.wallMs())
+        statusDirty = true
+        afterStateChange()
+    }
+
+    private fun stopEmulation() {
+        if (!emulationRunning) return
+        emulationRunning = false
+        streamer.stop()
+        applyKeepScreenOn()
+        log.add(EventLog.SYSTEM, "Emulation stopped", clock.wallMs())
+        statusDirty = true
+        scheduleFrame()
+    }
+
+    private fun applyKeepScreenOn() {
+        if (emulationRunning && settings.keepScreenOn) {
+            activity.window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            activity.window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    // ---------------------------------------------------------------- demo
+
+    private val demoRunnable = object : Runnable {
+        override fun run() {
+            if (!demoRunning) return
+            val now = clock.uptimeMs()
+            dispatchRaw(demoScript.step(now - demoStartedAt, now))
+            main.postDelayed(this, DemoScript.STEP_MS)
+        }
+    }
+
+    private fun startDemo() {
+        if (demoRunning) return
+        processor.releaseAll(null)
+        demoScript = DemoScript()
+        demoRunning = true
+        demoStartedAt = clock.uptimeMs()
+        updatePointerCapture()
+        log.add(EventLog.SYSTEM, "DEMO MODE started — all input is SIMULATED", clock.wallMs())
+        statusDirty = true
+        identifiedDirty = true
+        main.post(demoRunnable)
+    }
+
+    private fun stopDemo() {
+        if (!demoRunning) return
+        dispatchRaw(demoScript.releaseAll(clock.uptimeMs()))
+        demoRunning = false
+        main.removeCallbacks(demoRunnable)
+        processor.releaseAll(null)
+        if (emulationRunning && !readingActive()) stopEmulation()
+        log.add(EventLog.SYSTEM, "DEMO MODE stopped", clock.wallMs())
+        statusDirty = true
+        identifiedDirty = true
+        updatePointerCapture()
+        afterStateChange()
+    }
+
+    // ---------------------------------------------------------------- profiles
+
+    private fun applyWorking() {
+        controllers.configure(working.mappings, working.buttons, working.left, working.right)
+        controllers.onPhysicalState(processor.state, clock.uptimeMs())
+        statusDirty = true
+    }
+
+    private fun editWorking(updated: Profile): JSONObject {
+        working = updated
+        dirty = true
+        applyWorking()
+        afterStateChange()
+        return profileUiJson(working)
+    }
+
+    private fun loadDefaults(): DefaultProfiles {
+        val am = activity.assets
+        val template = am.open("config/default-profile.json").bufferedReader().use { it.readText() }
+        val initial = am.open("config/controller-profiles.json").bufferedReader().use { it.readText() }
+        return DefaultProfiles.parse(template, initial)
+    }
+
+    private fun writeAsync(storage: FileTextStorage, text: String) {
+        io.execute {
+            try {
+                storage.write(text)
+            } catch (e: Exception) {
+                Log.e(TAG, "Save failed", e)
+                main.post {
+                    log.add(EventLog.SYSTEM, "Saving failed: ${e.message}", clock.wallMs())
+                    scheduleFrame()
+                }
+            }
+        }
+    }
+
+    private fun saveSettings() = writeAsync(settingsStorage, AppSettingsCodec.encode(settings).toString())
+
+    // ---------------------------------------------------------------- commands
+
+    private fun registerCommands() = with(router) {
+        on("app.hello") {
+            pageReady = true
+            lastSentLogSeq = log.lastSeq
+            lastSentVersion = -1
+            statusDirty = false
+            devicesDirty = false
+            JSONObject()
+                .put("info", infoJson())
+                .put("status", statusJson())
+                .put("catalog", catalogJson())
+                .put("settings", AppSettingsCodec.encode(settings))
+                .put("profile", profileUiJson(working))
+                .put("profiles", profilesJson())
+                .put("devices", devicesJson())
+                .put("identified", identifiedJson())
+                .put("log", logJson(log.recent(120)))
+                .put("frame", frameJson(includeEvents = false))
+        }
+        on("app.status") { statusJson() }
+        on("app.openAppSettings") { permissions.openAppSettings(); null }
+
+        // Bluetooth
+        on("bt.devices") { bluetoothJson() }
+        onAsync("bt.requestPermission") { _, reply ->
+            permissions.requestBluetooth { state ->
+                statusDirty = true
+                if (state.key == "granted") log.add(EventLog.SYSTEM, "Bluetooth permission granted", clock.wallMs())
+                scheduleFrame()
+                reply.ok(JSONObject().put("permission", state.key).put("bluetooth", bluetoothJson()))
+            }
+        }
+        on("bt.openSettings") {
+            startSafely(Intent(Settings.ACTION_BLUETOOTH_SETTINGS))
+            null
+        }
+        onAsync("bt.requestEnable") { _, reply ->
+            if (!bluetooth.isSupported) throw CommandException("This phone has no Bluetooth adapter", "unsupported")
+            if (!permissions.hasBluetooth()) throw CommandException("Bluetooth permission is required", "permission_required")
+            startForResult(Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE)) { _, _ ->
+                statusDirty = true
+                scheduleFrame()
+                reply.ok(JSONObject().put("enabled", bluetooth.isEnabled))
+            }
+        }
+
+        // Input devices
+        on("input.devices") { devicesJson() }
+        on("input.connect") {
+            handleRegistry(registry.replaceAll(hid.listDevices()))
+            if (demoRunning) stopDemo()
+            val best = registry.bestCandidate(settings.lastDeviceKey)
+            if (best != null) select(best.key, auto = false)
+            JSONObject()
+                .put("selected", best?.toJson() ?: JSONObject.NULL)
+                .put("candidates", registry.groups().size)
+                .put("bluetoothEnabled", bluetooth.isEnabled)
+        }
+        on("input.select") { args ->
+            if (demoRunning) stopDemo()
+            select(args.optString("key"), auto = false)
+            statusJson()
+        }
+        on("input.release") {
+            if (demoRunning) stopDemo()
+            releaseController()
+            statusJson()
+        }
+        on("input.recapture") {
+            updatePointerCapture()
+            null
+        }
+
+        // Automatic input detection
+        on("detect.start") {
+            detecting = true
+            processor.detecting = true
+            statusDirty = true
+            log.add(EventLog.SYSTEM, "Automatic input detection started", clock.wallMs())
+            JSONObject().put("selected", selectedKey != null || demoRunning)
+        }
+        on("detect.stop") {
+            detecting = false
+            processor.detecting = false
+            statusDirty = true
+            null
+        }
+        on("identified.list") { identifiedJson() }
+        on("identified.clear") {
+            identifiedKey()?.let { identified.clear(it) }
+            statusDirty = true
+            identifiedJson()
+        }
+
+        // Mapping (edits the working copy; "profile.save" persists it)
+        on("mapping.add") { args ->
+            val rule = ProfileCodec.decodeRule(args.put("id", ids.next("m-")))
+                ?: throw CommandException("This physical input cannot drive that virtual control", "incompatible")
+            if (working.mappings.any { it.source == rule.source && it.target == rule.target }) {
+                throw CommandException("This mapping already exists", "duplicate")
+            }
+            editWorking(working.copy(mappings = working.mappings + rule))
+        }
+        on("mapping.update") { args ->
+            val id = args.optString("id")
+            val current = working.mappings.firstOrNull { it.id == id } ?: throw CommandException("Mapping not found", "not_found")
+            val merged = ProfileCodec.encodeRule(current)
+            for (k in listOf("source", "target", "invert", "threshold", "scale")) if (args.has(k)) merged.put(k, args.get(k))
+            val rule = ProfileCodec.decodeRule(merged) ?: throw CommandException("This physical input cannot drive that virtual control", "incompatible")
+            editWorking(working.copy(mappings = working.mappings.map { if (it.id == id) rule else it }))
+        }
+        on("mapping.remove") { args ->
+            val id = args.optString("id")
+            if (working.mappings.none { it.id == id }) throw CommandException("Mapping not found", "not_found")
+            editWorking(working.copy(mappings = working.mappings.filterNot { it.id == id }))
+        }
+        on("mapping.resetDefault") {
+            editWorking(working.copy(mappings = profiles.baseOf(working).mappings))
+        }
+        on("profile.updateSticks") { args ->
+            var p = working
+            args.optJSONObject("left")?.let { p = p.copy(left = ProfileCodec.decodeStick(merge(ProfileCodec.encodeStick(p.left), it), p.left)) }
+            args.optJSONObject("right")?.let { p = p.copy(right = ProfileCodec.decodeStick(merge(ProfileCodec.encodeStick(p.right), it), p.right)) }
+            editWorking(p)
+        }
+        on("profile.updateButtons") { args ->
+            val b = working.buttons
+            editWorking(
+                working.copy(
+                    buttons = ButtonConfig(
+                        analogThreshold = args.optDouble("analogThreshold", b.analogThreshold.toDouble()).toFloat().coerceIn(0.05f, 0.95f),
+                        digitalAnalogValue = args.optDouble("digitalAnalogValue", b.digitalAnalogValue.toDouble()).toFloat().coerceIn(0f, 1f),
+                    ),
+                ),
+            )
+        }
+        on("profile.resetSettings") {
+            val base = profiles.baseOf(working)
+            editWorking(working.copy(left = base.left, right = base.right, buttons = base.buttons))
+        }
+        on("profile.save") {
+            working = profiles.update(working)
+            dirty = false
+            statusDirty = true
+            log.add(EventLog.SYSTEM, "Profile saved: ${working.name}", clock.wallMs())
+            JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
+        }
+        on("profile.revert") {
+            working = profiles.get(working.id) ?: profiles.active()
+            dirty = false
+            applyWorking()
+            afterStateChange()
+            profileUiJson(working)
+        }
+
+        // Profiles manager
+        on("profiles.list") { profilesJson() }
+        on("profiles.activate") { args ->
+            val id = args.optString("id")
+            if (dirty && !args.optBoolean("discard", false) && id != working.id) {
+                throw CommandException("The current profile has unsaved changes", "unsaved")
+            }
+            working = catching { profiles.setActive(id) }
+            dirty = false
+            applyWorking()
+            afterStateChange()
+            log.add(EventLog.SYSTEM, "Profile activated: ${working.name}", clock.wallMs())
+            JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
+        }
+        on("profiles.create") { args ->
+            val baseId = args.optString("baseId").takeIf { it.isNotBlank() }
+            val p = catching { profiles.create(args.optString("name"), baseId) }
+            JSONObject().put("created", p.id).put("profiles", profilesJson())
+        }
+        on("profiles.rename") { args ->
+            val p = catching { profiles.rename(args.optString("id"), args.optString("name")) }
+            if (p.id == working.id) working = working.copy(name = p.name)
+            statusDirty = true
+            JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
+        }
+        on("profiles.duplicate") { args ->
+            val source = args.optString("id")
+            val p = catching {
+                if (source == working.id && dirty) profiles.create("${working.name} Copy", null).let { created ->
+                    profiles.update(working.copy(id = created.id, name = created.name, builtin = false))
+                } else profiles.duplicate(source)
+            }
+            JSONObject().put("created", p.id).put("profiles", profilesJson())
+        }
+        on("profiles.delete") { args ->
+            val id = args.optString("id")
+            catching { profiles.delete(id) }
+            if (id == working.id) {
+                working = profiles.active()
+                dirty = false
+                applyWorking()
+                afterStateChange()
+            }
+            JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
+        }
+        on("profiles.restoreDefaults") {
+            profiles.restoreDefaults()
+            if (working.builtin || profiles.get(working.id) == null) {
+                working = profiles.get(working.id) ?: profiles.active()
+                dirty = false
+                applyWorking()
+                afterStateChange()
+            }
+            log.add(EventLog.SYSTEM, "Initial profiles restored", clock.wallMs())
+            JSONObject().put("profile", profileUiJson(working)).put("profiles", profilesJson())
+        }
+        onAsync("profiles.export") { args, reply ->
+            val id = args.optString("id").ifBlank { working.id }
+            val text = catching { if (id == working.id) profiles.exportJson(working) else profiles.exportJson(id) }
+            val name = (profiles.get(id)?.name ?: working.name).replace(Regex("[^A-Za-z0-9 _-]"), "").trim().ifEmpty { "profile" }
+            val intent = Intent(Intent.ACTION_CREATE_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("application/json")
+                .putExtra(Intent.EXTRA_TITLE, "$name.vrbq.json")
+            startForResult(intent) { code, data ->
+                val uri = data?.data
+                if (code != Activity.RESULT_OK || uri == null) {
+                    reply.fail(CommandException("Export cancelled", "cancelled"))
+                    return@startForResult
+                }
+                io.execute {
+                    val error = runCatching {
+                        activity.contentResolver.openOutputStream(uri, "wt")?.use { it.write(text.toByteArray(Charsets.UTF_8)) }
+                            ?: throw IllegalStateException("Cannot open the selected file")
+                    }.exceptionOrNull()
+                    main.post {
+                        if (error == null) reply.ok(JSONObject().put("file", uri.lastPathSegment ?: "file"))
+                        else reply.fail(CommandException("Export failed: ${error.message}", "io"))
+                    }
+                }
+            }
+        }
+        onAsync("profiles.import") { _, reply ->
+            val intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+                .addCategory(Intent.CATEGORY_OPENABLE)
+                .setType("*/*")
+                .putExtra(Intent.EXTRA_MIME_TYPES, arrayOf("application/json", "text/plain", "application/octet-stream"))
+            startForResult(intent) { code, data ->
+                val uri = data?.data
+                if (code != Activity.RESULT_OK || uri == null) {
+                    reply.fail(CommandException("Import cancelled", "cancelled"))
+                    return@startForResult
+                }
+                io.execute {
+                    val result = runCatching { readLimited(uri) }
+                    main.post {
+                        result.fold(
+                            onSuccess = { text ->
+                                try {
+                                    val r = profiles.importJson(text)
+                                    log.add(EventLog.SYSTEM, "Profile imported: ${r.profile.name}", clock.wallMs())
+                                    reply.ok(
+                                        JSONObject().put("created", r.profile.id).put("warnings", JSONArray(r.warnings)).put("profiles", profilesJson()),
+                                    )
+                                } catch (e: ProfileException) {
+                                    reply.fail(CommandException(e.message ?: "Invalid profile", "invalid"))
+                                }
+                            },
+                            onFailure = { reply.fail(CommandException("Cannot read file: ${it.message}", "io")) },
+                        )
+                    }
+                }
+            }
+        }
+
+        // Emulation
+        on("emulation.start") {
+            startEmulation()
+            statusJson()
+        }
+        on("emulation.stop") {
+            stopEmulation()
+            statusJson()
+        }
+
+        // Integration + settings
+        on("integration.configure") { args ->
+            settings = try {
+                AppSettingsCodec.merge(settings, JSONObject().put("udp", args))
+            } catch (e: SettingsException) {
+                throw CommandException(e.message ?: "Invalid setting", "invalid")
+            }
+            saveSettings()
+            if (emulationRunning) {
+                if (settings.udp.enabled) streamer.start(settings.udp) else streamer.stop()
+                log.add(EventLog.SYSTEM, "Output reconfigured: ${if (settings.udp.enabled) "${settings.udp.host}:${settings.udp.port}" else "disabled"}", clock.wallMs())
+            }
+            statusDirty = true
+            JSONObject().put("settings", AppSettingsCodec.encode(settings)).put("status", statusJson())
+        }
+        on("settings.update") { args ->
+            settings = try {
+                AppSettingsCodec.merge(settings, args)
+            } catch (e: SettingsException) {
+                throw CommandException(e.message ?: "Invalid setting", "invalid")
+            }
+            onSettingsChanged()
+            AppSettingsCodec.encode(settings)
+        }
+        on("settings.reset") {
+            settings = AppSettings(lastDeviceKey = settings.lastDeviceKey)
+            onSettingsChanged()
+            AppSettingsCodec.encode(settings)
+        }
+
+        // Demo, log, stats
+        on("demo.start") {
+            startDemo()
+            statusJson()
+        }
+        on("demo.stop") {
+            stopDemo()
+            statusJson()
+        }
+        on("log.clear") {
+            log.clear()
+            lastSentLogSeq = log.lastSeq
+            null
+        }
+        on("stats.reset") {
+            processor.stats.reset()
+            statsDirty = true
+            null
+        }
+    }
+
+    private fun onSettingsChanged() {
+        saveSettings()
+        log.capacity = settings.logSize
+        applyKeepScreenOn()
+        updatePointerCapture()
+        statusDirty = true
+        devicesDirty = true
+        scheduleFrame()
+    }
+
+    private inline fun <T> catching(block: () -> T): T = try {
+        block()
+    } catch (e: ProfileException) {
+        throw CommandException(e.message ?: "Profile error", "profile")
+    }
+
+    private fun merge(base: JSONObject, patch: JSONObject): JSONObject {
+        for (k in patch.keys()) {
+            val v = patch.get(k)
+            if (v is JSONObject && base.optJSONObject(k) != null) merge(base.getJSONObject(k), v) else base.put(k, v)
+        }
+        return base
+    }
+
+    private fun readLimited(uri: Uri): String {
+        val stream = activity.contentResolver.openInputStream(uri) ?: throw IllegalStateException("Cannot open file")
+        stream.use {
+            val bytes = it.readBytes()
+            if (bytes.size > ProfileRepository.MAX_IMPORT_CHARS) throw IllegalStateException("File is too large")
+            return String(bytes, Charsets.UTF_8)
+        }
+    }
+
+    private fun startSafely(intent: Intent) {
+        try {
+            activity.startActivity(intent)
+        } catch (e: ActivityNotFoundException) {
+            throw CommandException("This screen is not available on this phone", "unavailable")
+        } catch (e: SecurityException) {
+            throw CommandException("Android refused to open this screen", "denied")
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun startForResult(intent: Intent, handler: (Int, Intent?) -> Unit) {
+        val code = nextRequestCode++
+        pendingResults[code] = handler
+        try {
+            activity.startActivityForResult(intent, code)
+        } catch (e: Exception) {
+            pendingResults.remove(code)
+            throw CommandException("This action is not available on this phone (${e.javaClass.simpleName})", "unavailable")
+        }
+    }
+
+    // ---------------------------------------------------------------- UI push
+
+    private fun scheduleFrame() {
+        if (frameScheduled || !pageReady) return
+        frameScheduled = true
+        val wait = (FRAME_MS - (SystemClock.uptimeMillis() - lastFrameAt)).coerceIn(0L, FRAME_MS)
+        main.postDelayed(frameRunnable, wait)
+    }
+
+    private val frameRunnable = Runnable {
+        frameScheduled = false
+        lastFrameAt = SystemClock.uptimeMillis()
+        flush()
+    }
+
+    private fun flush() {
+        if (!pageReady) return
+        if (statusDirty) {
+            statusDirty = false
+            bridge.push("status", JSONObject().put("status", statusJson()))
+        }
+        if (devicesDirty) {
+            devicesDirty = false
+            bridge.push("devices", JSONObject().put("devices", devicesJson()))
+        }
+        if (identifiedDirty) {
+            identifiedDirty = false
+            bridge.push("identified", JSONObject().put("identified", identifiedJson()))
+        }
+        if (pendingDetections.isNotEmpty()) {
+            for (d in pendingDetections) bridge.push("detected", JSONObject().put("detection", d))
+            pendingDetections.clear()
+        }
+        val version = controllers.version
+        val hasLogs = log.lastSeq > lastSentLogSeq
+        if (version != lastSentVersion || hasLogs || physicalDirty || statsDirty) {
+            bridge.push("frame", frameJson(includeEvents = true))
+        }
+    }
+
+    private fun frameJson(includeEvents: Boolean): JSONObject {
+        val snapshot = controllers.snapshot()
+        lastSentVersion = snapshot.version
+        physicalDirty = false
+        val o = JSONObject()
+            .put("v", JSONObject().put("left", handJson(snapshot.left)).put("right", handJson(snapshot.right)))
+            .put("p", physicalJson())
+        if (includeEvents) {
+            o.put("events", logJson(log.since(lastSentLogSeq)))
+        }
+        lastSentLogSeq = log.lastSeq
+        if (statsDirty || !includeEvents) {
+            statsDirty = false
+            o.put("stats", statsJson())
+        }
+        return o
+    }
+
+    private fun handJson(h: HandSnapshot): JSONObject = JSONObject()
+        .put("x", round(h.stickX))
+        .put("y", round(h.stickY))
+        .put("rx", round(h.rawX))
+        .put("ry", round(h.rawY))
+        .put("trigger", round(h.trigger))
+        .put("grip", round(h.grip))
+        .put("buttons", JSONObject().apply { h.buttons.forEach { (k, v) -> put(k, v) } })
+
+    private fun physicalJson(): JSONObject {
+        val pressed = processor.state.pressedIds()
+        val axes = JSONObject()
+        val labels = JSONObject()
+        pressed.forEach { labels.put(it, InputCatalog.labelOf(it)) }
+        processor.state.analog.forEach { (id, v) ->
+            axes.put(id, round(v))
+            labels.put(id, InputCatalog.labelOf(id))
+        }
+        return JSONObject()
+            .put("pressed", JSONArray(pressed))
+            .put("axes", axes)
+            .put("labels", labels)
+            .put("mouse", JSONObject().put("dx", round(lastMotionDx)).put("dy", round(lastMotionDy)))
+    }
+
+    private fun statsJson(): JSONObject {
+        val s = processor.stats.last
+        return JSONObject()
+            .put("eventsPerSec", s.eventsPerSec)
+            .put("motionHz", s.motionHz)
+            .put("latencyAvgMs", s.latencyAvgMs?.let { round(it) } ?: JSONObject.NULL)
+            .put("latencyMaxMs", s.latencyMaxMs ?: JSONObject.NULL)
+            .put("totalEvents", s.totalEvents)
+            .put("simulated", demoRunning)
+    }
+
+    private fun logJson(entries: List<EventLog.Entry>): JSONArray = JSONArray().apply {
+        entries.forEach { put(JSONObject().put("seq", it.seq).put("t", it.wallMs).put("c", it.category).put("m", it.text)) }
+    }
+
+    private fun infoJson(): JSONObject {
+        val pm = activity.packageManager
+        val pkg = runCatching {
+            if (Build.VERSION.SDK_INT >= 33) pm.getPackageInfo(activity.packageName, PackageManager.PackageInfoFlags.of(0))
+            else @Suppress("DEPRECATION") pm.getPackageInfo(activity.packageName, 0)
+        }.getOrNull()
+        return JSONObject()
+            .put("app", "VR BOX TO META QUEST EMULATOR")
+            .put("version", pkg?.versionName ?: "?")
+            .put("android", Build.VERSION.RELEASE)
+            .put("sdk", Build.VERSION.SDK_INT)
+            .put("device", "${Build.MANUFACTURER} ${Build.MODEL}")
+            .put("transport", bridge.transport)
+            .put("pointerCaptureSupported", true)
+            .put("openxrBroker", detectOpenXrBroker() ?: JSONObject.NULL)
+            .put("native", true)
+    }
+
+    /** Looks for the Khronos OpenXR runtime broker packages (informational only). */
+    private fun detectOpenXrBroker(): String? {
+        for (pkg in listOf("org.khronos.openxr.system_runtime_broker", "org.khronos.openxr.runtime_broker")) {
+            val found = runCatching {
+                if (Build.VERSION.SDK_INT >= 33) activity.packageManager.getPackageInfo(pkg, PackageManager.PackageInfoFlags.of(0))
+                else @Suppress("DEPRECATION") activity.packageManager.getPackageInfo(pkg, 0)
+            }.isSuccess
+            if (found) return pkg
+        }
+        return null
+    }
+
+    private fun catalogJson(): JSONObject = JSONObject()
+        .put(
+            "targets",
+            JSONArray().apply {
+                VirtualTargets.all.forEach { t ->
+                    put(
+                        JSONObject()
+                            .put("id", t.id)
+                            .put("hand", t.hand.key)
+                            .put("control", t.control)
+                            .put("label", t.label)
+                            .put("type", t.type.key),
+                    )
+                }
+            },
+        )
+        .put(
+            "buttons",
+            JSONObject().put("left", JSONArray(VirtualTargets.buttonControls(Hand.LEFT))).put("right", JSONArray(VirtualTargets.buttonControls(Hand.RIGHT))),
+        )
+
+    private fun bluetoothLink(): String {
+        if (!bluetooth.isSupported) return "unsupported"
+        val group = registry.group(selectedKey)
+        val selectedPresent = group != null
+        val permitted = permissions.hasBluetooth()
+        if (permitted && !bluetooth.isEnabled) return "off"
+        if (selectedPresent) {
+            return when (bluetooth.isBondedName(group!!.name)) {
+                true -> "connected"
+                false -> if (bluetooth.connectedNames().isNotEmpty()) "connected" else "not_bluetooth"
+                null -> "unverified"
+            }
+        }
+        if (!permitted) return "unknown"
+        return if (bluetooth.connectedNames().isNotEmpty()) "connected" else "disconnected"
+    }
+
+    private fun statusJson(): JSONObject {
+        val group = registry.lastKnown(selectedKey)
+        val connected = registry.isConnected(selectedKey)
+        return JSONObject()
+            .put(
+                "bluetooth",
+                JSONObject()
+                    .put("supported", bluetooth.isSupported)
+                    .put("enabled", if (permissions.hasBluetooth()) bluetooth.isEnabled else JSONObject.NULL)
+                    .put("permission", permissions.bluetoothState().key)
+                    .put("link", bluetoothLink()),
+            )
+            .put(
+                "controller",
+                JSONObject()
+                    .put("selected", group?.toJson() ?: JSONObject.NULL)
+                    .put("connected", connected)
+                    .put("demo", demoRunning),
+            )
+            .put(
+                "input",
+                JSONObject()
+                    .put("active", readingActive())
+                    .put("focused", windowFocused)
+                    .put("pointerCapture", pointerCaptured)
+                    .put("detecting", detecting),
+            )
+            .put(
+                "emulation",
+                JSONObject()
+                    .put("running", emulationRunning)
+                    .put("startedAt", if (emulationRunning) emulationStartedAt else JSONObject.NULL)
+                    .put("output", if (emulationRunning && settings.udp.enabled) "udp" else "none"),
+            )
+            .put("left", JSONObject().put("configured", working.isConfigured(Hand.LEFT)).put("mappings", working.mappingCount(Hand.LEFT)))
+            .put("right", JSONObject().put("configured", working.isConfigured(Hand.RIGHT)).put("mappings", working.mappingCount(Hand.RIGHT)))
+            .put(
+                "integration",
+                JSONObject()
+                    .put("udpEnabled", settings.udp.enabled)
+                    .put("streaming", streamer.running)
+                    .put("packets", streamer.packetsSent.get())
+                    .put("lastError", streamer.lastError ?: JSONObject.NULL)
+                    .put("target", "${settings.udp.host}:${settings.udp.port}")
+                    .put("format", settings.udp.format),
+            )
+            .put("profile", JSONObject().put("id", working.id).put("name", working.name).put("dirty", dirty))
+            .put("identifiedCount", identified.count(identifiedKey()))
+            .put("demo", demoRunning)
+    }
+
+    private fun bluetoothJson(): JSONObject {
+        val bonded = bluetooth.bondedDevices()
+        return JSONObject()
+            .put("supported", bluetooth.isSupported)
+            .put("enabled", if (permissions.hasBluetooth()) bluetooth.isEnabled else JSONObject.NULL)
+            .put("permission", permissions.bluetoothState().key)
+            .put("bonded", if (bonded == null) JSONObject.NULL else JSONArray().apply { bonded.forEach { put(it.toJson()) } })
+    }
+
+    private fun devicesJson(): JSONObject {
+        val groups = registry.groups(includeNonCandidates = false, includeInternal = settings.showInternalDevices)
+        return JSONObject()
+            .put("groups", JSONArray().apply { groups.forEach { put(it.toJson().put("connected", true)) } })
+            .put("selectedKey", selectedKey ?: JSONObject.NULL)
+            .put("showInternal", settings.showInternalDevices)
+    }
+
+    private fun identifiedJson(): JSONObject = JSONObject()
+        .put("deviceKey", identifiedKey() ?: JSONObject.NULL)
+        .put(
+            "inputs",
+            JSONArray().apply {
+                identified.list(identifiedKey()).forEach {
+                    put(JSONObject().put("id", it.id).put("label", it.label).put("kind", it.kind.key).put("count", it.count).put("lastSeen", it.lastSeenWallMs))
+                }
+            },
+        )
+
+    private fun profilesJson(): JSONArray = JSONArray().apply {
+        profiles.all.forEach { stored ->
+            val p = if (stored.id == working.id) working else stored
+            put(
+                JSONObject()
+                    .put("id", p.id)
+                    .put("name", p.name)
+                    .put("description", p.description)
+                    .put("builtin", p.builtin)
+                    .put("mappings", p.mappings.size)
+                    .put("left", p.isConfigured(Hand.LEFT))
+                    .put("right", p.isConfigured(Hand.RIGHT))
+                    .put("active", p.id == working.id)
+                    .put("dirty", p.id == working.id && dirty)
+                    .put("updatedAt", p.updatedAt),
+            )
+        }
+    }
+
+    private fun profileUiJson(p: Profile): JSONObject {
+        val o = ProfileCodec.encode(p)
+        val arr = o.getJSONArray("mappings")
+        for (i in 0 until arr.length()) {
+            val m = arr.getJSONObject(i)
+            val source = m.getString("source")
+            m.put("sourceLabel", InputCatalog.labelOf(source))
+            m.put("sourceKind", InputCatalog.kindOf(source)?.key)
+            m.put("targetLabel", VirtualTargets.get(m.getString("target"))?.label)
+        }
+        o.put("dirty", dirty && p.id == working.id)
+        o.put("baseName", profiles.baseOf(p).name)
+        return o
+    }
+
+    private fun round(v: Float): Double = (v * 10000f).roundToInt() / 10000.0
+
+    companion object {
+        private const val TAG = "VRBQ"
+        const val TICK_MS = 8L
+        const val FRAME_MS = 16L
+    }
+}

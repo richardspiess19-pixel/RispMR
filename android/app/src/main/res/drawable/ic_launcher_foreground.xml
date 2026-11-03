@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Same geometry as frontend/assets/logo.svg (64x64), placed inside the adaptive icon safe zone. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <group
+        android:translateX="24"
+        android:translateY="24"
+        android:scaleX="0.94"
+        android:scaleY="0.94">
+        <path
+            android:pathData="M13.21,25.16 A20,20 0 1,1 14.68,42"
+            android:strokeWidth="5"
+            android:strokeLineCap="round"
+            android:fillColor="#00000000">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="12"
+                    android:startY="12"
+                    android:endX="52"
+                    android:endY="52"
+                    android:startColor="#2F8CFF"
+                    android:endColor="#8B5CF6" />
+            </aapt:attr>
+        </path>
+        <path
+            android:pathData="M32,32m-11,0a11,11 0 1,1 22,0a11,11 0 1,1 -22,0"
+            android:strokeWidth="1.5"
+            android:strokeColor="#592F8CFF"
+            android:fillColor="#00000000" />
+        <path
+            android:fillColor="#F4F6FF"
+            android:pathData="M32,32m-5.5,0a5.5,5.5 0 1,1 11,0a5.5,5.5 0 1,1 -11,0" />
+        <path
+            android:pathData="M4.5,28 L11,33.5 L4.5,39"
+            android:strokeWidth="3.2"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:strokeColor="#F4F6FF"
+            android:fillColor="#00000000" />
+    </group>
+</vector>

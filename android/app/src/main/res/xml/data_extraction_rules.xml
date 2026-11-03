@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="file" path="profiles.json" />
+        <include domain="file" path="settings.json" />
+        <include domain="file" path="identified-inputs.json" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="profiles.json" />
+        <include domain="file" path="settings.json" />
+        <include domain="file" path="identified-inputs.json" />
+    </device-transfer>
+</data-extraction-rules>

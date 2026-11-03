@@ -1,0 +1,362 @@
+import { h, render, setText, setClass } from '../dom.js';
+import { icon } from '../icons.js';
+import { fixed, kindLabel, targetLabel } from '../format.js';
+import { confirmDialog, learnInput, pickSource, pickTarget } from '../ui.js';
+
+// CONTROLLER MAPPING
+
+const SECTIONS = [
+  { title: 'Buttons', match: (t) => t.type === 'button' },
+  { title: 'Trigger & Grip', match: (t) => t.type === 'analog' },
+  { title: 'Joystick', match: (t) => t.type === 'stick_axis' },
+  { title: 'Joystick directions (digital)', match: (t) => t.type === 'stick_direction', collapsed: true },
+];
+
+export default {
+  id: 'mapping',
+  title: 'Mapping',
+
+  mount(root, ctx) {
+    let tab = 'controls';
+    const head = h('div', { class: 'map-head card' });
+    const tabs = h('div', { class: 'seg', role: 'tablist' });
+    const body = h('div', { class: 'stack' });
+    let live = { targets: new Map(), pills: [] };
+
+    root.append(
+      h(
+        'header',
+        { class: 'page-head' },
+        h(
+          'div',
+          {},
+          h('div', { class: 'page-kicker' }, 'Controller mapping'),
+          h('h1', { class: 'page-title' }, 'Physical → Virtual'),
+          h('p', { class: 'page-sub' }, 'Associate any physical input of the VR Box with any virtual Quest input. Several physical inputs may drive the same virtual control. Changes apply live; press SAVE to keep them.'),
+        ),
+      ),
+      head,
+      tabs,
+      body,
+    );
+
+    const renderHead = () => {
+      const p = ctx.store.state.profile;
+      const profiles = ctx.store.state.profiles;
+      if (!p) {
+        render(head, h('div', { class: 'empty' }, 'Mapping is available in the Android app.'));
+        return;
+      }
+      const select = h(
+        'select',
+        { class: 'select', 'aria-label': 'Active profile', onChange: (e) => activate(e.target.value) },
+        profiles.map((x) => h('option', { value: x.id, selected: x.id === p.id }, x.name)),
+      );
+      render(
+        head,
+        h(
+          'div',
+          { class: 'map-head__row' },
+          h('label', { class: 'field map-head__profile' }, h('span', { class: 'field__label' }, 'Profile'), select),
+          h(
+            'div',
+            { class: 'row map-head__actions' },
+            p.dirty ? h('span', { class: 'badge badge--purple' }, 'Unsaved') : h('span', { class: 'badge badge--blue' }, icon('check'), 'Saved'),
+            h('button', { class: 'btn btn--sm btn--primary', type: 'button', disabled: !p.dirty, onClick: save }, icon('save'), 'Save'),
+            h('button', { class: 'btn btn--sm', type: 'button', disabled: !p.dirty, onClick: revert }, icon('undo'), 'Discard'),
+            h('button', { class: 'btn btn--sm btn--ghost', type: 'button', onClick: restore }, icon('refresh'), 'Restore default'),
+          ),
+        ),
+        h('p', { class: 'muted small' }, `${p.mappings.length} mapping${p.mappings.length === 1 ? '' : 's'} · default configuration: ${p.baseName}`),
+      );
+    };
+
+    const renderTabs = () => {
+      render(
+        tabs,
+        [
+          ['controls', 'Virtual controls'],
+          ['rules', 'All mappings'],
+        ].map(([id, label]) =>
+          h(
+            'button',
+            {
+              type: 'button',
+              role: 'tab',
+              class: tab === id ? 'is-active' : '',
+              'aria-selected': String(tab === id),
+              onClick: () => {
+                tab = id;
+                renderTabs();
+                renderBody();
+              },
+            },
+            label,
+          ),
+        ),
+      );
+    };
+
+    const pill = (m) => {
+      const el = h(
+        'span',
+        { class: 'pill', title: m.source },
+        h('span', {}, m.sourceLabel),
+        m.invert ? h('span', { class: 'badge badge--outline' }, 'inv') : null,
+        h('button', { type: 'button', 'aria-label': `Remove ${m.sourceLabel}`, onClick: () => remove(m) }, icon('x')),
+      );
+      live.pills.push({ el, source: m.source });
+      return el;
+    };
+
+    const renderControls = () => {
+      const p = ctx.store.state.profile;
+      const targets = ctx.store.state.catalog.targets;
+      const column = (hand) =>
+        h(
+          'section',
+          { class: `card map-hand map-hand--${hand}` },
+          h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, hand === 'left' ? 'Left controller' : 'Right controller')),
+          SECTIONS.map((sec) => {
+            const items = targets.filter((t) => t.hand === hand && sec.match(t));
+            const rows = items.map((t) => {
+              const mapped = p.mappings.filter((m) => m.target === t.id);
+              const stateEl = h('span', { class: 'state' }, '—');
+              live.targets.set(t.id, { stateEl, type: t.type, hand, control: t.control, id: t.id });
+              return h(
+                'div',
+                { class: 'map-row' },
+                h('div', { class: 'map-row__target' }, h('span', { class: 'map-row__label' }, t.label), stateEl),
+                h('div', { class: 'map-row__sources' }, mapped.length ? mapped.map(pill) : h('span', { class: 'muted small' }, 'Not mapped')),
+                h(
+                  'div',
+                  { class: 'map-row__actions' },
+                  h('button', { class: 'btn btn--sm btn--blue', type: 'button', title: 'Press a physical input to assign it', onClick: () => learn(t) }, icon('wand'), 'Learn'),
+                  h('button', { class: 'btn btn--icon', type: 'button', 'aria-label': `Add input to ${t.label}`, onClick: () => addFromList(t) }, icon('plus')),
+                ),
+              );
+            });
+            if (!rows.length) return null;
+            return sec.collapsed
+              ? h('details', { class: 'map-section' }, h('summary', { class: 'section-title' }, sec.title), rows)
+              : h('div', { class: 'map-section' }, h('div', { class: 'section-title' }, sec.title), rows);
+          }),
+        );
+      render(body, h('div', { class: 'grid-2' }, column('left'), column('right')));
+    };
+
+    const renderRules = () => {
+      const p = ctx.store.state.profile;
+      const catalog = ctx.store.state.catalog;
+      if (!p.mappings.length) {
+        render(body, h('div', { class: 'empty' }, 'This profile has no mappings. Use LEARN in "Virtual controls" or the Automatic Input Detection screen.'));
+        return;
+      }
+      const rows = p.mappings.map((m) => {
+        const target = catalog.targets.find((t) => t.id === m.target);
+        const options = [];
+        if (m.sourceKind !== 'digital') {
+          options.push(
+            h(
+              'label',
+              { class: 'inline-check' },
+              h('input', { type: 'checkbox', checked: m.invert, onChange: (e) => update(m, { invert: e.target.checked }) }),
+              'Invert',
+            ),
+          );
+        }
+        if (m.sourceKind === 'analog' && target && (target.type === 'button' || target.type === 'stick_direction')) {
+          options.push(numberOption('Threshold', m.threshold ?? p.buttons.analogThreshold, 0.05, 0.95, 0.05, (v) => update(m, { threshold: v })));
+        }
+        if (m.sourceKind !== 'digital' && target && (target.type === 'analog' || target.type === 'stick_axis')) {
+          options.push(numberOption('Scale', m.scale ?? 1, 0.1, 5, 0.1, (v) => update(m, { scale: v })));
+        }
+        const srcPill = h('span', { class: 'pill no-x', title: m.source }, h('span', {}, m.sourceLabel));
+        live.pills.push({ el: srcPill, source: m.source });
+        const stateEl = h('span', { class: 'state' }, '—');
+        if (target) live.targets.set(`${m.id}`, { stateEl, type: target.type, hand: target.hand, control: target.control, id: target.id });
+        return h(
+          'li',
+          { class: 'rule' },
+          h(
+            'div',
+            { class: 'rule__main' },
+            srcPill,
+            h('span', { class: 'rule__arrow' }, '→'),
+            h('span', { class: 'rule__target' }, targetLabel(catalog, m.target)),
+            stateEl,
+          ),
+          h('div', { class: 'rule__meta muted small' }, kindLabel(m.sourceKind), h('span', { class: 'mono raw' }, ` · ${m.source}`)),
+          options.length ? h('div', { class: 'row rule__options' }, options) : null,
+          h(
+            'div',
+            { class: 'row rule__actions' },
+            h('button', { class: 'btn btn--sm', type: 'button', onClick: () => changeTarget(m) }, icon('edit'), 'Change target'),
+            h('button', { class: 'btn btn--sm', type: 'button', onClick: () => changeSource(m, target) }, icon('wand'), 'Change input'),
+            h('button', { class: 'btn btn--sm btn--danger', type: 'button', onClick: () => remove(m) }, icon('trash'), 'Remove'),
+          ),
+        );
+      });
+      render(body, h('ul', { class: 'rules' }, rows));
+    };
+
+    const renderBody = () => {
+      live = { targets: new Map(), pills: [] };
+      if (!ctx.store.state.profile) {
+        render(body);
+        return;
+      }
+      if (tab === 'controls') renderControls();
+      else renderRules();
+      renderLive(ctx.store.state.frame);
+    };
+
+    const renderLive = (frame) => {
+      if (!frame) return;
+      const pressed = new Set(frame.p?.pressed || []);
+      const axes = frame.p?.axes || {};
+      const mouse = frame.p?.mouse || {};
+      for (const { el, source } of live.pills) {
+        let on = pressed.has(source) || Math.abs(axes[source] || 0) > 0.1;
+        if (source === 'mouse:x') on = Math.abs(mouse.dx || 0) > 0;
+        if (source === 'mouse:y') on = Math.abs(mouse.dy || 0) > 0;
+        setClass(el, 'is-live', on);
+      }
+      for (const t of live.targets.values()) {
+        const v = frame.v?.[t.hand];
+        if (!v) continue;
+        let text = 'RELEASED';
+        let on = false;
+        if (t.type === 'button') {
+          on = Boolean(v.buttons?.[t.control]);
+          text = on ? 'PRESSED' : 'RELEASED';
+        } else if (t.type === 'analog') {
+          const value = v[t.control] || 0;
+          on = value >= (ctx.store.state.profile?.buttons?.analogThreshold ?? 0.5);
+          text = fixed(value);
+        } else {
+          const axis = t.id.endsWith('.x') || t.id.endsWith('.left') || t.id.endsWith('.right') ? 'x' : 'y';
+          const value = v[axis] || 0;
+          on = Math.abs(value) > 0.05;
+          text = `${axis.toUpperCase()} ${fixed(value)}`;
+        }
+        setText(t.stateEl, text);
+        setClass(t.stateEl, 'is-on', on);
+      }
+    };
+
+    function numberOption(label, value, min, max, step, onChange) {
+      const out = h('span', { class: 'range__value' }, fixed(value));
+      const input = h('input', {
+        type: 'range',
+        min,
+        max,
+        step,
+        value,
+        'aria-label': label,
+        onInput: (e) => {
+          setText(out, fixed(Number(e.target.value)));
+          fillRange(e.target);
+        },
+        onChange: (e) => onChange(Number(e.target.value)),
+      });
+      fillRange(input);
+      return h('label', { class: 'range range--inline' }, h('span', { class: 'range__head' }, label, out), input);
+    }
+
+    async function apply(promise, message) {
+      const p = await promise;
+      if (p) {
+        ctx.store.set('profile', p);
+        if (message) ctx.toast(message, 'ok');
+      }
+      return p;
+    }
+
+    async function learn(t) {
+      const choice = await learnInput(ctx, { targetType: t.type, title: `Learn: ${targetLabel(ctx.store.state.catalog, t.id)}` });
+      if (!choice) return;
+      await apply(ctx.run('mapping.add', { source: choice.id, target: t.id }), `${choice.label} → ${targetLabel(ctx.store.state.catalog, t.id)}`);
+    }
+
+    async function addFromList(t) {
+      const choice = await pickSource(ctx.store.state.identified?.inputs || [], { targetType: t.type, title: `Input for ${targetLabel(ctx.store.state.catalog, t.id)}` });
+      if (!choice) return;
+      await apply(ctx.run('mapping.add', { source: choice.id, target: t.id }), `${choice.label} → ${targetLabel(ctx.store.state.catalog, t.id)}`);
+    }
+
+    async function remove(m) {
+      await apply(ctx.run('mapping.remove', { id: m.id }), 'Mapping removed (unsaved)');
+    }
+
+    async function update(m, patch) {
+      await apply(ctx.run('mapping.update', { id: m.id, ...patch }));
+    }
+
+    async function changeTarget(m) {
+      const target = await pickTarget(ctx.store.state.catalog, { sourceKind: m.sourceKind, sourceLabel: m.sourceLabel, title: 'Change virtual input' });
+      if (target) await update(m, { target });
+    }
+
+    async function changeSource(m, target) {
+      const choice = await learnInput(ctx, { targetType: target?.type || 'button', title: `New input for ${targetLabel(ctx.store.state.catalog, m.target)}` });
+      if (choice) await update(m, { source: choice.id });
+    }
+
+    async function save() {
+      const r = await ctx.run('profile.save');
+      if (r) {
+        ctx.store.set('profiles', r.profiles);
+        ctx.store.set('profile', r.profile);
+        ctx.toast('Profile saved on this phone', 'ok');
+      }
+    }
+
+    async function revert() {
+      await apply(ctx.run('profile.revert'), 'Changes discarded');
+    }
+
+    async function restore() {
+      const p = ctx.store.state.profile;
+      if (!(await confirmDialog('Restore default mapping', `Replace the mappings of "${p.name}" with "${p.baseName}"? You can still discard before saving.`, 'Restore'))) return;
+      await apply(ctx.run('mapping.resetDefault'), 'Default mapping restored (unsaved)');
+    }
+
+    async function activate(id) {
+      const p = ctx.store.state.profile;
+      let discard = false;
+      if (p?.dirty) {
+        discard = await confirmDialog('Unsaved changes', `Discard the unsaved changes of "${p.name}"?`, 'Discard & switch', true);
+        if (!discard) {
+          renderHead();
+          return;
+        }
+      }
+      const r = await ctx.run('profiles.activate', { id, discard });
+      if (r) {
+        ctx.store.set('profiles', r.profiles);
+        ctx.store.set('profile', r.profile);
+      } else renderHead();
+    }
+
+    renderHead();
+    renderTabs();
+    renderBody();
+
+    return {
+      onProfile: () => {
+        renderHead();
+        renderBody();
+      },
+      onProfiles: renderHead,
+      onFrame: renderLive,
+    };
+  },
+};
+
+export function fillRange(input) {
+  const min = Number(input.min || 0);
+  const max = Number(input.max || 1);
+  const pct = ((Number(input.value) - min) / (max - min)) * 100;
+  input.style.setProperty('--fill', `${Math.max(0, Math.min(100, pct))}%`);
+}

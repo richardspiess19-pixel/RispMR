@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Profiles and settings are backed up; temporary files are not. -->
+<full-backup-content>
+    <include domain="file" path="profiles.json" />
+    <include domain="file" path="settings.json" />
+    <include domain="file" path="identified-inputs.json" />
+</full-backup-content>

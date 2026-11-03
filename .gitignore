@@ -1,0 +1,5 @@
+node_modules/
+tests/frontend/screenshots/
+*.log
+.DS_Store
+__pycache__/
