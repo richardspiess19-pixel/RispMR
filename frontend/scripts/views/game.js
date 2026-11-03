@@ -144,13 +144,34 @@ export default {
         h('p', { class: 'text-2' }, on
           ? 'Pronto. O app só lê o VR Box que você escolheu, e só enquanto a emulação estiver ligada.'
           : 'Com o jogo na frente, o Android só entrega os botões do VR Box para outro app pelo Serviço de acessibilidade. Abra Acessibilidade, entre em "VR Box → Quest: Modo jogo" e ative.'),
-        on ? null : h('p', { class: 'muted small' }, 'Se a opção estiver cinza (Android 13 ou mais novo): abra Informações do app, toque nos três pontinhos ⋮ e em "Permitir configurações restritas". Depois volte e ative.'),
         h(
           'div',
           { class: 'row' },
           h('button', { class: `btn btn--sm ${on ? '' : 'btn--primary'}`, type: 'button', onClick: () => ctx.run('game.openAccessibility') }, icon('external'), 'Abrir Acessibilidade'),
-          on ? null : h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('app.openAppSettings') }, 'Informações do app'),
         ),
+        on
+          ? null
+          : h(
+              'div',
+              { class: 'notice notice--warn' },
+              icon('info'),
+              h(
+                'div',
+                { class: 'stack stack--sm' },
+                h('b', {}, 'Apareceu "Configuração restrita"?'),
+                h('span', {}, 'É uma trava do Android 13 ou mais novo para apps instalados fora da loja. Para liberar:'),
+                h(
+                  'ol',
+                  { class: 'steps' },
+                  h('li', {}, 'Tente ativar uma vez em Acessibilidade (o aviso precisa aparecer antes).'),
+                  h('li', {}, 'Toque em "Informações do app" aqui embaixo.'),
+                  h('li', {}, 'Toque nos três pontinhos ⋮ no canto de cima.'),
+                  h('li', {}, 'Toque em "Permitir configurações restritas" e confirme com a sua senha.'),
+                  h('li', {}, 'Volte em Acessibilidade e ative "VR Box → Quest: Modo jogo".'),
+                ),
+                h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('app.openAppSettings') }, 'Informações do app')),
+              ),
+            ),
       );
     };
 

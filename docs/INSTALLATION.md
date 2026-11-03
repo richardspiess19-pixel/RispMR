@@ -44,8 +44,10 @@ O Modo jogo usa um **serviço de acessibilidade**. No Brasil, o Play Protect tam
 apps com acessibilidade quando o APK vem do navegador, do WhatsApp ou de um gerenciador de
 arquivos. **Instalar por ADB evita os dois bloqueios.**
 
-Depois de instalar (Android 13 ou mais novo), a opção de acessibilidade pode aparecer cinza:
-Configurações → Apps → VR Box → Quest → ⋮ → **Permitir configurações restritas**. Depois volte em
+Depois de instalar (Android 13 ou mais novo), a acessibilidade pode mostrar **"Configuração
+restrita"**. Isso não é o Play Protect: é uma trava do Android para apps instalados fora da loja.
+Tente ativar uma vez (o aviso precisa aparecer antes), depois vá em Configurações → Apps →
+VR Box → Quest → ⋮ → **Permitir configurações restritas**, confirme com a senha, volte em
 Acessibilidade e ative "VR Box → Quest: Modo jogo".
 
 ## Primeiro uso
