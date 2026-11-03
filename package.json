@@ -1,13 +1,16 @@
 {
   "name": "vr-box-to-meta-quest-emulator",
   "private": true,
-  "description": "Frontend tests for the VR BOX TO META QUEST EMULATOR Android app",
+  "description": "Interface tests and web build for VR Box → Quest",
   "type": "module",
   "scripts": {
-    "test": "node --test tests/frontend/*.test.mjs",
-    "test:ui": "node tests/frontend/ui-smoke.mjs"
+    "test": "node --test tests/frontend/*.test.mjs web/*.test.mjs",
+    "test:ui": "node tests/frontend/ui-smoke.mjs",
+    "build:web": "node web/build.mjs",
+    "test:web": "node web/build.mjs && node web/web-smoke.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.24.0",
     "playwright": "1.48.2"
   }
 }

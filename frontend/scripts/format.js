@@ -36,6 +36,8 @@ export function stateLabel(state) {
 export function bluetoothIndicator(status) {
   if (!status) return { value: '—', hint: 'Abra no app Android', tone: 'off' };
   switch (status.bluetooth?.link) {
+    case 'web':
+      return { value: 'Pelo celular', hint: 'Pareie no Bluetooth do Android', tone: 'off' };
     case 'connected':
       return { value: 'Conectado', hint: '', tone: 'ok' };
     case 'disconnected':
@@ -87,6 +89,7 @@ export function handIndicator(status, hand) {
 export function gameIndicator(status) {
   const g = status?.game;
   if (!g) return { value: '—', hint: '', tone: 'off' };
+  if (g.web) return { value: 'Só no app', hint: 'Precisa do app Android', tone: 'off' };
   if (!g.enabled) return { value: 'Desligado', hint: '', tone: 'off' };
   if (!g.serviceEnabled) return { value: 'Falta ativar', hint: 'Ative a acessibilidade', tone: 'warn' };
   if (!g.bindings) return { value: 'Sem toques', hint: 'Escolha onde tocar', tone: 'warn' };

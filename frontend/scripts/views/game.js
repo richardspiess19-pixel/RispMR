@@ -93,6 +93,20 @@ export default {
       }
     }
 
+    if (ctx.store.state.info?.platform === 'web') {
+      root.replaceChildren(
+        h('header', { class: 'page-head' }, h('div', {}, h('h1', { class: 'page-title' }, 'Modo jogo'), h('p', { class: 'page-sub' }, 'Faz os botões do VR Box tocarem na tela do jogo aberto no celular.'))),
+        h(
+          'section',
+          { class: 'card' },
+          h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, h('b', {}, 'Só no app Android. '), 'Uma página da web não pode tocar na tela de outros apps — isso precisa do serviço de acessibilidade do app.')),
+          h('p', { class: 'text-2' }, 'Aqui no navegador você pode detectar os botões, montar o mapeamento, testar e exportar o perfil. Depois é só importar o perfil no app.'),
+          h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.nav('profiles') }, icon('download'), 'Exportar perfil')),
+        ),
+      );
+      return {};
+    }
+
     const renderService = (status) => {
       const g = status?.game;
       if (!ctx.store.state.native) {

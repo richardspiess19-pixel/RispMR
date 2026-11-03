@@ -72,6 +72,14 @@ export default {
 
     const renderAdapter = (status) => {
       const bt = status?.bluetooth;
+      if (bt?.link === 'web') {
+        render(
+          adapterBody,
+          h('p', { class: 'text-2' }, 'No navegador não dá para ver o Bluetooth. Pareie o VR Box nas configurações do celular e volte aqui.'),
+          h('ul', { class: 'steps' }, h('li', {}, 'Modo gamepad: aperte qualquer botão do controle para ele aparecer na lista.'), h('li', {}, 'Modo mouse ou teclado: use "Teclado e mouse".')),
+        );
+        return;
+      }
       if (!bt) {
         render(adapterBody, h('div', { class: 'empty' }, 'Disponível no app Android.'));
         return;
@@ -201,6 +209,10 @@ export default {
     };
 
     const renderBonded = (bt) => {
+      if (bt?.web) {
+        render(bondedBody, h('p', { class: 'muted' }, 'Só aparece no app Android.'));
+        return;
+      }
       if (!bt) {
         render(bondedBody, h('div', { class: 'empty' }, 'Disponível no app Android.'));
         return;

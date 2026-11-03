@@ -128,6 +128,10 @@ export default {
         title = 'Prévia no navegador';
         sub = 'Instale o app no celular para usar o VR Box.';
         actions = [];
+      } else if (running && ctx.store.state.info?.platform === 'web') {
+        title = 'Emulação ligada';
+        sub = 'Na versão web os controles virtuais funcionam dentro desta página. Para controlar jogos, use o app Android.';
+        actions = [h('button', { class: 'btn btn--big', type: 'button', onClick: () => ctx.run('emulation.stop') }, icon('stop'), 'Parar emulação')];
       } else if (running) {
         title = 'Emulação ligada';
         const g = gameIndicator(status);
@@ -145,6 +149,10 @@ export default {
       } else if (c?.selected) {
         title = `Esperando ${c.selected.name}`;
         sub = 'Ligue o controle. Ele reconecta sozinho.';
+        actions = [h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => connect(ctx) }, icon('plug'), 'Conectar controle')];
+      } else if (ctx.store.state.info?.platform === 'web') {
+        title = 'Nenhum controle conectado';
+        sub = 'Pareie o VR Box no Bluetooth do celular, aperte um botão dele e toque em Conectar. No modo mouse, escolha "Teclado e mouse".';
         actions = [h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => connect(ctx) }, icon('plug'), 'Conectar controle')];
       } else {
         title = 'Nenhum controle conectado';
@@ -227,7 +235,9 @@ export async function connect(ctx) {
     body: h(
       'div',
       { class: 'stack' },
-      h('p', {}, r.bluetoothEnabled === false ? 'O Bluetooth do celular está desligado.' : 'O celular não está mostrando nenhum VR Box agora.'),
+      ctx.store.state.info?.platform === 'web'
+        ? h('p', {}, 'No navegador, o controle só aparece depois que você aperta um botão dele com esta página aberta. No modo mouse, escolha "Teclado e mouse" na tela Controle.')
+        : h('p', {}, r.bluetoothEnabled === false ? 'O Bluetooth do celular está desligado.' : 'O celular não está mostrando nenhum VR Box agora.'),
       h(
         'ol',
         { class: 'steps' },
@@ -260,6 +270,7 @@ export async function startEmulation(ctx) {
   const r = await ctx.run('emulation.start');
   if (!r) return;
   const g = gameIndicator(r);
-  if (g.tone === 'ok') ctx.toast('Emulação ligada. Pode abrir o jogo.');
+  if (r.game?.web) ctx.toast('Emulação ligada nesta página.');
+  else if (g.tone === 'ok') ctx.toast('Emulação ligada. Pode abrir o jogo.');
   else ctx.toast('Emulação ligada, mas falta configurar o Modo jogo para os jogos reagirem.', 'info', 4200);
 }

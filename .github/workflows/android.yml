@@ -23,14 +23,20 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Frontend unit tests
+      - name: Frontend and web engine unit tests
         run: npm test
 
       - name: UI smoke test (Playwright)
         run: |
-          npm install --no-save playwright@1.48.2
+          npm install
           npx playwright install --with-deps chromium
           npm run test:ui
+          npm run test:web
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vr-box-to-quest-html
+          path: dist/vr-box-to-quest.html
 
       - name: Protocol reference decoders
         run: |

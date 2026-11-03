@@ -93,6 +93,16 @@ Guarde o `release.jks` com cuidado: atualizações do app precisam da mesma chav
 No GitHub Actions, o release é assinado se existirem os secrets `KEYSTORE_BASE64`,
 `KEYSTORE_PASSWORD`, `KEY_ALIAS` e `KEY_PASSWORD`.
 
+## Versão web (sem instalar)
+
+1. Gere o arquivo: `npm install && npm run build:web` → `dist/vr-box-to-quest.html`.
+2. Copie para o celular e abra no **Chrome** (pelo gerenciador de arquivos: Abrir com → Chrome).
+3. VR Box em modo gamepad: aperte um botão com a página aberta para o Chrome mostrar o controle.
+   Em modo mouse/teclado: tela Controle → "Teclado e mouse" → Usar.
+
+Se o Chrome não mostrar o controle ao abrir o arquivo, sirva a pasta `dist/` por HTTPS (ou
+`localhost`): o Gamepad API só funciona em contexto seguro.
+
 ## Mexer na interface pelo navegador
 
 Sirva a pasta `frontend/` com qualquer servidor estático. Sem o app Android, a interface mostra

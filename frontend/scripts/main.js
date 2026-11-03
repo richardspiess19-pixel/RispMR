@@ -184,6 +184,8 @@ function renderChrome(status) {
     showBanner('preview', 'Prévia no navegador — instale o app no celular para usar o controle.');
   } else if (status?.demo) {
     showBanner('demo', 'Modo demonstração — os comandos são simulados');
+  } else if (store.state.info?.platform === 'web') {
+    showBanner('preview', 'Versão web — para os jogos reagirem (Modo jogo) use o app Android');
   } else {
     showBanner(null);
   }

@@ -18,6 +18,15 @@ botões e joystick desenhados na tela.
 
 Detalhes da instalação, inclusive o aviso do Play Protect, em [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
+## Versão web (um arquivo HTML)
+
+`npm run build:web` gera `dist/vr-box-to-quest.html`, um arquivo único que abre no Chrome do
+celular sem instalar nada. Ele lê o VR Box pelo navegador (modo gamepad pelo Gamepad API; modos
+mouse e teclado pelos eventos da página) e tem detecção, mapeamento, controles virtuais, teste e
+perfis (salvos no navegador, com exportar/importar). O **Modo jogo não existe na versão web**:
+uma página não pode tocar na tela de outros apps. Monte o perfil no HTML, exporte e importe no
+app se quiser usar nos jogos.
+
 ## O que o app faz
 
 - Encontra o VR Box e mostra como o Android enxerga ele (mouse, teclado ou gamepad).
@@ -43,7 +52,8 @@ falar com os jogos do celular. Explicação completa em [docs/LIMITATIONS.md](do
 cd android
 ./gradlew assembleDebug        # APK em android/app/build/outputs/apk/debug/app-debug.apk
 ./gradlew testDebugUnitTest    # testes
-cd .. && npm test              # testes da interface
+cd .. && npm test              # testes da interface e do motor web
+npm run test:web               # gera o HTML e testa no Chromium
 ```
 
 ## Pastas
@@ -55,6 +65,7 @@ config/        perfis que vêm com o app
 integration/   protocolo de rede VRBQ, exemplos em C e Python, pesquisa sobre OpenXR
 docs/          instalação, arquitetura, compatibilidade, limitações, testes
 tests/         testes da interface
+web/           versão web: motor em JavaScript, backend do navegador e build do HTML
 ```
 
 O logo fica em `frontend/assets/logo.svg` e o ícone em

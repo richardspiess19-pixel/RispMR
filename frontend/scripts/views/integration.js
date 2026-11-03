@@ -70,6 +70,10 @@ export default {
 
     const renderForm = () => {
       const s = ctx.store.state.settings;
+      if (ctx.store.state.info?.platform === 'web') {
+        render(form, h('p', { class: 'muted' }, 'O navegador não consegue mandar UDP. Use o app Android para a saída de rede.'));
+        return;
+      }
       if (!s) {
         render(form, h('div', { class: 'empty' }, 'Disponível no app Android.'));
         return;
