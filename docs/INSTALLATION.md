@@ -62,7 +62,8 @@ Acessibilidade e ative "VR Box → Quest: Modo jogo".
 ### Controle virtual (Shizuku)
 
 O Android só deixa criar um controle que os outros apps enxergam com a permissão do ADB. O app
-[Shizuku](https://shizuku.rikka.app) entrega essa permissão sem computador (Android 11+):
+[Shizuku](https://shizuku.rikka.app) entrega essa permissão sem computador (Android 11+). Por isso
+o app Android abre bloqueado, mostrando estes passos, e só libera depois que o Shizuku permite:
 
 1. Instale o **Shizuku** pela Play Store.
 2. Em Configurações → Sobre o telefone, toque 7 vezes em **Número da versão**.

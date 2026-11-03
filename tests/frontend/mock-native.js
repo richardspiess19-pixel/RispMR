@@ -243,6 +243,8 @@
       setTimeout(() => {
         if (fn) deliver({ type: 'reply', id: req.id, ok: true, result: fn(req.args || {}) });
         else deliver({ type: 'reply', id: req.id, ok: true, result: null });
+        // Like the app: state changes are pushed as a status message too.
+        if (req.cmd.startsWith('emulation.') || req.cmd.startsWith('gamepad.')) deliver({ type: 'status', status: status() });
       }, 5);
     },
     addEventListener(type, fn) {

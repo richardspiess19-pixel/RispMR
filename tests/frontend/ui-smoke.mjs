@@ -49,6 +49,18 @@ async function run(label, { mock, width, height }) {
   if (mock) await page.addInitScript({ path: path.join(here, 'mock-native.js') });
   await page.goto(`${base}/index.html#/dashboard`);
   await page.waitForSelector('.status-row');
+  if (mock) {
+    // The Android app opens locked: it needs Shizuku's permission first.
+    await page.waitForTimeout(200);
+    if (!(await page.locator('.gate').isVisible())) errors.push(`[${label}] app is not locked without Shizuku`);
+    await page.screenshot({ path: path.join(outDir, `${label}-shizuku.png`) });
+    await page.locator('.gate').getByRole('button', { name: 'Permitir' }).click();
+    await page.waitForTimeout(200);
+    if (!(await page.evaluate(() => window.__mockCalls)).includes('gamepad.permission')) errors.push(`[${label}] Permitir did not ask Shizuku`);
+    if (await page.locator('.gate').isVisible()) errors.push(`[${label}] app still locked after the permission`);
+  } else if (await page.locator('.gate').isVisible()) {
+    errors.push(`[${label}] browser preview must not be locked`);
+  }
   for (const r of ROUTES) {
     await page.evaluate((id) => {
       location.hash = `#/${id}`;
@@ -68,12 +80,9 @@ async function run(label, { mock, width, height }) {
     await page.waitForTimeout(200);
     const calls = await page.evaluate(() => window.__mockCalls);
     if (!calls.includes('emulation.start')) errors.push(`[${label}] Iniciar emulação did not call the bridge`);
-    // Modo jogo: the virtual gamepad asks Shizuku for permission.
+    // Modo jogo: with emulation on, the virtual gamepad is connected.
     await page.evaluate(() => (location.hash = '#/game'));
     await page.waitForTimeout(300);
-    await page.getByRole('button', { name: 'Permitir' }).click();
-    await page.waitForTimeout(200);
-    if (!(await page.evaluate(() => window.__mockCalls)).includes('gamepad.permission')) errors.push(`[${label}] Permitir did not ask Shizuku`);
     if (!(await page.getByText('Os jogos estão vendo um controle').count())) errors.push(`[${label}] virtual gamepad not shown as connected`);
     await page.screenshot({ path: path.join(outDir, `${label}-game-gamepad.png`), fullPage: true });
     // Touch output: drag a touch marker and check that the layout is saved.

@@ -15,7 +15,8 @@ Com o **Modo jogo**, o jogo aberto no celular recebe esses comandos de um de doi
 ## Como usar
 
 1. Pareie o VR Box no Bluetooth do celular.
-2. Abra o app e toque em **Conectar controle**.
+2. Abra o app. Ele fica bloqueado até o [Shizuku](https://shizuku.rikka.app) estar ligado e
+   permitir o app: a tela inicial mostra o passo a passo. Depois, toque em **Conectar controle**.
 3. Em **Detectar botões**, aperte cada botão do controle e escolha o que ele faz.
 4. Em **Modo jogo**, ative o serviço de acessibilidade e escolha **Controle virtual** (ligue o
    Shizuku e permita o app) ou **Toques na tela** (marque onde cada botão toca).

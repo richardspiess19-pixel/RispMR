@@ -147,7 +147,11 @@ object VirtualGamepadManager {
         val running = runCatching { Shizuku.pingBinder() }.getOrDefault(false)
         if (!running) return Status(if (shizukuInstalled()) State.NOT_RUNNING else State.NOT_INSTALLED)
         if (runCatching { Shizuku.isPreV11() }.getOrDefault(true)) return Status(State.OLD_SHIZUKU)
-        if (!hasPermission()) return Status(State.NO_PERMISSION)
+        if (!hasPermission()) {
+            // "Negar e não perguntar de novo": Shizuku no longer shows its dialog.
+            val denied = runCatching { Shizuku.shouldShowRequestPermissionRationale() }.getOrDefault(false)
+            return Status(State.NO_PERMISSION, if (denied) "Você recusou antes, então o Shizuku não pergunta de novo. Abra o Shizuku, entre em \"Apps autorizados\" e ative o VR Box → Quest." else "")
+        }
         error?.let { return Status(State.ERROR, it, serviceUid) }
         return when {
             created -> Status(State.ACTIVE, uid = serviceUid)

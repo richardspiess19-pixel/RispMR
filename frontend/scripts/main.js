@@ -17,6 +17,7 @@ import settings from './views/settings.js';
 import integration from './views/integration.js';
 import game from './views/game.js';
 import setup from './views/setup.js';
+import { createShizukuGate } from './components/shizuku-gate.js';
 
 const VIEWS = { dashboard, devices, detect, mapping, controllers, tester, profiles, settings, integration, game, setup };
 
@@ -61,6 +62,10 @@ const ctx = {
     }
   },
 };
+
+// The Android app stays locked until Shizuku allows the virtual gamepad.
+const gate = createShizukuGate(ctx);
+document.body.append(gate.el);
 
 // ------------------------------------------------------------------ navigation
 
@@ -289,6 +294,7 @@ bridge.onPush((msg) => {
 
 store.on('status', (s) => {
   renderChrome(s);
+  gate.update(s);
   call('onStatus', s);
 });
 store.on('devices', (d) => call('onDevices', d));
@@ -320,6 +326,7 @@ async function boot() {
     applySettings(null);
   }
   renderChrome(store.state.status);
+  gate.update(store.state.status);
   route();
 }
 

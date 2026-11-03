@@ -545,3 +545,66 @@ input[type="range"]::-moz-range-thumb { width: 16px; height: 16px; border-radius
 .picker-option:hover { border-color: var(--blue); }
 .picker-option[disabled] { opacity: 0.35; cursor: not-allowed; }
 .picker-option small { display: block; color: var(--muted); font-size: 12px; }
+
+/* ------------------------------------------------------------------ Shizuku gate */
+
+html.is-locked body { overflow: hidden; }
+
+.gate {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  overflow-y: auto;
+  background: var(--bg);
+  padding: 28px var(--pad) calc(28px + env(safe-area-inset-bottom, 0px));
+}
+
+.gate__inner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 14px;
+  max-width: 520px;
+  margin: 0 auto;
+}
+
+.gate__logo { width: 52px; height: 52px; }
+.gate__title { font-size: 26px; }
+.gate__lead { color: var(--text-2); }
+
+.gate-steps { display: flex; flex-direction: column; gap: 10px; width: 100%; margin: 4px 0 0; padding: 0; list-style: none; }
+
+.gate-step {
+  display: flex;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  background: var(--surface);
+}
+
+.gate-step__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 650;
+  font-size: 14px;
+}
+
+.gate-step__num svg { width: 16px; height: 16px; }
+.gate-step__body { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0; }
+.gate-step__title { font-weight: 650; }
+.gate-step__body p { color: var(--muted); font-size: 14px; }
+.gate-step.is-current { border-color: var(--blue-2); background: var(--blue-soft); }
+.gate-step.is-current .gate-step__num { background: var(--blue-2); color: #fff; }
+.gate-step.is-current .gate-step__body p { color: var(--text-2); }
+.gate-step.is-done .gate-step__num { background: var(--blue-soft); color: var(--blue-2); }
+.gate-step.is-done .gate-step__body p { display: none; }
+
+.gate__now { display: flex; align-items: center; gap: 8px; font-weight: 600; }
+.gate__now .dot { background: var(--purple-2, #a78bfa); }
