@@ -28,4 +28,8 @@ interface IVirtualGamepad {
 
     // JSON for "Copiar diagnóstico": what the service can see and open.
     String diagnose() = 7;
+
+    // A report computed by the app (the accessibility reader). Ignored while the service reads
+    // the VR Box itself. oneway: never blocks the caller.
+    oneway void send(in byte[] report) = 8;
 }

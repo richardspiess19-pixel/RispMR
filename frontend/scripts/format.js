@@ -92,6 +92,7 @@ export function gameIndicator(status) {
   if (g.web) return { value: 'Só no app', hint: 'Precisa do app Android', tone: 'off' };
   if (!g.enabled) return { value: 'Desligado', hint: '', tone: 'off' };
   const st = g.gamepad?.state;
+  if (st === 'active' && g.serviceEnabled === false) return { value: 'Falta ativar', hint: 'Ative a acessibilidade', tone: 'warn' };
   if (st === 'active') {
     const r = g.reader;
     const hint = r?.reading ? (r.nodes ? 'Lendo o VR Box no jogo' : 'Procurando o VR Box') : 'Abra o jogo';

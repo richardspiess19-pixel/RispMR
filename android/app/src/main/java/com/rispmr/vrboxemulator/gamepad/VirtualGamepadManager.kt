@@ -279,6 +279,16 @@ object VirtualGamepadManager {
 
     val isActive: Boolean get() = created
 
+    /** Sends a report computed in this process (the accessibility reader). */
+    fun sendReport(report: ByteArray) {
+        if (!created) return
+        try {
+            service?.send(report)
+        } catch (e: Exception) {
+            Log.w(TAG, "send failed", e)
+        }
+    }
+
     private fun startRemote() {
         val s = service ?: return
         val c = config ?: return

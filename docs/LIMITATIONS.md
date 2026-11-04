@@ -50,14 +50,14 @@ Consequências importantes:
 
 | Mecanismo | Resultado | Status |
 | --- | --- | --- |
-| **Modo jogo — controle virtual (Shizuku + `/dev/input` + `/dev/uhid`)** | Com o Shizuku ligado, um serviço do app no processo do Shizuku lê o VR Box direto do kernel (qualquer modo: teclas, eixos, mouse), segura o dispositivo (EVIOCGRAB), passa pelo mesmo mapeamento e cria um gamepad HID padrão que todos os apps veem. | **Implementado** (não testado em aparelho real) |
+| **Modo jogo — controle virtual (Shizuku + `/dev/uhid`)** | Com o Shizuku ligado, um serviço do app no processo do Shizuku cria um gamepad HID padrão que todos os apps veem. Com o jogo aberto, o VR Box é lido pelo serviço de acessibilidade (teclas e, no Android 14+, mouse), passa pelo mesmo mapeamento e vira relatórios desse gamepad. Sem acessibilidade, o serviço do Shizuku lê o VR Box em `/dev/input` (experimental). | **Implementado** (não testado em aparelho real) |
 | **Protocolo de rede próprio (VRBQ via UDP)** | Qualquer app que implemente o protocolo recebe os dois controles virtuais (no mesmo telefone via `127.0.0.1` ou em outro dispositivo da rede local). | **Implementado** |
 | `BluetoothHidDevice` (API 28+) | O telefone se apresenta a **outro** host (PC, headset) como um periférico HID — p.ex. um gamepad genérico. Seria um **gamepad**, não controles Touch. Alguns fabricantes desativam o perfil HID Device. | **Não disponível ainda** |
 | Camada de API OpenXR (API layer) | Substitui/injeta estados de ação do perfil `/interaction_profiles/oculus/touch_controller` dentro do processo do jogo, lendo VRBQ. Precisa ser carregada **no processo do jogo**. | **Não disponível ainda** (projeto em `integration/RuntimeIntegration`) |
 | Driver em um runtime OpenXR aberto (ex.: Monado) | O runtime passaria a expor controles virtuais a partir do VRBQ. Exige que o runtime seja o runtime ativo — o que inclui headset/compositor, fora do escopo. | **Não disponível** (fora do escopo) |
 | `InputManager.injectInputEvent` | Injeção global de eventos | **Impossível** para apps comuns (`INJECT_EVENTS` é permissão de assinatura) |
 | `/dev/uinput` | Criar um dispositivo de entrada virtual no kernel | **Impossível** sem root |
-| `AccessibilityService` | Ler teclas com outro app na frente, tocar na tela | **Não usado**: o Shizuku já lê o VR Box, e a acessibilidade traz "Configuração restrita" e o bloqueio do Play Protect |
+| `AccessibilityService` | Ler teclas com outro app na frente | **Usado** para ler o VR Box no jogo (filtro de teclas; mouse via `setMotionEventSources` no Android 14+). Não toca na tela e não lê o conteúdo da tela |
 
 ## 3. Permissões necessárias
 
@@ -66,15 +66,16 @@ Consequências importantes:
 | `BLUETOOTH_CONNECT` (runtime, Android 12+) | Opcional | Listar dispositivos pareados e observar o link. **Sem ela o app continua lendo o controle**; apenas os detalhes Bluetooth ficam ocultos. |
 | `BLUETOOTH` (`maxSdkVersion=30`) | Android 8–11 | Mesma finalidade (permissão de instalação, sem diálogo). |
 | `INTERNET` (normal) | Sempre concedida | Envio UDP do protocolo VRBQ. |
-| Shizuku | O usuário instala o Shizuku, inicia pela depuração sem fio e permite o app (o app fica bloqueado até isso) | Modo jogo. O serviço no Shizuku só abre o VR Box escolhido (pelo nome e pelos ids) e o `/dev/uhid` do controle virtual; não lê outros dispositivos nem a tela. |
+| Shizuku | O usuário instala o Shizuku, inicia pela depuração sem fio e permite o app (o app fica bloqueado até isso) | Modo jogo. O serviço no Shizuku cria o controle virtual em `/dev/uhid` e, sem acessibilidade, abre só o VR Box escolhido (pelo nome e pelos ids); não lê outros dispositivos nem a tela. |
+| Serviço de acessibilidade | O usuário ativa em Configurações → Acessibilidade | Ler o VR Box com o jogo aberto. Só o controle escolhido; `canRetrieveWindowContent=false`; só com a emulação ligada. |
 
 **Não solicitadas de propósito:** `BLUETOOTH_SCAN`, localização (o pareamento é feito nas
 configurações do Android), notificações, serviço em primeiro plano, sobreposição de tela,
 visibilidade de outros pacotes (só o Shizuku, para abrir o app dele).
 
 **Instalação no Brasil:** desde 30/09/2026 o Android exige desenvolvedor verificado (ver
-`INSTALLATION.md`). O app não declara serviço de acessibilidade, então o bloqueio do Play Protect
-para apps com acessibilidade não se aplica.
+`INSTALLATION.md`). Por causa do serviço de acessibilidade, o Play Protect pode barrar a instalação
+pelo navegador ou gerenciador de arquivos; por ADB não.
 
 Tratamento implementado: permissão negada, negada permanentemente (botão para abrir as
 configurações do app), Bluetooth desligado (pedido `ACTION_REQUEST_ENABLE`), telefone sem

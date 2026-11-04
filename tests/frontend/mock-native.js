@@ -113,6 +113,10 @@
     game: {
       enabled: state.game.enabled,
       output: 'gamepad',
+      serviceEnabled: true,
+      serviceConnected: true,
+      readerKind: 'accessibility',
+      keysRead: 0,
       gamepad: { state: state.gamepad, message: '', uid: state.gamepad === 'active' ? 2000 : null },
       reader: state.gamepad === 'active' ? { reading: Boolean(state.selfTest), grabbed: Boolean(state.selfTest), nodes: state.selfTest ? 1 : 0, events: 0, error: '', found: 0, foundGrabbed: false } : null,
       selfTest: state.selfTest ? { left: { x: 0, y: 1 }, right: { x: 0, y: 0 }, l2: 0, r2: 0, buttons: ['A'], events: 12 } : null,

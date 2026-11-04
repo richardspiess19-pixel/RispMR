@@ -48,6 +48,20 @@
         </activity>
 
 
+        <!-- Modo jogo: reads the VR Box while a game is open (Settings > Accessibility). -->
+        <service
+            android:name=".game.GameModeService"
+            android:exported="false"
+            android:label="@string/game_service_label"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/game_mode_service" />
+        </service>
+
         <!-- Shizuku hands its binder to the app through this provider (Shizuku API docs). -->
         <provider
             android:name="rikka.shizuku.ShizukuProvider"

@@ -38,6 +38,7 @@ export default {
     }
 
     const statusBody = h('div', { class: 'stack stack--sm' });
+    const serviceBody = h('div', { class: 'stack stack--sm' });
     const enableRow = h('div');
     const playBody = h('div', { class: 'stack stack--sm' });
     const testBody = h('div', { class: 'stack stack--sm' });
@@ -59,6 +60,7 @@ export default {
         h('div', {}, h('h1', { class: 'page-title' }, 'Modo jogo'), h('p', { class: 'page-sub' }, 'Os jogos do celular recebem um controle de jogo de verdade, com os botões do jeito que você configurou.')),
       ),
       h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Controle virtual')), statusBody, enableRow),
+      h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Ler o VR Box com o jogo aberto')), serviceBody),
       h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Testar o que o jogo recebe')), testBody, testView),
       h(
         'section',
@@ -135,6 +137,7 @@ export default {
       if (st === 'active') {
         text = 'Os jogos estão vendo um controle chamado "VR Box -> Quest (controle virtual)".';
         if (reader?.error) extra = h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, reader.error));
+        else if (g.readerKind === 'accessibility') extra = null;
         else if (reader?.reading && !reader.nodes) extra = h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, 'O VR Box não foi encontrado. Ligue o controle: ele é procurado de novo a cada 2 segundos.'));
         else if (reader?.found && !reader.foundGrabbed) extra = h('p', { class: 'muted small' }, 'Este celular não deixou separar o VR Box, então o jogo também vê o controle original.');
         else if (reader?.found) extra = h('p', { class: 'muted small' }, `No jogo: VR Box encontrado e separado · ${reader.events} sinais lidos.`);
@@ -149,6 +152,59 @@ export default {
         extra = h('div', { class: 'row' }, h('button', { class: 'btn btn--sm btn--primary', type: 'button', onClick: () => runGamepad('gamepad.openShizuku') }, icon('external'), 'Abrir o Shizuku'));
       }
       render(statusBody, h('div', { class: 'list__title' }, 'Situação', badge), h('p', { class: 'text-2' }, text), extra);
+    };
+
+    const renderService = (status) => {
+      const g = status?.game;
+      if (!ctx.store.state.native) {
+        render(serviceBody, h('div', { class: 'empty' }, 'Funciona no app Android.'));
+        return;
+      }
+      const on = Boolean(g?.serviceEnabled);
+      render(
+        serviceBody,
+        h('div', { class: 'list__title' }, 'Serviço de acessibilidade', on ? h('span', { class: 'badge badge--blue' }, icon('check'), 'Ativado') : h('span', { class: 'badge badge--purple' }, 'Desativado')),
+        h('p', { class: 'text-2' }, on
+          ? `Pronto. Com o jogo aberto, o app lê os botões do VR Box por aqui e manda para o controle virtual.${g?.keysRead ? ` ${g.keysRead} botões lidos no jogo.` : ''}`
+          : 'Com o jogo na frente, o Android só entrega os botões do VR Box para outro app pelo Serviço de acessibilidade. Abra Acessibilidade, entre em "VR Box → Quest: Modo jogo" e ative.'),
+        on ? null : h('p', { class: 'muted small' }, 'Sem a acessibilidade, o app tenta ler o VR Box pelo Shizuku (modo experimental).'),
+        on && g?.stickUsesAxes
+          ? h(
+              'div',
+              { class: 'notice notice--warn' },
+              icon('info'),
+              h('div', {}, 'O joystick do seu VR Box está no modo analógico (gamepad). Com o jogo aberto, o Android não entrega esse joystick para a acessibilidade. Troque o VR Box para um modo em que o joystick mande setas (segure @ e aperte outra letra) e refaça o Configurar. Os botões funcionam em qualquer modo.'),
+            )
+          : null,
+        h(
+          'div',
+          { class: 'row' },
+          h('button', { class: `btn btn--sm ${on ? '' : 'btn--primary'}`, type: 'button', onClick: () => ctx.run('game.openAccessibility') }, icon('external'), 'Abrir Acessibilidade'),
+        ),
+        on
+          ? null
+          : h(
+              'div',
+              { class: 'notice notice--warn' },
+              icon('info'),
+              h(
+                'div',
+                { class: 'stack stack--sm' },
+                h('b', {}, 'Apareceu "Configuração restrita"?'),
+                h('span', {}, 'É uma trava do Android 13 ou mais novo para apps instalados fora da loja. Para liberar:'),
+                h(
+                  'ol',
+                  { class: 'steps' },
+                  h('li', {}, 'Tente ativar uma vez em Acessibilidade (o aviso precisa aparecer antes).'),
+                  h('li', {}, 'Toque em "Informações do app" aqui embaixo.'),
+                  h('li', {}, 'Toque nos três pontinhos ⋮ no canto de cima.'),
+                  h('li', {}, 'Toque em "Permitir configurações restritas" e confirme com a sua senha.'),
+                  h('li', {}, 'Volte em Acessibilidade e ative "VR Box → Quest: Modo jogo".'),
+                ),
+                h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('app.openAppSettings') }, 'Informações do app')),
+              ),
+            ),
+      );
     };
 
     let testOn = false;
@@ -209,6 +265,7 @@ export default {
 
     renderEnable();
     renderStatus(ctx.store.state.status);
+    renderService(ctx.store.state.status);
     renderTest(ctx.store.state.status);
     renderPlay(ctx.store.state.status);
 
@@ -220,6 +277,7 @@ export default {
         if (key === lastStatus) return;
         lastStatus = key;
         renderStatus(s);
+        renderService(s);
         renderPlay(s);
       },
       onSettings: renderEnable,

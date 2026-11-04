@@ -6,8 +6,8 @@ esquerdo e direito, com joystick, gatilho, grip e botões A/B/X/Y.
 
 Com o **Modo jogo**, o app cria um **controle de jogo virtual** (com o app
 [Shizuku](https://shizuku.rikka.app)) e o Android entrega esse controle para todos os jogos do
-celular, com os botões do seu mapeamento. Enquanto o jogo está aberto, o VR Box é lido direto pelo
-Shizuku, em qualquer modo do controle (gamepad, teclado, música ou mouse). Não usa acessibilidade.
+celular, com os botões do seu mapeamento. Enquanto o jogo está aberto, o VR Box é lido pelo
+serviço de acessibilidade do app (recomendado) ou, sem ele, direto pelo Shizuku (experimental).
 
 ## Como usar
 

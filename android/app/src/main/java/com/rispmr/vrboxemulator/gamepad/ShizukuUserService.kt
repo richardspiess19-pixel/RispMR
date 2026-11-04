@@ -58,6 +58,7 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
     private var error = ""
     private var events = 0L
     private var grabError: String? = null
+    private var appReports = 0L
     private var found = 0
     private var foundGrabbed = false
     private var tickScheduled = false
@@ -117,6 +118,20 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
 
     override fun uid(): Int = Os.getuid()
 
+    override fun send(report: ByteArray) {
+        engineHandler.post {
+            val f = uhid ?: return@post
+            if (reading || report.size != VirtualGamepad.REPORT_SIZE) return@post
+            if (lastReport?.contentEquals(report) == true) return@post
+            lastReport = report
+            appReports++
+            runCatching {
+                val msg = Uhid.input2(report)
+                Os.write(f, msg, 0, msg.size)
+            }
+        }
+    }
+
     override fun diagnose(): String = onEngine {
         val c = config
         val nodesJson = JSONArray()
@@ -151,6 +166,7 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
             .put("mappings", c?.profile?.mappings?.size ?: 0)
             .put("reading", reading)
             .put("events", events)
+            .put("appReports", appReports)
             .put("lastReport", lastReport?.joinToString(" ") { "%02x".format(it) } ?: JSONObject.NULL)
             .put("grabError", grabError ?: JSONObject.NULL)
             .put("error", error)

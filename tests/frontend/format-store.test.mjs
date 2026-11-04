@@ -38,6 +38,7 @@ test('indicators never claim features that are not active', () => {
   assert.equal(pad('no_permission').value, 'Falta permitir');
   assert.equal(pad('error').tone, 'err');
   assert.equal(pad('active', { reading: true, nodes: 1 }).hint, 'Lendo o VR Box no jogo');
+  assert.equal(f.gameIndicator({ game: { enabled: true, serviceEnabled: false, gamepad: { state: 'active' } } }).value, 'Falta ativar');
   assert.equal(pad('active', { reading: true, nodes: 0 }).tone, 'warn');
 });
 
