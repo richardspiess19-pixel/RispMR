@@ -141,7 +141,7 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
             val name = read("$sys/name")
             val vendor = Evdev.hex(read("$sys/id/vendor"))
             val product = Evdev.hex(read("$sys/id/product"))
-            val matches = c != null && name != null && DeviceGroup.baseName(name) == c.device.name &&
+            val matches = c != null && name != null && DeviceGroup.baseName(name) == DeviceGroup.baseName(c.device.name) &&
                 (c.device.vendorId == 0 || vendor == c.device.vendorId) && (c.device.productId == 0 || product == c.device.productId)
             nodesJson.put(
                 JSONObject()
@@ -325,7 +325,7 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
             val vendor = Evdev.hex(read("$sys/id/vendor"))
             val product = Evdev.hex(read("$sys/id/product"))
             // Every interface of the controller: "VR BOX", "VR BOX Mouse", "VR BOX Consumer Control"...
-            DeviceGroup.baseName(name) == c.device.name && (c.device.vendorId == 0 || vendor == c.device.vendorId) && (c.device.productId == 0 || product == c.device.productId)
+            DeviceGroup.baseName(name) == DeviceGroup.baseName(c.device.name) && (c.device.vendorId == 0 || vendor == c.device.vendorId) && (c.device.productId == 0 || product == c.device.productId)
         }.sorted()
     }
 

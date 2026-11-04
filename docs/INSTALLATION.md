@@ -38,22 +38,17 @@ Se você vai distribuir o app, registre-se no Android Developer Console (existe 
 gratuita para distribuição limitada, pensada para estudantes e hobby). Registre o pacote
 `com.rispmr.vrboxemulator` e compile o release com a **sua** chave (veja "Release assinado").
 
-### Acessibilidade (para ler o VR Box com o jogo aberto)
+### Dois APKs
 
-Com o jogo na frente, o Android só entrega os botões do VR Box para outro app pelo **serviço de
-acessibilidade**. O app usa esse serviço só para ler o VR Box escolhido; não lê a tela e não toca
-nela. No Brasil, o Play Protect pode barrar apps com acessibilidade instalados pelo navegador ou
-pelo gerenciador de arquivos: **instalar por ADB evita o bloqueio**.
+| APK | Precisa de | Play Protect |
+| --- | --- | --- |
+| `app-shizuku` (**principal**) | só o Shizuku | Só o aviso de app de fora da loja / verificação |
+| `app-acessibilidade` | Shizuku + acessibilidade | Bloqueia a instalação pelo navegador ou gerenciador de arquivos; por ADB instala |
 
-Depois de instalar (Android 13 ou mais novo), a acessibilidade pode mostrar **"Configuração
-restrita"**. Tente ativar uma vez, depois vá em Configurações → Apps → VR Box → Joy-Con → ⋮ →
-**Permitir configurações restritas**, confirme com a senha, volte em Acessibilidade e ative
-"VR Box → Joy-Con: Modo jogo". Sem a acessibilidade, o app tenta ler o VR Box pelo Shizuku
-(experimental).
-
-Com a acessibilidade, o joystick do VR Box precisa mandar **setas/teclas** (modos teclado/música):
-o Android não entrega o joystick analógico (modo gamepad) para a acessibilidade sem engolir também
-o do controle virtual.
+No APK principal, o serviço do app no Shizuku lê o VR Box com o jogo aberto. O APK com
+acessibilidade lê os botões pelo serviço de acessibilidade (o Android 13+ pede "Permitir
+configurações restritas" em Configurações → Apps → VR Box → Joy-Con → ⋮). Os dois são o mesmo app:
+instalar um substitui o outro.
 
 ## Primeiro uso
 

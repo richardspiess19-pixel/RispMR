@@ -12,7 +12,7 @@ Por padrão, os botões A, B, C e D do VR Box viram A, B, X e Y, os gatilhos vir
 Com o **Modo jogo**, o app cria um **controle de jogo virtual** (com o app
 [Shizuku](https://shizuku.rikka.app)) e o Android entrega esse controle para todos os jogos do
 celular, com os botões do seu mapeamento. Enquanto o jogo está aberto, o VR Box é lido pelo
-serviço de acessibilidade do app (recomendado) ou, sem ele, direto pelo Shizuku (experimental).
+Shizuku (APK principal) ou pelo serviço de acessibilidade (APK com acessibilidade).
 
 ## Como usar
 
@@ -22,7 +22,8 @@ serviço de acessibilidade do app (recomendado) ou, sem ele, direto pelo Shizuku
 3. Em **Configurar**, aperte cada botão do controle quando o app pedir.
 4. Toque em **Iniciar emulação** e abra o jogo.
 
-Detalhes da instalação, inclusive o aviso do Play Protect, em [docs/INSTALLATION.md](docs/INSTALLATION.md).
+O APK principal (`app-shizuku`) só precisa do Shizuku e não é bloqueado pelo Play Protect. Existe
+também um APK com acessibilidade (`app-acessibilidade`). Detalhes em [docs/INSTALLATION.md](docs/INSTALLATION.md).
 
 ## Versão web (um arquivo HTML)
 

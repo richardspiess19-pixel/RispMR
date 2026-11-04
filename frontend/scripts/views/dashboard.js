@@ -144,7 +144,7 @@ export default {
           g.tone !== 'ok'
             ? 'O Modo jogo ainda não está pronto, então os jogos não vão reagir.'
             : pad
-              ? 'Pode abrir o jogo. Ele vê um controle virtual com os seus botões.'
+              ? `Pode abrir o jogo. Ele vê os dois Joy-Cons como um controle.${readerNote(status)}`
               : 'Pode abrir o jogo. Os botões do VR Box viram toques na tela.';
         actions = [h('button', { class: 'btn btn--big', type: 'button', onClick: () => ctx.run('emulation.stop') }, icon('stop'), 'Parar emulação')];
         if (g.tone !== 'ok') actions.unshift(h('button', { class: 'btn btn--big btn--primary', type: 'button', onClick: () => ctx.nav('game') }, icon('target'), 'Configurar Modo jogo'));
@@ -319,6 +319,16 @@ export async function disconnect(ctx) {
   }
   const r = await ctx.run('input.release');
   if (r) ctx.toast('Controle desconectado do app. O Bluetooth continua pareado.', 'info', 3600);
+}
+
+/** After a game: what the Shizuku reader saw (shown so a screenshot tells where it stopped). */
+function readerNote(status) {
+  const g = status?.game;
+  const r = g?.reader;
+  if (!r || g?.readerKind === 'accessibility') return g?.keysRead ? ` No jogo: ${g.keysRead} botões lidos.` : '';
+  if (r.error) return ` Problema: ${r.error}`;
+  if (r.found) return ` No jogo: VR Box encontrado${r.foundGrabbed ? ' e separado' : ''} · ${r.events} sinais lidos.`;
+  return r.reading ? ' Procurando o VR Box…' : '';
 }
 
 export async function startEmulation(ctx) {

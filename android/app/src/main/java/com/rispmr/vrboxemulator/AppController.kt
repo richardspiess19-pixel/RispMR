@@ -270,14 +270,21 @@ class AppController(private val activity: Activity, private val webView: WebView
 
     /** What the Shizuku service needs to read the VR Box like the app does. */
     private fun backgroundConfig(): String? {
-        val device = DeviceIdentity.fromKey(settings.lastDeviceKey) ?: return null
+        // Base name: every interface of the VR Box ("VR BOX Mouse", "VR BOX Keyboard"...) is read.
+        val device = DeviceIdentity.fromKey(settings.lastDeviceKey)?.let { it.copy(name = DeviceGroup.baseName(it.name)) } ?: return null
         return BackgroundConfigCodec.encode(BackgroundConfig(device, working, if (scanCodesKey == settings.lastDeviceKey) HashMap(scanCodes) else emptyMap()))
     }
 
     private fun publishToGameMode() = GameModeBus.publish(settings, working)
 
+    /** The "acessibilidade" APK declares the accessibility reader; the default APK does not. */
+    private val accessibilityAvailable: Boolean by lazy {
+        runCatching { activity.packageManager.getServiceInfo(ComponentName(activity, GameModeService::class.java), 0) }.isSuccess
+    }
+
     /** Whether the user turned on our accessibility service in Android settings. */
     private fun gameServiceEnabled(): Boolean {
+        if (!accessibilityAvailable) return false
         val enabled = Settings.Secure.getString(activity.contentResolver, Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: return false
         val component = ComponentName(activity, GameModeService::class.java)
         return enabled.split(':').any {
@@ -1436,6 +1443,7 @@ class AppController(private val activity: Activity, private val webView: WebView
                 JSONObject()
                     .put("enabled", settings.game.enabled)
                     .put("output", "gamepad")
+                    .put("accessibilityAvailable", accessibilityAvailable)
                     .put("serviceEnabled", gameServiceEnabled())
                     .put("serviceConnected", GameModeBus.serviceConnected)
                     .put("readerKind", if (gameServiceEnabled()) "accessibility" else "shizuku")
@@ -1528,6 +1536,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         sb.appendLine("Shizuku: ${VirtualGamepadManager.shizukuInfo()}")
         sb.appendLine("Controle virtual: ${g.state.key}${if (g.message.isNotEmpty()) " — ${g.message}" else ""}")
         sb.appendLine("Emulação: ${if (emulationRunning) "ligada" else "parada"}, Modo jogo: ${if (settings.game.enabled) "ligado" else "desligado"}, teste: $selfTest (${selfTestEvents} sinais)")
+        sb.appendLine("APK: ${if (accessibilityAvailable) "com acessibilidade" else "só Shizuku"}")
         sb.appendLine("Acessibilidade: ${if (gameServiceEnabled()) "ativada" else "desativada"}, conectada: ${GameModeBus.serviceConnected}, teclas lidas no jogo: ${GameModeBus.keysRead}")
         sb.appendLine("Controle escolhido: ${settings.lastDeviceKey ?: "nenhum"}")
         for (grp in registry.groups(includeNonCandidates = true, includeInternal = false)) {

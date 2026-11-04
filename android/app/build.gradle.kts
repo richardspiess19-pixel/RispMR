@@ -32,8 +32,25 @@ android {
         applicationId = "com.rispmr.vrboxemulator"
         minSdk = 26 // Android 8.0: pointer capture API
         targetSdk = 35
-        versionCode = 12
-        versionName = "1.0.0"
+        versionCode = 13
+        versionName = "1.1.0"
+    }
+
+    // Two APKs from the same code:
+    // - "shizuku" (default): no accessibility service, so Play Protect does not block the install
+    //   from a browser or file manager. The Shizuku service reads the VR Box while a game is open.
+    // - "acessibilidade": also declares the accessibility reader (Play Protect blocks it when
+    //   sideloaded; install by ADB).
+    flavorDimensions += "leitor"
+    productFlavors {
+        create("shizuku") {
+            dimension = "leitor"
+            isDefault = true
+        }
+        create("acessibilidade") {
+            dimension = "leitor"
+            versionNameSuffix = "-acessibilidade"
+        }
     }
 
     signingConfigs {

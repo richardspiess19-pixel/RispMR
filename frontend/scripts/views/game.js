@@ -41,6 +41,8 @@ export default {
 
     const statusBody = h('div', { class: 'stack stack--sm' });
     const serviceBody = h('div', { class: 'stack stack--sm' });
+    // Only the "acessibilidade" APK has the accessibility reader.
+    const serviceCard = h('section', { class: 'card hidden' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Ler o VR Box com o jogo aberto')), serviceBody);
     const enableRow = h('div');
     const playBody = h('div', { class: 'stack stack--sm' });
     const testBody = h('div', { class: 'stack stack--sm' });
@@ -62,7 +64,7 @@ export default {
         h('div', {}, h('h1', { class: 'page-title' }, 'Modo jogo'), h('p', { class: 'page-sub' }, 'Os jogos do celular recebem um controle de jogo de verdade, com os botões do jeito que você configurou.')),
       ),
       h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Controle virtual')), statusBody, enableRow),
-      h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Ler o VR Box com o jogo aberto')), serviceBody),
+      serviceCard,
       h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Testar o que o jogo recebe')), testBody, testView),
       h(
         'section',
@@ -158,6 +160,7 @@ export default {
 
     const renderService = (status) => {
       const g = status?.game;
+      serviceCard.classList.toggle('hidden', !ctx.store.state.native || g?.accessibilityAvailable === false);
       if (!ctx.store.state.native) {
         render(serviceBody, h('div', { class: 'empty' }, 'Funciona no app Android.'));
         return;
