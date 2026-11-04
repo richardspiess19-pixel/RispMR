@@ -45,17 +45,17 @@ class ControllerMapperTest {
 
     @Test
     fun analogToButtonUsesThresholdAndInvert() {
-        configure(rule("axis:X", "left.x"), rule("axis:X", "left.y", invert = true, threshold = 0.3f))
+        configure(rule("axis:X", "left.up"), rule("axis:X", "left.down", invert = true, threshold = 0.3f))
         state.analog["axis:X"] = 0.49f
         mapper.evaluate(state, frame)
-        assertFalse(frame.buttons["left.x"] == true)
+        assertFalse(frame.buttons["left.up"] == true)
         state.analog["axis:X"] = 0.5f
         mapper.evaluate(state, frame)
-        assertTrue(frame.buttons["left.x"] == true)
-        assertFalse(frame.buttons["left.y"] == true)
+        assertTrue(frame.buttons["left.up"] == true)
+        assertFalse(frame.buttons["left.down"] == true)
         state.analog["axis:X"] = -0.31f
         mapper.evaluate(state, frame)
-        assertTrue("inverted rule reacts to the negative side", frame.buttons["left.y"] == true)
+        assertTrue("inverted rule reacts to the negative side", frame.buttons["left.down"] == true)
     }
 
     @Test

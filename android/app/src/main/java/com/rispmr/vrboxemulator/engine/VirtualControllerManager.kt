@@ -8,9 +8,9 @@ data class VirtualEvent(
     /** Analog value for trigger/grip, `null` for digital buttons. */
     val value: Float?,
 ) {
-    /** e.g. "Direito · botão A pressionado", "Esquerdo · gatilho pressionado (0,82)". */
+    /** e.g. "Joy-Con direito · botão A pressionado", "Joy-Con esquerdo · ZL pressionado (0,82)". */
     fun describe(): String {
-        val base = "${hand.label} · ${VirtualTargets.logLabel(control)} ${if (pressed) "pressionado" else "solto"}"
+        val base = "Joy-Con ${hand.label.lowercase(PT_BR)} · ${VirtualTargets.logLabel(control, hand)} ${if (pressed) "pressionado" else "solto"}"
         return if (value != null && pressed) "$base (${"%.2f".format(PT_BR, value)})" else base
     }
 
@@ -47,7 +47,7 @@ data class HandSnapshot(
 
 data class ControllerSnapshot(val left: HandSnapshot, val right: HandSnapshot, val version: Long)
 
-/** Live state of one virtual Quest Touch controller. Each control has an independent state. */
+/** Live state of one virtual Joy-Con. Each control has an independent state. */
 class VirtualController(val hand: Hand) {
     val buttonNames: List<String> = VirtualTargets.buttonControls(hand)
     private val buttons = LinkedHashMap<String, Boolean>().apply { buttonNames.forEach { put(it, false) } }

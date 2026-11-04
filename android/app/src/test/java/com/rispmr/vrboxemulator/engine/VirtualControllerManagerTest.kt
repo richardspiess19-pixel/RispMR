@@ -10,12 +10,12 @@ class VirtualControllerManagerTest {
     @Test
     fun eachControllerHasIndependentButtons() {
         val m = VirtualControllerManager()
-        assertEquals(listOf("stickClick", "x", "y", "menu"), m.left.buttonNames)
-        assertEquals(listOf("stickClick", "a", "b", "system"), m.right.buttonNames)
-        m.configure(listOf(rule("key:BUTTON_A", "left.x"), rule("key:BUTTON_B", "right.b")), ButtonConfig(), StickConfig(), StickConfig())
+        assertEquals(listOf("stickClick", "up", "down", "left", "right", "minus", "capture"), m.left.buttonNames)
+        assertEquals(listOf("stickClick", "a", "b", "x", "y", "plus", "home"), m.right.buttonNames)
+        m.configure(listOf(rule("key:BUTTON_A", "left.up"), rule("key:BUTTON_B", "right.b")), ButtonConfig(), StickConfig(), StickConfig())
         val state = PhysicalState().apply { digital["key:BUTTON_A"] = true }
         m.onPhysicalState(state, 0)
-        assertTrue(m.left.button("x"))
+        assertTrue(m.left.button("up"))
         assertFalse(m.right.button("b"))
     }
 
@@ -32,13 +32,13 @@ class VirtualControllerManagerTest {
         assertTrue(events.isEmpty())
         state.analog["axis:LTRIGGER"] = 0.6f
         m.onPhysicalState(state, 0)
-        assertEquals("Esquerdo · gatilho pressionado (0,60)", events.single().describe())
+        assertEquals("Joy-Con esquerdo · ZL pressionado (0,60)", events.single().describe())
         state.analog["axis:LTRIGGER"] = 0.4f // above 0.5 * 0.7: still pressed
         m.onPhysicalState(state, 0)
         assertEquals(1, events.size)
         state.analog["axis:LTRIGGER"] = 0.2f
         m.onPhysicalState(state, 0)
-        assertEquals("Esquerdo · gatilho solto", events.last().describe())
+        assertEquals("Joy-Con esquerdo · ZL solto", events.last().describe())
     }
 
     @Test
@@ -66,8 +66,8 @@ class VirtualControllerManagerTest {
         val snap = m.snapshot()
         assertFalse(snap.right.pressed("a"))
         assertEquals(0f, snap.right.grip, 0f)
-        assertTrue(events.any { it.describe() == "Direito · botão A solto" })
-        assertTrue(events.any { it.describe() == "Direito · grip solto" })
+        assertTrue(events.any { it.describe() == "Joy-Con direito · botão A solto" })
+        assertTrue(events.any { it.describe() == "Joy-Con direito · R solto" })
     }
 
     @Test

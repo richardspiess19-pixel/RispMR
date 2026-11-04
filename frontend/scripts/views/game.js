@@ -7,15 +7,17 @@ import { createStickView } from '../components/stick-view.js';
 // Modo jogo: the game that is open receives a virtual gamepad driven by the VR Box. The Shizuku
 // service reads the VR Box while the game is in front and feeds the gamepad.
 
-/** What each virtual Quest control becomes on the virtual gamepad (VirtualGamepad.kt). */
+/** What each virtual Joy-Con control becomes on the virtual gamepad (VirtualGamepad.kt). */
 const GAMEPAD_LAYOUT = [
   ['A, B, X, Y', 'A, B, X, Y'],
-  ['Joystick esquerdo / direito', 'Analógico esquerdo / direito'],
-  ['Clique dos joysticks', 'L3 / R3'],
-  ['Grip esquerdo / direito', 'L1 / R1'],
-  ['Gatilho esquerdo / direito', 'L2 / R2'],
-  ['Menu', 'Start'],
-  ['Sistema', 'Select'],
+  ['Setas ↑ ↓ ← →', 'D-pad'],
+  ['Analógicos', 'Analógico esquerdo / direito'],
+  ['Clique dos analógicos', 'L3 / R3'],
+  ['L / R', 'L1 / R1'],
+  ['ZL / ZR', 'L2 / R2'],
+  ['− / +', 'Select / Start'],
+  ['Home', 'Home (Mode)'],
+  ['Captura', 'Botão C'],
 ];
 
 export default {
@@ -67,7 +69,7 @@ export default {
         { class: 'card' },
         h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Como os botões chegam no jogo')),
         h('dl', { class: 'gp-map' }, GAMEPAD_LAYOUT.flatMap(([a, b]) => [h('dt', {}, a), h('dd', {}, b)])),
-        h('p', { class: 'muted small' }, 'Os botões do VR Box viram os controles virtuais pelo seu mapeamento (tela Configurar ou Botões), e deles vão para o controle virtual.'),
+        h('p', { class: 'muted small' }, 'Os botões do VR Box viram os dois Joy-Cons pelo seu mapeamento (tela Configurar ou Botões), e eles chegam no jogo juntos, como um controle só.'),
       ),
       h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Jogar')), playBody),
       h(
@@ -135,7 +137,7 @@ export default {
       let text;
       let extra = null;
       if (st === 'active') {
-        text = 'Os jogos estão vendo um controle chamado "VR Box -> Quest (controle virtual)".';
+        text = 'Os jogos estão vendo um controle chamado "VR Box -> Joy-Con (controle virtual)".';
         if (reader?.error) extra = h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, reader.error));
         else if (g.readerKind === 'accessibility') extra = null;
         else if (reader?.reading && !reader.nodes) extra = h('div', { class: 'notice notice--warn' }, icon('info'), h('div', {}, 'O VR Box não foi encontrado. Ligue o controle: ele é procurado de novo a cada 2 segundos.'));
@@ -166,7 +168,7 @@ export default {
         h('div', { class: 'list__title' }, 'Serviço de acessibilidade', on ? h('span', { class: 'badge badge--blue' }, icon('check'), 'Ativado') : h('span', { class: 'badge badge--purple' }, 'Desativado')),
         h('p', { class: 'text-2' }, on
           ? `Pronto. Com o jogo aberto, o app lê os botões do VR Box por aqui e manda para o controle virtual.${g?.keysRead ? ` ${g.keysRead} botões lidos no jogo.` : ''}`
-          : 'Com o jogo na frente, o Android só entrega os botões do VR Box para outro app pelo Serviço de acessibilidade. Abra Acessibilidade, entre em "VR Box → Quest: Modo jogo" e ative.'),
+          : 'Com o jogo na frente, o Android só entrega os botões do VR Box para outro app pelo Serviço de acessibilidade. Abra Acessibilidade, entre em "VR Box → Joy-Con: Modo jogo" e ative.'),
         on ? null : h('p', { class: 'muted small' }, 'Sem a acessibilidade, o app tenta ler o VR Box pelo Shizuku (modo experimental).'),
         on && g?.stickUsesAxes
           ? h(
@@ -199,7 +201,7 @@ export default {
                   h('li', {}, 'Toque em "Informações do app" aqui embaixo.'),
                   h('li', {}, 'Toque nos três pontinhos ⋮ no canto de cima.'),
                   h('li', {}, 'Toque em "Permitir configurações restritas" e confirme com a sua senha.'),
-                  h('li', {}, 'Volte em Acessibilidade e ative "VR Box → Quest: Modo jogo".'),
+                  h('li', {}, 'Volte em Acessibilidade e ative "VR Box → Joy-Con: Modo jogo".'),
                 ),
                 h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => ctx.run('app.openAppSettings') }, 'Informações do app')),
               ),
@@ -250,7 +252,7 @@ export default {
           { class: 'steps' },
           h('li', {}, 'Toque em Iniciar emulação.'),
           h('li', {}, 'Abra o jogo e coloque o celular no VR Box.'),
-          h('li', {}, 'O jogo recebe o controle virtual. Se ele pedir, escolha o controle "VR Box -> Quest".'),
+          h('li', {}, 'O jogo recebe o controle virtual. Se ele pedir, escolha o controle "VR Box -> Joy-Con".'),
         ),
         h(
           'div',

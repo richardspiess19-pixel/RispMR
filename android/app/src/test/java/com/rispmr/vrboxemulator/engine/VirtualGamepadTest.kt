@@ -19,8 +19,8 @@ class VirtualGamepadTest {
         leftGrip: Float = 0f,
         rightGrip: Float = 0f,
     ): ControllerSnapshot {
-        val l = HandSnapshot(Hand.LEFT, leftStick.first, leftStick.second, 0f, 0f, leftTrigger, leftGrip, mapOf("stickClick" to false, "x" to false, "y" to false, "menu" to false) + left)
-        val r = HandSnapshot(Hand.RIGHT, rightStick.first, rightStick.second, 0f, 0f, rightTrigger, rightGrip, mapOf("stickClick" to false, "a" to false, "b" to false, "system" to false) + right)
+        val l = HandSnapshot(Hand.LEFT, leftStick.first, leftStick.second, 0f, 0f, leftTrigger, leftGrip, VirtualTargets.buttonControls(Hand.LEFT).associateWith { false } + left)
+        val r = HandSnapshot(Hand.RIGHT, rightStick.first, rightStick.second, 0f, 0f, rightTrigger, rightGrip, VirtualTargets.buttonControls(Hand.RIGHT).associateWith { false } + right)
         return ControllerSnapshot(l, r, 0)
     }
 
@@ -60,14 +60,32 @@ class VirtualGamepadTest {
     }
 
     @Test
-    fun questButtonsBecomeGamepadButtons() {
+    fun joyConButtonsBecomeGamepadButtons() {
         val r = VirtualGamepad.report(
-            snapshot(left = mapOf("x" to true, "menu" to true, "stickClick" to true), right = mapOf("a" to true, "system" to true)),
+            snapshot(left = mapOf("minus" to true, "capture" to true, "stickClick" to true), right = mapOf("a" to true, "x" to true, "plus" to true, "home" to true)),
             0.5f,
         )
         val b = buttons(r)
-        assertEquals(bit(VirtualGamepad.BTN_A) or bit(VirtualGamepad.BTN_X) or bit(VirtualGamepad.BTN_START) or bit(VirtualGamepad.BTN_SELECT) or bit(VirtualGamepad.BTN_THUMBL), b)
+        assertEquals(
+            bit(VirtualGamepad.BTN_A) or bit(VirtualGamepad.BTN_X) or bit(VirtualGamepad.BTN_START) or bit(VirtualGamepad.BTN_SELECT) or
+                bit(VirtualGamepad.BTN_MODE) or bit(VirtualGamepad.BTN_C) or bit(VirtualGamepad.BTN_THUMBL),
+            b,
+        )
         assertEquals(0, buttons(VirtualGamepad.report(snapshot(), 0.5f)))
+        assertEquals(VirtualGamepad.HAT_CENTER, VirtualGamepad.report(snapshot(), 0.5f)[2].toInt())
+    }
+
+    @Test
+    fun leftJoyConArrowsAreTheDpad() {
+        fun hat(vararg on: String) = VirtualGamepad.report(snapshot(left = on.associateWith { true }), 0.5f)[2].toInt()
+        assertEquals(0, hat("up"))
+        assertEquals(2, hat("right"))
+        assertEquals(4, hat("down"))
+        assertEquals(6, hat("left"))
+        assertEquals(1, hat("up", "right"))
+        assertEquals(7, hat("up", "left"))
+        assertEquals(VirtualGamepad.HAT_CENTER, hat("up", "down"))
+        assertEquals(VirtualGamepad.HAT_CENTER, VirtualGamepad.idleReport()[2].toInt())
     }
 
     @Test
@@ -78,20 +96,20 @@ class VirtualGamepadTest {
         assertEquals(0, b and bit(VirtualGamepad.BTN_R1))
         assertTrue(b and bit(VirtualGamepad.BTN_R2) != 0)
         assertEquals(0, b and bit(VirtualGamepad.BTN_L2))
-        assertEquals(51, r[6].toInt() and 0xFF) // 0.2 * 255
-        assertEquals(255, r[7].toInt() and 0xFF)
+        assertEquals(51, r[7].toInt() and 0xFF) // 0.2 * 255
+        assertEquals(255, r[8].toInt() and 0xFF)
     }
 
     @Test
     fun sticksUseHidDirections() {
         // Engine: +y = up. HID / Android: +y = down.
         val r = VirtualGamepad.report(snapshot(leftStick = 0f to 1f, rightStick = 0.5f to -1f), 0.5f)
-        assertEquals(0, r[2].toInt())
-        assertEquals(-127, r[3].toInt())
-        assertEquals(64, r[4].toInt())
-        assertEquals(127, r[5].toInt())
+        assertEquals(0, r[3].toInt())
+        assertEquals(-127, r[4].toInt())
+        assertEquals(64, r[5].toInt())
+        assertEquals(127, r[6].toInt())
         val clamped = VirtualGamepad.report(snapshot(leftStick = 3f to 0f), 0.5f)
-        assertEquals(127, clamped[2].toInt())
+        assertEquals(127, clamped[3].toInt())
     }
 
     @Test

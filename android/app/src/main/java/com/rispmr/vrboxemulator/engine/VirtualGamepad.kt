@@ -5,37 +5,39 @@ import java.nio.ByteOrder
 import kotlin.math.roundToInt
 
 /**
- * The virtual gamepad that other apps see.
+ * The virtual gamepad that other apps see: the two virtual Joy-Cons held together, like a
+ * standard controller.
  *
- * A standard HID game pad (15 buttons, two sticks, two analog triggers). The Linux `hid-generic`
- * driver turns it into an input device and Android maps it with `Generic.kl`, so games read it
- * exactly like a Bluetooth controller:
+ * A standard HID game pad (15 buttons, a hat for the D-pad, two sticks, two analog triggers).
+ * The Linux `hid-generic` driver turns it into an input device and Android maps it with
+ * `Generic.kl`, so games read it exactly like a Bluetooth controller:
  *
- * | HID usage | Linux | Android |
+ * | Joy-Con | HID usage | Android |
  * | --- | --- | --- |
- * | Button 1, 2, 4, 5 | BTN_A, BTN_B, BTN_X, BTN_Y | BUTTON_A, BUTTON_B, BUTTON_X, BUTTON_Y |
- * | Button 7, 8 | BTN_TL, BTN_TR | BUTTON_L1, BUTTON_R1 |
- * | Button 9, 10 | BTN_TL2, BTN_TR2 | BUTTON_L2, BUTTON_R2 |
- * | Button 11, 12 | BTN_SELECT, BTN_START | BUTTON_SELECT, BUTTON_START |
- * | Button 14, 15 | BTN_THUMBL, BTN_THUMBR | BUTTON_THUMBL, BUTTON_THUMBR |
- * | X, Y / Z, Rz | ABS_X, ABS_Y / ABS_Z, ABS_RZ | AXIS_X, AXIS_Y / AXIS_Z, AXIS_RZ |
- * | Brake, Accelerator | ABS_BRAKE, ABS_GAS | AXIS_BRAKE, AXIS_GAS (L2/R2 analog) |
+ * | A, B, X, Y | Button 1, 2, 4, 5 | BUTTON_A, BUTTON_B, BUTTON_X, BUTTON_Y |
+ * | Captura | Button 3 | BUTTON_C |
+ * | L, R | Button 7, 8 | BUTTON_L1, BUTTON_R1 |
+ * | ZL, ZR | Button 9, 10 + Brake, Accelerator | BUTTON_L2, BUTTON_R2 + AXIS_BRAKE, AXIS_GAS |
+ * | −, + | Button 11, 12 | BUTTON_SELECT, BUTTON_START |
+ * | Home | Button 13 | BUTTON_MODE |
+ * | Stick clicks | Button 14, 15 | BUTTON_THUMBL, BUTTON_THUMBR |
+ * | ↑ ↓ ← → | Hat switch | AXIS_HAT_X, AXIS_HAT_Y (D-pad) |
+ * | Sticks | X, Y / Z, Rz | AXIS_X, AXIS_Y / AXIS_Z, AXIS_RZ |
  *
- * Quest Touch -> gamepad: left stick -> left stick, right stick -> right stick, A/B/X/Y -> A/B/X/Y,
- * grips -> L1/R1, triggers -> L2/R2 (analog + button), Menu -> Start, System -> Select,
- * stick clicks -> L3/R3.
+ * It uses a neutral test id (not Nintendo's), so no Joy-Con specific driver claims it.
  */
 object VirtualGamepad {
-    const val NAME = "VR Box -> Quest (controle virtual)"
+    const val NAME = "VR Box -> Joy-Con (controle virtual)"
 
     /** pid.codes test VID/PID: free for non-commercial use, never a real product. */
     const val VENDOR_ID = 0x1209
     const val PRODUCT_ID = 0x0001
-    const val REPORT_SIZE = 8
+    const val REPORT_SIZE = 9
 
     /** HID button number (1-based) for each output, as listed in the table above. */
     const val BTN_A = 1
     const val BTN_B = 2
+    const val BTN_C = 3
     const val BTN_X = 4
     const val BTN_Y = 5
     const val BTN_L1 = 7
@@ -44,8 +46,12 @@ object VirtualGamepad {
     const val BTN_R2 = 10
     const val BTN_SELECT = 11
     const val BTN_START = 12
+    const val BTN_MODE = 13
     const val BTN_THUMBL = 14
     const val BTN_THUMBR = 15
+
+    /** Hat value with nothing pressed (outside 0..7: the "null state"). */
+    const val HAT_CENTER = 8
 
     val DESCRIPTOR: ByteArray = bytes(
         0x05, 0x01, // Usage Page (Generic Desktop)
@@ -63,6 +69,20 @@ object VirtualGamepad {
         0x95, 0x01, //   Report Count (1)
         0x81, 0x03, //   Input (Const) - padding
         0x05, 0x01, //   Usage Page (Generic Desktop)
+        0x09, 0x39, //   Usage (Hat switch)
+        0x15, 0x00, //   Logical Minimum (0)
+        0x25, 0x07, //   Logical Maximum (7)
+        0x35, 0x00, //   Physical Minimum (0)
+        0x46, 0x3B, 0x01, // Physical Maximum (315)
+        0x65, 0x14, //   Unit (degrees)
+        0x75, 0x04, //   Report Size (4)
+        0x95, 0x01, //   Report Count (1)
+        0x81, 0x42, //   Input (Data, Var, Abs, Null State)
+        0x65, 0x00, //   Unit (none)
+        0x45, 0x00, //   Physical Maximum (0)
+        0x75, 0x04, //   Report Size (4)
+        0x95, 0x01, //   Report Count (1)
+        0x81, 0x03, //   Input (Const) - padding
         0x09, 0x30, //   Usage (X)
         0x09, 0x31, //   Usage (Y)
         0x09, 0x32, //   Usage (Z)
@@ -84,14 +104,34 @@ object VirtualGamepad {
     )
 
     fun isOwn(vendorId: Int, productId: Int, name: String?): Boolean =
-        (vendorId == VENDOR_ID && productId == PRODUCT_ID) || name == NAME
+        (vendorId == VENDOR_ID && productId == PRODUCT_ID) || name == NAME || name == OLD_NAME
+
+    private const val OLD_NAME = "VR Box -> Quest (controle virtual)"
 
     /** Report for a centered pad with nothing pressed. */
-    fun idleReport(): ByteArray = ByteArray(REPORT_SIZE)
+    fun idleReport(): ByteArray = ByteArray(REPORT_SIZE).also { it[2] = HAT_CENTER.toByte() }
+
+    /** Hat direction 0..7 (0 = up, clockwise) for the left Joy-Con arrows, or [HAT_CENTER]. */
+    fun hat(up: Boolean, down: Boolean, left: Boolean, right: Boolean): Int {
+        val y = (if (up) 1 else 0) - (if (down) 1 else 0)
+        val x = (if (right) 1 else 0) - (if (left) 1 else 0)
+        return when {
+            y > 0 && x == 0 -> 0
+            y > 0 && x > 0 -> 1
+            y == 0 && x > 0 -> 2
+            y < 0 && x > 0 -> 3
+            y < 0 && x == 0 -> 4
+            y < 0 && x < 0 -> 5
+            y == 0 && x < 0 -> 6
+            y > 0 && x < 0 -> 7
+            else -> HAT_CENTER
+        }
+    }
 
     /**
-     * Builds the 8-byte input report: buttons (2 bytes, bit n-1 = button n), X, Y, Z, Rz (int8),
-     * brake, accelerator (uint8). Stick values use +y = up; HID and Android use +y = down.
+     * Builds the 9-byte input report: buttons (2 bytes, bit n-1 = button n), hat (low 4 bits),
+     * X, Y, Z, Rz (int8), brake, accelerator (uint8). Stick values use +y = up; HID and Android
+     * use +y = down.
      */
     fun report(s: ControllerSnapshot, analogThreshold: Float): ByteArray {
         var bits = 0
@@ -102,19 +142,22 @@ object VirtualGamepad {
         val r = s.right
         set(BTN_A, r.pressed("a"))
         set(BTN_B, r.pressed("b"))
-        set(BTN_X, l.pressed("x"))
-        set(BTN_Y, l.pressed("y"))
+        set(BTN_X, r.pressed("x"))
+        set(BTN_Y, r.pressed("y"))
+        set(BTN_C, l.pressed("capture"))
         set(BTN_L1, l.grip >= analogThreshold)
         set(BTN_R1, r.grip >= analogThreshold)
         set(BTN_L2, l.trigger >= analogThreshold)
         set(BTN_R2, r.trigger >= analogThreshold)
-        set(BTN_SELECT, r.pressed("system"))
-        set(BTN_START, l.pressed("menu"))
+        set(BTN_SELECT, l.pressed("minus"))
+        set(BTN_START, r.pressed("plus"))
+        set(BTN_MODE, r.pressed("home"))
         set(BTN_THUMBL, l.pressed(VirtualTargets.STICK_CLICK))
         set(BTN_THUMBR, r.pressed(VirtualTargets.STICK_CLICK))
         return byteArrayOf(
             (bits and 0xFF).toByte(),
             ((bits shr 8) and 0xFF).toByte(),
+            hat(l.pressed("up"), l.pressed("down"), l.pressed("left"), l.pressed("right")).toByte(),
             axis(l.stickX),
             axis(-l.stickY),
             axis(r.stickX),

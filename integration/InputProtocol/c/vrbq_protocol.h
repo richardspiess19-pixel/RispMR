@@ -1,12 +1,12 @@
 /*
- * VRBQ input protocol v1 — reference decoder (C99, header only, no dependencies).
+ * VRBQ input protocol v2 — reference decoder (C99, header only, no dependencies).
  *
- * Packets are sent by the "VR BOX TO META QUEST EMULATOR" Android app over UDP
+ * Packets are sent by the "VR Box → Joy-Con" Android app over UDP
  * (default port 47900) while emulation is running. See ../PROTOCOL.md.
  *
  * Binary layout (60 bytes, little endian):
  *   0  char[4] magic "VRBQ"
- *   4  u8      version (1)
+ *   4  u8      version (2)
  *   5  u8      flags   (bit0 demo/simulated input, bit1 controller connected)
  *   6  u16     reserved
  *   8  u32     sequence number
@@ -14,12 +14,14 @@
  *  20  hand    left
  *  40  hand    right
  * hand (20 bytes):
- *   0  u16 buttons (bit0 stick click, bit1 X/A, bit2 Y/B, bit3 Menu/System)
+ *   0  u16 buttons
+ *          left : bit0 stick click, bit1 up, bit2 down, bit3 left, bit4 right, bit5 minus, bit6 capture
+ *          right: bit0 stick click, bit1 A, bit2 B, bit3 X, bit4 Y, bit5 plus, bit6 home
  *   2  u16 reserved
  *   4  f32 stick x (-1..1, +right)
  *   8  f32 stick y (-1..1, +up)
- *  12  f32 trigger (0..1)
- *  16  f32 grip    (0..1)
+ *  12  f32 trigger (ZL / ZR, 0..1)
+ *  16  f32 grip    (L / R, 0..1)
  */
 #ifndef VRBQ_PROTOCOL_H
 #define VRBQ_PROTOCOL_H
@@ -27,7 +29,7 @@
 #include <stdint.h>
 #include <string.h>
 
-#define VRBQ_VERSION 1
+#define VRBQ_VERSION 2
 #define VRBQ_PACKET_SIZE 60
 #define VRBQ_DEFAULT_PORT 47900
 
@@ -35,9 +37,20 @@
 #define VRBQ_FLAG_CONNECTED 0x02
 
 #define VRBQ_BTN_STICK_CLICK 0x01
-#define VRBQ_BTN_PRIMARY 0x02   /* X (left) / A (right) */
-#define VRBQ_BTN_SECONDARY 0x04 /* Y (left) / B (right) */
-#define VRBQ_BTN_MENU 0x08      /* Menu (left) / System (right) */
+/* Left Joy-Con */
+#define VRBQ_BTN_UP 0x02
+#define VRBQ_BTN_DOWN 0x04
+#define VRBQ_BTN_LEFT 0x08
+#define VRBQ_BTN_RIGHT 0x10
+#define VRBQ_BTN_MINUS 0x20
+#define VRBQ_BTN_CAPTURE 0x40
+/* Right Joy-Con */
+#define VRBQ_BTN_A 0x02
+#define VRBQ_BTN_B 0x04
+#define VRBQ_BTN_X 0x08
+#define VRBQ_BTN_Y 0x10
+#define VRBQ_BTN_PLUS 0x20
+#define VRBQ_BTN_HOME 0x40
 
 typedef struct {
     uint16_t buttons;

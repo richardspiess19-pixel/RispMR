@@ -16,20 +16,26 @@
     );
     if (hand === 'left') {
       targets.push(
-        { id: 'left.x', hand, control: 'x', label: 'X', type: 'button' },
-        { id: 'left.y', hand, control: 'y', label: 'Y', type: 'button' },
-        { id: 'left.menu', hand, control: 'menu', label: 'Menu', type: 'button' },
+        { id: 'left.up', hand, control: 'up', label: 'Seta ↑', type: 'button' },
+        { id: 'left.down', hand, control: 'down', label: 'Seta ↓', type: 'button' },
+        { id: 'left.left', hand, control: 'left', label: 'Seta ←', type: 'button' },
+        { id: 'left.right', hand, control: 'right', label: 'Seta →', type: 'button' },
+        { id: 'left.minus', hand, control: 'minus', label: '−', type: 'button' },
+        { id: 'left.capture', hand, control: 'capture', label: 'Captura', type: 'button' },
       );
     } else {
       targets.push(
         { id: 'right.a', hand, control: 'a', label: 'A', type: 'button' },
         { id: 'right.b', hand, control: 'b', label: 'B', type: 'button' },
-        { id: 'right.system', hand, control: 'system', label: 'Sistema', type: 'button' },
+        { id: 'right.x', hand, control: 'x', label: 'X', type: 'button' },
+        { id: 'right.y', hand, control: 'y', label: 'Y', type: 'button' },
+        { id: 'right.plus', hand, control: 'plus', label: '+', type: 'button' },
+        { id: 'right.home', hand, control: 'home', label: 'Home', type: 'button' },
       );
     }
     targets.push(
-      { id: `${p}.trigger`, hand, control: 'trigger', label: 'Gatilho', type: 'analog' },
-      { id: `${p}.grip`, hand, control: 'grip', label: 'Grip', type: 'analog' },
+      { id: `${p}.trigger`, hand, control: 'trigger', label: hand === 'left' ? 'ZL' : 'ZR', type: 'analog' },
+      { id: `${p}.grip`, hand, control: 'grip', label: hand === 'left' ? 'L' : 'R', type: 'analog' },
     );
   }
   const stick = (mode) => ({
@@ -68,7 +74,7 @@
       { id: 'd02', source: 'mouse:btn:secondary', target: 'right.b', sourceLabel: 'Botão direito do mouse', sourceKind: 'digital', targetLabel: 'B' },
       { id: 'd07', source: 'mouse:x', target: 'left.stick.x', sourceLabel: 'Movimento do mouse (X)', sourceKind: 'relative', targetLabel: 'Joystick X' },
       { id: 'd08', source: 'mouse:y', target: 'left.stick.y', sourceLabel: 'Movimento do mouse (Y)', sourceKind: 'relative', targetLabel: 'Joystick Y' },
-      { id: 'd28', source: 'key:VOLUME_UP', target: 'right.trigger', sourceLabel: 'Volume +', sourceKind: 'digital', targetLabel: 'Gatilho' },
+      { id: 'd28', source: 'key:VOLUME_UP', target: 'right.trigger', sourceLabel: 'Volume +', sourceKind: 'digital', targetLabel: 'ZR' },
     ],
     log: [],
     seq: 0,
@@ -80,7 +86,7 @@
   addLog('system', 'App aberto');
   addLog('system', 'Dispositivo encontrado: VR BOX (Mouse + Teclas/botões)');
   addLog('physical', 'Botão esquerdo do mouse pressionado');
-  addLog('virtual', 'Direito · botão A pressionado');
+  addLog('virtual', 'Joy-Con direito · botão A pressionado');
 
   const profile = () => ({
     id: 'default-vr-box',
@@ -97,8 +103,8 @@
   });
   const profiles = () => [
     { id: 'default-vr-box', name: 'VR Box padrão', description: 'Divide os botões do VR Box entre os dois controles.', builtin: true, mappings: state.mappings.length, left: true, right: true, active: true, dirty: state.dirty },
-    { id: 'quest-touch-left', name: 'Quest Touch esquerdo', description: 'O VR Box inteiro vira o controle ESQUERDO.', builtin: true, mappings: 27, left: true, right: false, active: false, dirty: false },
-    { id: 'quest-touch-right', name: 'Quest Touch direito', description: 'O VR Box inteiro vira o controle DIREITO.', builtin: true, mappings: 26, left: false, right: true, active: false, dirty: false },
+    { id: 'joycon-left', name: 'Joy-Con esquerdo', description: 'O VR Box inteiro vira o controle ESQUERDO.', builtin: true, mappings: 27, left: true, right: false, active: false, dirty: false },
+    { id: 'joycon-right', name: 'Joy-Con direito', description: 'O VR Box inteiro vira o controle DIREITO.', builtin: true, mappings: 26, left: false, right: true, active: false, dirty: false },
     { id: 'custom-profile', name: 'Perfil personalizado', description: 'Perfil vazio.', builtin: true, mappings: 0, left: false, right: false, active: false, dirty: false },
   ];
   const status = () => ({
@@ -154,8 +160,8 @@
     const pressed = Math.sin(t * 2) > 0.3;
     return {
       v: {
-        left: { x: a, y: b, rx: a, ry: b, trigger: 0, grip: Math.max(0, Math.sin(t)), buttons: { stickClick: false, x: false, y: pressed, menu: false } },
-        right: { x: 0, y: 0, rx: 0, ry: 0, trigger: pressed ? 1 : 0, grip: 0, buttons: { stickClick: false, a: pressed, b: false, system: false } },
+        left: { x: a, y: b, rx: a, ry: b, trigger: 0, grip: Math.max(0, Math.sin(t)), buttons: { stickClick: false, up: pressed, down: false, left: false, right: false, minus: false, capture: false } },
+        right: { x: 0, y: 0, rx: 0, ry: 0, trigger: pressed ? 1 : 0, grip: 0, buttons: { stickClick: false, a: pressed, b: false, x: false, y: false, plus: false, home: false } },
       },
       p: {
         pressed: pressed ? ['mouse:btn:primary'] : [],
@@ -168,9 +174,9 @@
 
   const handlers = {
     'app.hello': () => ({
-      info: { app: 'VR Box → Quest', version: '0.2.0', android: '14', sdk: 34, device: 'Celular de teste', transport: 'WebMessageListener', pointerCaptureSupported: true, native: true },
+      info: { app: 'VR Box → Joy-Con', version: '0.2.0', android: '14', sdk: 34, device: 'Celular de teste', transport: 'WebMessageListener', pointerCaptureSupported: true, native: true },
       status: status(),
-      catalog: { targets, buttons: { left: ['stickClick', 'x', 'y', 'menu'], right: ['stickClick', 'a', 'b', 'system'] } },
+      catalog: { targets, buttons: { left: ['stickClick', 'up', 'down', 'left', 'right', 'minus', 'capture'], right: ['stickClick', 'a', 'b', 'x', 'y', 'plus', 'home'] } },
       settings: settings(),
       profile: profile(),
       profiles: profiles(),
@@ -199,7 +205,7 @@
       return status();
     },
     'gamepad.retry': () => status(),
-    'app.diagnostics': () => ({ text: 'VR Box → Quest 0.6.2 — diagnóstico\nControle virtual: active' }),
+    'app.diagnostics': () => ({ text: 'VR Box → Joy-Con 0.6.2 — diagnóstico\nControle virtual: active' }),
     'gamepad.test': (args) => {
       state.selfTest = args.on !== false;
       return status();

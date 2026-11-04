@@ -26,9 +26,9 @@ class InputProcessorTest {
             listOf(
                 rule("mouse:btn:primary", "right.a"),
                 rule("key:BUTTON_4", "right.trigger"),
-                rule("axis:HAT_X:+", "left.x"),
+                rule("axis:HAT_X:+", "left.up"),
                 rule("mouse:x", "left.stick.x"),
-                rule("mouse:wheel:up", "left.menu"),
+                rule("mouse:wheel:up", "left.minus"),
             ),
             ButtonConfig(),
             StickConfig(smoothing = 0f, returnSpeed = 0f, x = AxisConfig(deadzone = 0f)),
@@ -45,11 +45,11 @@ class InputProcessorTest {
     fun pressAndReleaseProduceVirtualEventsAndLog() {
         assertTrue(processor.process(button("mouse:btn:primary", true)))
         assertTrue(controllers.right.button("a"))
-        assertEquals("Direito · botão A pressionado", virtualEvents.last().describe())
+        assertEquals("Joy-Con direito · botão A pressionado", virtualEvents.last().describe())
         assertFalse("repeated press is ignored", processor.process(button("mouse:btn:primary", true)))
         processor.process(button("mouse:btn:primary", false))
         assertFalse(controllers.right.button("a"))
-        assertEquals("Direito · botão A solto", virtualEvents.last().describe())
+        assertEquals("Joy-Con direito · botão A solto", virtualEvents.last().describe())
         val texts = log.recent(10).filter { it.category == EventLog.PHYSICAL }.map { it.text }
         assertEquals(listOf("Botão esquerdo do mouse pressionado", "Botão esquerdo do mouse solto"), texts)
     }
@@ -58,19 +58,19 @@ class InputProcessorTest {
     fun digitalTriggerIsFullyPressed() {
         processor.process(button("key:BUTTON_4", true))
         assertEquals(1f, controllers.right.trigger, 1e-6f)
-        assertEquals("Direito · gatilho pressionado (1,00)", virtualEvents.last().describe())
+        assertEquals("Joy-Con direito · ZR pressionado (1,00)", virtualEvents.last().describe())
     }
 
     @Test
     fun axisDirectionsUseHysteresis() {
         processor.process(RawEvent.Axis("dev", "axis:HAT_X", 1f, clock.now))
         assertTrue(processor.state.isPressed("axis:HAT_X:+"))
-        assertTrue(controllers.left.button("x"))
+        assertTrue(controllers.left.button("up"))
         processor.process(RawEvent.Axis("dev", "axis:HAT_X", 0.4f, clock.now))
         assertTrue("still pressed above release threshold", processor.state.isPressed("axis:HAT_X:+"))
         processor.process(RawEvent.Axis("dev", "axis:HAT_X", 0f, clock.now))
         assertFalse(processor.state.isPressed("axis:HAT_X:+"))
-        assertFalse(controllers.left.button("x"))
+        assertFalse(controllers.left.button("up"))
         processor.process(RawEvent.Axis("dev", "axis:HAT_X", -1f, clock.now))
         assertTrue(processor.state.isPressed("axis:HAT_X:-"))
     }
@@ -112,11 +112,11 @@ class InputProcessorTest {
     @Test
     fun wheelPulseIsReleasedOnTick() {
         processor.process(RawEvent.Pulse("dev", "mouse:wheel:up", clock.now))
-        assertTrue(controllers.left.button("menu"))
+        assertTrue(controllers.left.button("minus"))
         assertTrue(processor.needsTick())
         clock.advance(InputProcessor.PULSE_MS + 1)
         assertTrue(processor.tick(clock.now))
-        assertFalse(controllers.left.button("menu"))
+        assertFalse(controllers.left.button("minus"))
         assertFalse(processor.needsTick())
     }
 

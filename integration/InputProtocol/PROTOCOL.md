@@ -1,30 +1,31 @@
-# VRBQ — protocolo de entrada v1
+# VRBQ — protocolo de entrada v2
 
-Estado dos dois controles virtuais Quest Touch enviado pelo app durante a emulação.
+Estado dos dois controles virtuais Joy-Con (esquerdo e direito) enviado pelo app durante a
+emulação. A v1 tinha os botões do layout Quest Touch; a v2 usa o layout Joy-Con.
 
 - Transporte: **UDP**, um datagrama por estado. Porta padrão **47900**.
 - Envio: imediatamente a cada mudança (máx. ~500/s) e repetido na taxa configurada
   (10–250 Hz, padrão 90) para que receptores tenham sempre estado recente.
 - Ao parar a emulação é enviado um pacote neutro com `connected = false`.
 - Dois formatos com o mesmo conteúdo: **JSON** (texto UTF-8) ou **binário** (60 bytes).
-- Convenção: stick X positivo = direita, **Y positivo = cima**; gatilho/grip 0..1.
+- Convenção: stick X positivo = direita, **Y positivo = cima**; `trigger` = ZL/ZR e `grip` = L/R, 0..1.
 
 ## JSON
 
 ```json
-{"proto":"vrbq","v":1,"seq":42,"t":123456789,"demo":false,"connected":true,
- "left":{"stick":[0.5,-0.25],"click":false,"x":true,"y":false,"menu":true,"trigger":0,"grip":1},
- "right":{"stick":[-1,0.75],"click":true,"a":false,"b":true,"system":false,"trigger":0.5,"grip":0}}
+{"proto":"vrbq","v":2,"seq":42,"t":123456789,"demo":false,"connected":true,
+ "left":{"stick":[0.5,-0.25],"click":false,"up":true,"down":false,"left":false,"right":false,"minus":true,"capture":false,"trigger":0,"grip":1},
+ "right":{"stick":[-1,0.75],"click":true,"a":false,"b":true,"x":false,"y":false,"plus":false,"home":false,"trigger":0.5,"grip":0}}
 ```
 
 | Campo | Tipo | Descrição |
 | --- | --- | --- |
-| `proto`, `v` | string, int | `"vrbq"`, `1` |
+| `proto`, `v` | string, int | `"vrbq"`, `2` |
 | `seq` | int | Sequência crescente (descarte pacotes antigos) |
 | `t` | int | Microssegundos, relógio monotônico do telefone |
 | `demo` | bool | Entrada **simulada** (DEMO MODE) |
 | `connected` | bool | Controle físico conectado |
-| `left` / `right` | objeto | `stick` [x,y], `click`, botões (`x`,`y`,`menu` / `a`,`b`,`system`), `trigger`, `grip` |
+| `left` / `right` | objeto | `stick` [x,y], `click`, botões (`up`,`down`,`left`,`right`,`minus`,`capture` / `a`,`b`,`x`,`y`,`plus`,`home`), `trigger` (ZL/ZR), `grip` (L/R) |
 
 Números com até 4 casas decimais, sempre com ponto (independente de idioma).
 
@@ -33,7 +34,7 @@ Números com até 4 casas decimais, sempre com ponto (independente de idioma).
 | Offset | Tipo | Campo |
 | --- | --- | --- |
 | 0 | char[4] | `"VRBQ"` |
-| 4 | u8 | versão = 1 |
+| 4 | u8 | versão = 2 |
 | 5 | u8 | flags: bit0 demo, bit1 connected |
 | 6 | u16 | reservado |
 | 8 | u32 | seq |
@@ -41,22 +42,19 @@ Números com até 4 casas decimais, sempre com ponto (independente de idioma).
 | 20 | hand | esquerda |
 | 40 | hand | direita |
 
-`hand` (20 bytes): `u16 botões` (bit0 stick click, bit1 X/A, bit2 Y/B, bit3 Menu/System),
-`u16 reservado`, `f32 stick_x`, `f32 stick_y`, `f32 trigger`, `f32 grip`.
+`hand` (20 bytes): `u16 botões`, `u16 reservado`, `f32 stick_x`, `f32 stick_y`, `f32 trigger`,
+`f32 grip`.
 
-## Correspondência com OpenXR (`/interaction_profiles/oculus/touch_controller`)
+| Bit | Joy-Con esquerdo | Joy-Con direito |
+| --- | --- | --- |
+| 0 | clique do analógico | clique do analógico |
+| 1 | ↑ | A |
+| 2 | ↓ | B |
+| 3 | ← | X |
+| 4 | → | Y |
+| 5 | − | + |
+| 6 | Captura | Home |
 
-| VRBQ | Caminho OpenXR (`/user/hand/left` ou `/right`) |
-| --- | --- |
-| `stick` | `/input/thumbstick/x`, `/input/thumbstick/y` |
-| `click` | `/input/thumbstick/click` |
-| `x`, `y` / `a`, `b` | `/input/x/click`, `/input/y/click` / `/input/a/click`, `/input/b/click` |
-| `menu` (esq.) | `/input/menu/click` |
-| `system` (dir.) | `/input/system/click` (normalmente reservado ao runtime) |
-| `trigger` | `/input/trigger/value` |
-| `grip` | `/input/squeeze/value` |
-
-Sem pose (`grip/pose`, `aim/pose`): o VR Box não tem rastreamento.
 
 ## Referências
 

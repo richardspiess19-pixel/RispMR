@@ -22,7 +22,7 @@ export function otherAppsInfo() {
     h(
       'ol',
       { class: 'steps' },
-      h('li', {}, 'Instale o app Android "VR Box → Quest" (o APK).'),
+      h('li', {}, 'Instale o app Android "VR Box → Joy-Con" (o APK).'),
       h('li', {}, 'Ligue o Shizuku e permita o app: o próprio app mostra o passo a passo quando abre.'),
       h('li', {}, 'Toque em Iniciar emulação e abra o jogo. Ele recebe um controle virtual com os seus botões.'),
     ),

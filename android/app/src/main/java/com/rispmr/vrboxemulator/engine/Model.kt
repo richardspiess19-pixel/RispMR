@@ -7,7 +7,7 @@ package com.rispmr.vrboxemulator.engine
  * serialization) so it can be unit tested on the JVM without an Android device.
  */
 
-/** Which virtual Quest Touch controller a virtual target belongs to. */
+/** Which virtual Joy-Con (left or right) a virtual target belongs to. */
 enum class Hand(val key: String, val label: String) {
     LEFT("left", "Esquerdo"),
     RIGHT("right", "Direito");

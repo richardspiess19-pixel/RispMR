@@ -25,8 +25,8 @@ test('labels match the Android app', () => {
 });
 
 test('virtual events read like the app log', () => {
-  assert.equal(E.describeVirtual({ hand: 'right', control: 'a', pressed: true, value: null }), 'Direito · botão A pressionado');
-  assert.equal(E.describeVirtual({ hand: 'left', control: 'trigger', pressed: true, value: 0.6 }), 'Esquerdo · gatilho pressionado (0,60)');
+  assert.equal(E.describeVirtual({ hand: 'right', control: 'a', pressed: true, value: null }), 'Joy-Con direito · botão A pressionado');
+  assert.equal(E.describeVirtual({ hand: 'left', control: 'trigger', pressed: true, value: 0.6 }), 'Joy-Con esquerdo · ZL pressionado (0,60)');
 });
 
 test('mapper: buttons, analog, Y flip, directions, motion routing', () => {
@@ -90,7 +90,7 @@ test('processor: detection, hysteresis and release', () => {
 
 test('shipped profiles load with every rule accepted', () => {
   const d = E.parseDefaults(cfg('default-profile.json'), cfg('controller-profiles.json'));
-  assert.deepEqual(d.initial.map((p) => p.name), ['VR Box padrão', 'Quest Touch esquerdo', 'Quest Touch direito', 'Perfil personalizado']);
+  assert.deepEqual(d.initial.map((p) => p.name), ['VR Box padrão', 'Joy-Con esquerdo', 'Joy-Con direito', 'Perfil personalizado']);
   const raw = cfg('controller-profiles.json').profiles;
   d.initial.forEach((p, i) => assert.equal(p.mappings.length, raw[i].mappings.length));
 });

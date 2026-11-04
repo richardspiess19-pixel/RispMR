@@ -66,9 +66,9 @@ export default {
       return h(
         'div',
         { class: 'mini-hand' },
-        h('div', { class: 'section-title' }, hand === 'left' ? 'Esquerdo' : 'Direito'),
+        h('div', { class: 'section-title' }, hand === 'left' ? 'Joy-Con E' : 'Joy-Con D'),
         sticks[hand].el,
-        h('div', { class: 'stack stack--sm mini-hand__bars' }, mk('trigger', 'Gatilho'), mk('grip', 'Grip')),
+        h('div', { class: 'stack stack--sm mini-hand__bars' }, mk('trigger', hand === 'left' ? 'ZL' : 'ZR'), mk('grip', hand === 'left' ? 'L' : 'R')),
       );
     };
 

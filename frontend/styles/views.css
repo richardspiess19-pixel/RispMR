@@ -363,3 +363,5 @@
   border-radius: var(--r);
   user-select: text;
 }
+
+.vc__visual .qc--joycon { width: min(30vw, 120px); }

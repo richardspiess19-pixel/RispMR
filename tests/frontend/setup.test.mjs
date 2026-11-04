@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { buildMappings, keyDirections, pickStick, stickFrom, directionsText } from '../../frontend/scripts/views/setup.js';
 
-const fns = { joystick: 'left', trigTop: 'right.trigger', trigBottom: 'right.grip', A: 'right.a', B: 'right.b', C: 'left.x', D: 'left.y', at: 'left.menu' };
+const fns = { joystick: 'left', trigTop: 'right.trigger', trigBottom: 'right.grip', A: 'right.a', B: 'right.b', C: 'right.x', D: 'right.y', at: 'right.plus' };
 
 /** Joystick rules as { direction-or-axis target: [sources] }. */
 const stickRules = (rules, hand = 'left') => {

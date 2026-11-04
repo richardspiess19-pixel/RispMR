@@ -221,7 +221,7 @@ class ProfileRepository(
             root.optString("type") == EXPORT_TYPE -> root.optJSONObject("profile")
             root.has("mappings") -> root
             else -> null
-        } ?: throw ProfileException("Esse arquivo não tem um perfil do VR Box → Quest")
+        } ?: throw ProfileException("Esse arquivo não tem um perfil do VR Box → Joy-Con")
         val schema = root.optInt("schema", ProfileCodec.SCHEMA)
         if (schema > ProfileCodec.SCHEMA) throw ProfileException("Esse perfil foi criado por uma versão mais nova do app (schema $schema)")
         if (!obj.has("id")) obj.put("id", "import")

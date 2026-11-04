@@ -2,7 +2,7 @@ import { h, render, setText } from '../dom.js';
 import { icon } from '../icons.js';
 import { createVrBoxDrawing } from '../components/vrbox-drawing.js';
 
-// "Configurar meu VR Box": one button at a time, then a ready-made Quest layout.
+// "Configurar meu VR Box": one button at a time, then a ready-made Joy-Con layout.
 // Works in every mode of the VR Box 2.0 (@+A, @+B, @+C, @+D): each mode sends other signals,
 // and running the setup again in another mode adds them to the same profile.
 
@@ -30,27 +30,37 @@ const DIRECTION_STEPS = [
 
 const DIR_NAMES = { right: 'Direita', left: 'Esquerda', up: 'Cima', down: 'Baixo' };
 
-/** What each VR Box button does on the Quest controllers by default. */
-const DEFAULTS = { joystick: 'left', trigTop: 'right.trigger', trigBottom: 'right.grip', A: 'right.a', B: 'right.b', C: 'left.x', D: 'left.y', at: 'left.menu' };
+/**
+ * What each VR Box button does on the two Joy-Cons by default: its A, B, C and D become A, B, X
+ * and Y of the right Joy-Con, the triggers become ZR and R, @ becomes +.
+ */
+const DEFAULTS = { joystick: 'left', trigTop: 'right.trigger', trigBottom: 'right.grip', A: 'right.a', B: 'right.b', C: 'right.x', D: 'right.y', at: 'right.plus' };
 
 const FUNCTIONS = [
-  ['right.trigger', 'Gatilho direito'],
-  ['right.grip', 'Grip direito'],
+  ['right.trigger', 'ZR'],
+  ['right.grip', 'R'],
   ['right.a', 'A'],
   ['right.b', 'B'],
-  ['left.x', 'X'],
-  ['left.y', 'Y'],
-  ['left.menu', 'Menu'],
-  ['left.trigger', 'Gatilho esquerdo'],
-  ['left.grip', 'Grip esquerdo'],
-  ['left.stickClick', 'Clique do joystick esquerdo'],
-  ['right.stickClick', 'Clique do joystick direito'],
+  ['right.x', 'X'],
+  ['right.y', 'Y'],
+  ['right.plus', '+'],
+  ['right.home', 'Home'],
+  ['left.trigger', 'ZL'],
+  ['left.grip', 'L'],
+  ['left.minus', '−'],
+  ['left.capture', 'Captura'],
+  ['left.up', 'Seta ↑'],
+  ['left.down', 'Seta ↓'],
+  ['left.left', 'Seta ←'],
+  ['left.right', 'Seta →'],
+  ['left.stickClick', 'Clique do analógico esquerdo'],
+  ['right.stickClick', 'Clique do analógico direito'],
   ['', 'Nada'],
 ];
 
 const STICK_FUNCTIONS = [
-  ['left', 'Joystick esquerdo (andar)'],
-  ['right', 'Joystick direito (virar)'],
+  ['left', 'Analógico do Joy-Con esquerdo (andar)'],
+  ['right', 'Analógico do Joy-Con direito (câmera)'],
   ['', 'Nada'],
 ];
 
@@ -264,7 +274,7 @@ export default {
     const web = ctx.store.state.info?.platform === 'web';
 
     root.append(
-      h('header', { class: 'page-head' }, h('div', {}, h('h1', { class: 'page-title' }, 'Configurar meu VR Box'), h('p', { class: 'page-sub' }, 'Um botão de cada vez. No fim o app monta tudo no jeito do Quest.'))),
+      h('header', { class: 'page-head' }, h('div', {}, h('h1', { class: 'page-title' }, 'Configurar meu VR Box'), h('p', { class: 'page-sub' }, 'Um botão de cada vez. No fim o app monta os dois Joy-Cons.'))),
       h('div', { class: 'setup__signal' }, signalDot, signalText, modeChip),
       h('div', { class: 'setup' }, h('div', { class: 'setup__drawing' }, drawing.el), h('div', { class: 'stack' }, stepCard, summary, done)),
       h(

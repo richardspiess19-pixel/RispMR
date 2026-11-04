@@ -5,7 +5,7 @@ import { createEventLog } from '../components/event-log.js';
 
 // Testar controle
 
-const BUTTON_NAMES = { stickClick: 'clique do joystick', x: 'X', y: 'Y', a: 'A', b: 'B', menu: 'Menu', system: 'Sistema' };
+const BUTTON_NAMES = { stickClick: 'clique do analógico', up: '↑', down: '↓', left: '←', right: '→', minus: '−', capture: 'Captura', a: 'A', b: 'B', x: 'X', y: 'Y', plus: '+', home: 'Home' };
 
 export default {
   id: 'tester',
@@ -123,10 +123,10 @@ export default {
         h(
           'div',
           { class: 'stack stack--sm' },
-          h('div', { class: 'section-title' }, hand === 'left' ? 'Esquerdo' : 'Direito'),
-          vrow(`${hand}.stick`, 'Joystick'),
-          vrow(`${hand}.trigger`, 'Gatilho'),
-          vrow(`${hand}.grip`, 'Grip'),
+          h('div', { class: 'section-title' }, hand === 'left' ? 'Joy-Con esquerdo' : 'Joy-Con direito'),
+          vrow(`${hand}.stick`, 'Analógico'),
+          vrow(`${hand}.trigger`, hand === 'left' ? 'ZL' : 'ZR'),
+          vrow(`${hand}.grip`, hand === 'left' ? 'L' : 'R'),
           vrow(`${hand}.buttons`, 'Botões apertados'),
         ),
       ),

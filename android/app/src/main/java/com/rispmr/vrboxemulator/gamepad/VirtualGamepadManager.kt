@@ -180,7 +180,7 @@ object VirtualGamepadManager {
         if (!hasPermission()) {
             // "Negar e não perguntar de novo": Shizuku no longer shows its dialog.
             val denied = runCatching { Shizuku.shouldShowRequestPermissionRationale() }.getOrDefault(false)
-            return Status(State.NO_PERMISSION, if (denied) "Você recusou antes, então o Shizuku não pergunta de novo. Abra o Shizuku, entre em \"Apps autorizados\" e ative o VR Box → Quest." else "")
+            return Status(State.NO_PERMISSION, if (denied) "Você recusou antes, então o Shizuku não pergunta de novo. Abra o Shizuku, entre em \"Apps autorizados\" e ative o VR Box → Joy-Con." else "")
         }
         error?.let { return Status(State.ERROR, it, serviceUid) }
         return when {

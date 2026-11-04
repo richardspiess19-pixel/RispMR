@@ -5,21 +5,20 @@ import { protocolPreview } from '../format.js';
 // Integração (avançado): saída de rede VRBQ e o que é ou não possível.
 
 const OPTIONS = [
-  ['Modo jogo (toques na tela)', 'Funciona', 'badge--blue', 'Para jogos no próprio celular. Veja a tela Modo jogo.'],
-  ['Saída de rede VRBQ (UDP)', 'Funciona', 'badge--blue', 'Manda o estado dos dois controles pela rede, para apps ou programas que leiam esse formato (há exemplos em Python e C no projeto).'],
-  ['Controles Quest em jogos OpenXR', 'Não dá', 'badge--danger', 'Só o sistema do headset (ou um runtime OpenXR) cria controles. Um app comum de celular não consegue registrar controles Touch para outros jogos.'],
-  ['Virar gamepad Bluetooth para PC/headset', 'Ainda não', 'badge--purple', 'O Android 9+ permite o celular se passar por gamepad, mas isso ainda não está no app.'],
+  ['Modo jogo (controle virtual)', 'Funciona', 'badge--blue', 'Os jogos do celular recebem os dois Joy-Cons como um controle de jogo. Veja a tela Modo jogo.'],
+  ['Saída de rede VRBQ (UDP)', 'Funciona', 'badge--blue', 'Manda o estado dos dois Joy-Cons pela rede, para apps ou programas que leiam esse formato (há exemplos em Python e C no projeto).'],
+  ['Joy-Con "de verdade" para um Switch ou PC', 'Não dá', 'badge--danger', 'O app não se passa por um Joy-Con da Nintendo: os jogos do celular recebem um controle de jogo comum com o layout Joy-Con.'],
 ];
 
 const PATHS = [
-  ['Joystick X/Y', '/input/thumbstick/x , /y'],
-  ['Clique do joystick', '/input/thumbstick/click'],
-  ['X / A', '/input/x/click , /input/a/click'],
-  ['Y / B', '/input/y/click , /input/b/click'],
-  ['Gatilho', '/input/trigger/value'],
-  ['Grip', '/input/squeeze/value'],
-  ['Menu (esquerdo)', '/input/menu/click'],
-  ['Sistema (direito)', '/input/system/click'],
+  ['Analógico X/Y', 'stick [x, y]'],
+  ['Clique do analógico', 'click'],
+  ['Setas (esquerdo)', 'up, down, left, right'],
+  ['A, B, X, Y (direito)', 'a, b, x, y'],
+  ['−, Captura (esquerdo)', 'minus, capture'],
+  ['+, Home (direito)', 'plus, home'],
+  ['ZL / ZR', 'trigger (0..1)'],
+  ['L / R', 'grip (0..1)'],
 ];
 
 export default {
@@ -58,11 +57,11 @@ export default {
       h(
         'details',
         { class: 'card' },
-        h('summary', { class: 'card__title' }, 'Para quem programa: nomes no OpenXR'),
+        h('summary', { class: 'card__title' }, 'Para quem programa: nomes no protocolo VRBQ'),
         h(
           'table',
           { class: 'table' },
-          h('thead', {}, h('tr', {}, h('th', {}, 'Comando'), h('th', {}, 'Caminho (/user/hand/left ou /right)'))),
+          h('thead', {}, h('tr', {}, h('th', {}, 'Joy-Con'), h('th', {}, 'Campo em left / right'))),
           h('tbody', {}, PATHS.map(([a, b]) => h('tr', {}, h('td', {}, a), h('td', { class: 'mono' }, b)))),
         ),
       ),

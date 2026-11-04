@@ -1,7 +1,7 @@
 import { h, render, setText, setClass } from '../dom.js';
 import { icon } from '../icons.js';
 import { fixed, signed } from '../format.js';
-import { createQuestController } from '../components/quest-controller.js';
+import { createJoyCon } from '../components/joycon-controller.js';
 import { createStickView } from '../components/stick-view.js';
 import { createEventLog } from '../components/event-log.js';
 
@@ -9,16 +9,22 @@ import { createEventLog } from '../components/event-log.js';
 
 const ROWS = {
   left: [
-    ['stickClick', 'Clique do joystick'],
-    ['x', 'X'],
-    ['y', 'Y'],
-    ['menu', 'Menu'],
+    ['stickClick', 'Clique do analógico'],
+    ['up', 'Seta ↑'],
+    ['down', 'Seta ↓'],
+    ['left', 'Seta ←'],
+    ['right', 'Seta →'],
+    ['minus', '−'],
+    ['capture', 'Captura'],
   ],
   right: [
-    ['stickClick', 'Clique do joystick'],
+    ['stickClick', 'Clique do analógico'],
     ['a', 'A'],
     ['b', 'B'],
-    ['system', 'Sistema'],
+    ['x', 'X'],
+    ['y', 'Y'],
+    ['plus', '+'],
+    ['home', 'Home'],
   ],
 };
 
@@ -32,7 +38,7 @@ export default {
     const log = createEventLog({ max: 60, categories: ['virtual'], emptyText: 'Aperte um botão mapeado no VR Box.' });
 
     const handCard = (hand) => {
-      const qc = createQuestController(hand);
+      const qc = createJoyCon(hand);
       const stick = createStickView({ label: `${hand} joystick`, size: 120 });
       const stickText = h('span', { class: 'mono' }, 'X 0,00 · Y 0,00');
       const buttonStates = {};
@@ -50,7 +56,7 @@ export default {
         return h(
           'div',
           { class: 'qc-row qc-row--analog' },
-          h('span', { class: 'qc-row__label' }, name === 'trigger' ? 'Gatilho' : 'Grip'),
+          h('span', { class: 'qc-row__label' }, name === 'trigger' ? (hand === 'left' ? 'ZL' : 'ZR') : hand === 'left' ? 'L' : 'R'),
           h('div', { class: 'bar' }, fill),
           val,
           st,
@@ -60,7 +66,7 @@ export default {
       return h(
         'section',
         { class: `card vc vc--${hand}` },
-        h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, hand === 'left' ? 'Controle esquerdo' : 'Controle direito')),
+        h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, hand === 'left' ? 'Joy-Con esquerdo' : 'Joy-Con direito')),
         h('div', { class: 'vc__visual' }, qc.el, h('div', { class: 'vc__stick' }, stick.el, stickText)),
         h('div', { class: 'vc__rows' }, buttonRows, analogRows),
       );
@@ -74,7 +80,7 @@ export default {
           'div',
           {},
           h('h1', { class: 'page-title' }, 'Controles virtuais'),
-          h('p', { class: 'page-sub' }, 'Os dois controles do Quest que o app monta a partir do VR Box, em tempo real.'),
+          h('p', { class: 'page-sub' }, 'Os dois Joy-Cons que o app monta a partir do VR Box, em tempo real.'),
         ),
       ),
       notice,

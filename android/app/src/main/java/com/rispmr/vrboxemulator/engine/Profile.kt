@@ -135,7 +135,8 @@ object ProfileCodec {
 
     fun decodeRule(o: JSONObject, index: Int = 0): MappingRule? {
         val source = o.optString("source")
-        val target = o.optString("target")
+        // Profiles saved with the earlier Quest layout are renamed to the Joy-Con layout.
+        val target = VirtualTargets.canonical(o.optString("target"))
         val kind = InputCatalog.kindOf(source) ?: return null
         val t = VirtualTargets.get(target) ?: return null
         if (!VirtualTargets.isCompatible(kind, t.type)) return null

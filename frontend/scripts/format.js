@@ -144,27 +144,24 @@ export function kindLabel(kind) {
 /** Same shape as the native VRBQ JSON encoder; used for the protocol preview. */
 export function protocolPreview(frame, seq = 0) {
   const v = frame?.v;
+  // VRBQ v2: the button names of each Joy-Con, in protocol order.
   const hand = (h, names) => {
     const b = h?.buttons || {};
-    return {
-      stick: [round4(h?.x), round4(h?.y)],
-      click: Boolean(b.stickClick),
-      [names[0]]: Boolean(b[names[0]]),
-      [names[1]]: Boolean(b[names[1]]),
-      [names[2]]: Boolean(b[names[2]]),
-      trigger: round4(h?.trigger),
-      grip: round4(h?.grip),
-    };
+    const out = { stick: [round4(h?.x), round4(h?.y)], click: Boolean(b.stickClick) };
+    for (const n of names) out[n] = Boolean(b[n]);
+    out.trigger = round4(h?.trigger);
+    out.grip = round4(h?.grip);
+    return out;
   };
   return {
     proto: 'vrbq',
-    v: 1,
+    v: 2,
     seq,
     t: 0,
     demo: false,
     connected: true,
-    left: hand(v?.left, ['x', 'y', 'menu']),
-    right: hand(v?.right, ['a', 'b', 'system']),
+    left: hand(v?.left, ['up', 'down', 'left', 'right', 'minus', 'capture']),
+    right: hand(v?.right, ['a', 'b', 'x', 'y', 'plus', 'home']),
   };
 }
 

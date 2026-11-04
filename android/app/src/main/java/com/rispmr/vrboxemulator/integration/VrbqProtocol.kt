@@ -1,44 +1,36 @@
 package com.rispmr.vrboxemulator.integration
 
 import com.rispmr.vrboxemulator.engine.ControllerSnapshot
+import com.rispmr.vrboxemulator.engine.Hand
 import com.rispmr.vrboxemulator.engine.HandSnapshot
 import com.rispmr.vrboxemulator.engine.VirtualTargets
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.roundToLong
 
-/** State of one virtual controller in protocol form. */
+/**
+ * State of one virtual Joy-Con in protocol form. [buttons]: bit i = control i of
+ * [VirtualTargets.buttonControls] (left: stick click, ↑, ↓, ←, →, −, Captura;
+ * right: stick click, A, B, X, Y, +, Home).
+ */
 data class ProtocolHand(
     val stickX: Float,
     val stickY: Float,
+    /** ZL / ZR, 0..1. */
     val trigger: Float,
+    /** L / R, 0..1. */
     val grip: Float,
-    val stickClick: Boolean,
-    /** X (left) / A (right). */
-    val primary: Boolean,
-    /** Y (left) / B (right). */
-    val secondary: Boolean,
-    /** Menu (left) / System (right). */
-    val menu: Boolean,
+    val buttons: Int,
 ) {
-    val buttonBits: Int
-        get() = (if (stickClick) 1 else 0) or (if (primary) 2 else 0) or (if (secondary) 4 else 0) or (if (menu) 8 else 0)
+    fun pressed(bit: Int): Boolean = buttons and (1 shl bit) != 0
 
     companion object {
-        val NEUTRAL = ProtocolHand(0f, 0f, 0f, 0f, false, false, false, false)
+        val NEUTRAL = ProtocolHand(0f, 0f, 0f, 0f, 0)
 
         fun from(s: HandSnapshot): ProtocolHand {
-            val names = VirtualTargets.buttonControls(s.hand) // [stickClick, primary, secondary, menu]
-            return ProtocolHand(
-                stickX = s.stickX,
-                stickY = s.stickY,
-                trigger = s.trigger,
-                grip = s.grip,
-                stickClick = s.pressed(names[0]),
-                primary = s.pressed(names[1]),
-                secondary = s.pressed(names[2]),
-                menu = s.pressed(names[3]),
-            )
+            var bits = 0
+            VirtualTargets.buttonControls(s.hand).forEachIndexed { i, name -> if (s.pressed(name)) bits = bits or (1 shl i) }
+            return ProtocolHand(s.stickX, s.stickY, s.trigger, s.grip, bits)
         }
     }
 }
@@ -58,14 +50,14 @@ data class ProtocolFrame(
 }
 
 /**
- * VRBQ input protocol, version 1 (see integration/InputProtocol/PROTOCOL.md).
+ * VRBQ input protocol, version 2 (see integration/InputProtocol/PROTOCOL.md): two Joy-Con style controllers.
  *
  * Two encodings carry exactly the same information:
  * - JSON text (easy to consume from any language)
- * - 60-byte little-endian binary packet (fast to parse in native code / OpenXR layers)
+ * - 60-byte little-endian binary packet (fast to parse in native code)
  */
 object VrbqProtocol {
-    const val VERSION = 1
+    const val VERSION = 2
     const val DEFAULT_PORT = 47900
     const val BINARY_SIZE = 60
     val MAGIC = byteArrayOf('V'.code.toByte(), 'R'.code.toByte(), 'B'.code.toByte(), 'Q'.code.toByte())
@@ -80,18 +72,19 @@ object VrbqProtocol {
         append(",\"demo\":").append(f.demo)
         append(",\"connected\":").append(f.controllerConnected)
         append(",\"left\":")
-        hand(this, f.left, "x", "y", "menu")
+        hand(this, f.left, Hand.LEFT)
         append(",\"right\":")
-        hand(this, f.right, "a", "b", "system")
+        hand(this, f.right, Hand.RIGHT)
         append('}')
     }
 
-    private fun hand(sb: StringBuilder, h: ProtocolHand, primary: String, secondary: String, menu: String) {
+    /** JSON name of each button bit ("click" for the stick click). */
+    fun buttonNames(hand: Hand): List<String> =
+        VirtualTargets.buttonControls(hand).map { if (it == VirtualTargets.STICK_CLICK) "click" else it }
+
+    private fun hand(sb: StringBuilder, h: ProtocolHand, hand: Hand) {
         sb.append("{\"stick\":[").append(num(h.stickX)).append(',').append(num(h.stickY)).append(']')
-        sb.append(",\"click\":").append(h.stickClick)
-        sb.append(",\"").append(primary).append("\":").append(h.primary)
-        sb.append(",\"").append(secondary).append("\":").append(h.secondary)
-        sb.append(",\"").append(menu).append("\":").append(h.menu)
+        buttonNames(hand).forEachIndexed { i, name -> sb.append(",\"").append(name).append("\":").append(h.pressed(i)) }
         sb.append(",\"trigger\":").append(num(h.trigger))
         sb.append(",\"grip\":").append(num(h.grip))
         sb.append('}')
@@ -125,7 +118,7 @@ object VrbqProtocol {
     }
 
     private fun putHand(b: ByteBuffer, h: ProtocolHand) {
-        b.putShort(h.buttonBits.toShort())
+        b.putShort(h.buttons.toShort())
         b.putShort(0)
         b.putFloat(h.stickX)
         b.putFloat(h.stickY)
@@ -149,17 +142,8 @@ object VrbqProtocol {
     }
 
     private fun getHand(b: ByteBuffer): ProtocolHand {
-        val bits = b.short.toInt()
+        val bits = b.short.toInt() and 0xFFFF
         b.short
-        return ProtocolHand(
-            stickX = b.float,
-            stickY = b.float,
-            trigger = b.float,
-            grip = b.float,
-            stickClick = bits and 1 != 0,
-            primary = bits and 2 != 0,
-            secondary = bits and 4 != 0,
-            menu = bits and 8 != 0,
-        )
+        return ProtocolHand(stickX = b.float, stickY = b.float, trigger = b.float, grip = b.float, buttons = bits)
     }
 }

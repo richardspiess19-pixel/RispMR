@@ -7,7 +7,7 @@
 
 import * as E from './engine.js';
 
-const VERSION = '0.7.0';
+const VERSION = '1.0.0';
 const KM_KEY = 'web:km';
 const STORE = { profiles: 'vrbq.profiles', settings: 'vrbq.settings', identified: 'vrbq.identified' };
 
@@ -560,7 +560,7 @@ export function installWebBackend(win, rawDefaults) {
       lastSentSeq = log.seq;
       dirtyFlags.status = dirtyFlags.devices = false;
       return {
-        info: { app: 'VR Box → Quest', version: `${VERSION} (web)`, android: '—', sdk: 0, device: 'Navegador', transport: 'Web', platform: 'web', native: true },
+        info: { app: 'VR Box → Joy-Con', version: `${VERSION} (web)`, android: '—', sdk: 0, device: 'Navegador', transport: 'Web', platform: 'web', native: true },
         status: statusJson(),
         catalog: { targets: E.TARGETS.map(({ id, hand, control, label, type }) => ({ id, hand, control, label, type })), buttons: E.BUTTONS },
         settings: structuredClone(settings),
@@ -780,7 +780,7 @@ export function installWebBackend(win, rawDefaults) {
     },
     'profiles.export': ({ id }) => {
       const p = !id || id === working.id ? working : requireProfile(id);
-      const text = JSON.stringify({ type: 'vrbq-profile', schema: 1, app: 'VR Box → Quest', exportedAt: Date.now(), profile: { ...p, builtin: false } }, null, 2);
+      const text = JSON.stringify({ type: 'vrbq-profile', schema: 1, app: 'VR Box → Joy-Con', exportedAt: Date.now(), profile: { ...p, builtin: false } }, null, 2);
       const name = `${p.name.replace(/[^A-Za-z0-9 _-]/g, '').trim() || 'perfil'}.vrbq.json`;
       const a = doc.createElement('a');
       a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
@@ -811,7 +811,7 @@ export function installWebBackend(win, rawDefaults) {
               throw new WebError('O arquivo não é um JSON válido');
             }
             const obj = root?.type === 'vrbq-profile' ? root.profile : root?.mappings ? root : null;
-            if (!obj) throw new WebError('Esse arquivo não tem um perfil do VR Box → Quest');
+            if (!obj) throw new WebError('Esse arquivo não tem um perfil do VR Box → Joy-Con');
             const { profile, warnings } = E.decodeProfile({ id: 'import', ...obj }, defaults.template);
             const p = { ...profile, id: randomId('p-'), name: uniqueName(profile.name), builtin: false, updatedAt: Date.now() };
             profiles.push(p);

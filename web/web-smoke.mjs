@@ -1,4 +1,4 @@
-// End-to-end test of dist/vr-box-to-quest.html opened as a local file in Chromium:
+// End-to-end test of dist/vr-box-to-joycon.html opened as a local file in Chromium:
 // a fake VR Box gamepad and the keyboard drive auto-detection, the guided setup,
 // the virtual controllers and persistence.
 //   node web/web-smoke.mjs [screenshotDir]
@@ -9,7 +9,7 @@ import { createRequire } from 'node:module';
 
 const { chromium } = createRequire(import.meta.url)('playwright');
 const here = path.dirname(fileURLToPath(import.meta.url));
-const url = pathToFileURL(path.resolve(here, '../dist/vr-box-to-quest.html')).href;
+const url = pathToFileURL(path.resolve(here, '../dist/vr-box-to-joycon.html')).href;
 const shots = process.argv[2];
 if (shots) fs.mkdirSync(shots, { recursive: true });
 const errors = [];
@@ -103,7 +103,7 @@ const aState = await page.locator('.vc--right .qc-row', { hasText: /^A/ }).locat
 if (aState !== 'Pressionado') errors.push(`virtual A shows "${aState}"`);
 await page.evaluate(() => window.__set([7], null));
 await page.waitForTimeout(150);
-const trig = await page.locator('.vc--right .qc-row--analog', { hasText: 'Gatilho' }).locator('.meter__value').innerText();
+const trig = await page.locator('.vc--right .qc-row--analog', { hasText: 'ZR' }).locator('.meter__value').innerText();
 if (trig !== '1,00') errors.push(`right trigger shows ${trig}`);
 await page.evaluate(() => window.__set([], null));
 // The joystick reaches the virtual left stick in every direction.

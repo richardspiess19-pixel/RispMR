@@ -1,7 +1,7 @@
 {
-  "name": "vr-box-to-meta-quest-emulator",
+  "name": "vr-box-to-joycon",
   "private": true,
-  "description": "Interface tests and web build for VR Box → Quest",
+  "description": "Interface tests and web build for VR Box → Joy-Con",
   "type": "module",
   "scripts": {
     "test": "node --test tests/frontend/*.test.mjs web/*.test.mjs",

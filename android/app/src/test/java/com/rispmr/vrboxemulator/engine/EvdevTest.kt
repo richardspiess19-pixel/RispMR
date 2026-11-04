@@ -147,7 +147,7 @@ class EvdevTest {
         engine.tick(clock.now)
         val r = engine.report()
         assertEquals(1 shl (VirtualGamepad.BTN_A - 1), r[0].toInt() and 0xFF)
-        assertTrue("left stick up", r[3] < -100)
+        assertTrue("left stick up", r[4] < -100)
     }
 
     @Test

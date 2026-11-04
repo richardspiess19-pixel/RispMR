@@ -161,7 +161,7 @@ object InputCatalog {
         }
 }
 
-/** A control on a virtual Quest Touch controller. */
+/** A control on a virtual Joy-Con. */
 data class VirtualTarget(
     val id: String,
     val hand: Hand,
@@ -175,9 +175,11 @@ data class VirtualTarget(
 )
 
 /**
- * Catalog of virtual Quest Touch inputs.
+ * Catalog of the two virtual Joy-Con style controllers (left and right).
  *
- * Stick values use the OpenXR convention: X positive = right, Y positive = up.
+ * Left: stick, stick click, ↑ ↓ ← → buttons, −, Captura, L (grip) and ZL (trigger).
+ * Right: stick, stick click, A B X Y, +, Home, R (grip) and ZR (trigger).
+ * Stick values: X positive = right, Y positive = up.
  */
 object VirtualTargets {
     const val STICK_CLICK = "stickClick"
@@ -185,8 +187,8 @@ object VirtualTargets {
     const val GRIP = "grip"
 
     fun buttonControls(hand: Hand): List<String> = when (hand) {
-        Hand.LEFT -> listOf(STICK_CLICK, "x", "y", "menu")
-        Hand.RIGHT -> listOf(STICK_CLICK, "a", "b", "system")
+        Hand.LEFT -> listOf(STICK_CLICK, "up", "down", "left", "right", "minus", "capture")
+        Hand.RIGHT -> listOf(STICK_CLICK, "a", "b", "x", "y", "plus", "home")
     }
 
     val analogControls = listOf(TRIGGER, GRIP)
@@ -203,24 +205,44 @@ object VirtualTargets {
             add(VirtualTarget("$p.$STICK_CLICK", hand, STICK_CLICK, "Clique do joystick", TargetType.BUTTON))
             when (hand) {
                 Hand.LEFT -> {
-                    add(VirtualTarget("left.x", hand, "x", "X", TargetType.BUTTON))
-                    add(VirtualTarget("left.y", hand, "y", "Y", TargetType.BUTTON))
-                    add(VirtualTarget("left.menu", hand, "menu", "Menu", TargetType.BUTTON))
+                    add(VirtualTarget("left.up", hand, "up", "Seta ↑", TargetType.BUTTON))
+                    add(VirtualTarget("left.down", hand, "down", "Seta ↓", TargetType.BUTTON))
+                    add(VirtualTarget("left.left", hand, "left", "Seta ←", TargetType.BUTTON))
+                    add(VirtualTarget("left.right", hand, "right", "Seta →", TargetType.BUTTON))
+                    add(VirtualTarget("left.minus", hand, "minus", "−", TargetType.BUTTON))
+                    add(VirtualTarget("left.capture", hand, "capture", "Captura", TargetType.BUTTON))
                 }
                 Hand.RIGHT -> {
                     add(VirtualTarget("right.a", hand, "a", "A", TargetType.BUTTON))
                     add(VirtualTarget("right.b", hand, "b", "B", TargetType.BUTTON))
-                    add(VirtualTarget("right.system", hand, "system", "Sistema", TargetType.BUTTON))
+                    add(VirtualTarget("right.x", hand, "x", "X", TargetType.BUTTON))
+                    add(VirtualTarget("right.y", hand, "y", "Y", TargetType.BUTTON))
+                    add(VirtualTarget("right.plus", hand, "plus", "+", TargetType.BUTTON))
+                    add(VirtualTarget("right.home", hand, "home", "Home", TargetType.BUTTON))
                 }
             }
-            add(VirtualTarget("$p.$TRIGGER", hand, TRIGGER, "Gatilho", TargetType.ANALOG))
-            add(VirtualTarget("$p.$GRIP", hand, GRIP, "Grip", TargetType.ANALOG))
+            add(VirtualTarget("$p.$TRIGGER", hand, TRIGGER, if (hand == Hand.LEFT) "ZL" else "ZR", TargetType.ANALOG))
+            add(VirtualTarget("$p.$GRIP", hand, GRIP, if (hand == Hand.LEFT) "L" else "R", TargetType.ANALOG))
         }
     }
 
     private val byId = all.associateBy { it.id }
 
     fun get(id: String): VirtualTarget? = byId[id]
+
+    /**
+     * Targets of the earlier Quest Touch layout -> Joy-Con layout, so saved profiles keep working:
+     * X and Y move to the right Joy-Con (like on the Switch), Menu becomes +, System becomes Home.
+     */
+    val LEGACY: Map<String, String> = mapOf(
+        "left.x" to "right.x",
+        "left.y" to "right.y",
+        "left.menu" to "right.plus",
+        "right.system" to "right.home",
+    )
+
+    /** Current id of a target (old Quest ids are renamed). */
+    fun canonical(id: String): String = LEGACY[id] ?: id
 
     /** Relative mouse movement can only drive joystick axes; everything else is accepted. */
     fun isCompatible(kind: SourceKind, type: TargetType): Boolean = when (kind) {
@@ -229,13 +251,19 @@ object VirtualTargets {
     }
 
     /** Label used in event logs, e.g. "botão A", "clique do joystick". */
-    fun logLabel(control: String): String = when (control) {
+    fun logLabel(control: String, hand: Hand? = null): String = when (control) {
+        TRIGGER -> if (hand == Hand.RIGHT) "ZR" else if (hand == Hand.LEFT) "ZL" else "ZL/ZR"
+        GRIP -> if (hand == Hand.RIGHT) "R" else if (hand == Hand.LEFT) "L" else "L/R"
         STICK_CLICK -> "clique do joystick"
         "x", "y", "a", "b" -> "botão ${control.uppercase(Locale.ROOT)}"
-        TRIGGER -> "gatilho"
-        GRIP -> "grip"
-        "menu" -> "menu"
-        "system" -> "sistema"
+        "up" -> "seta ↑"
+        "down" -> "seta ↓"
+        "left" -> "seta ←"
+        "right" -> "seta →"
+        "minus" -> "botão −"
+        "plus" -> "botão +"
+        "capture" -> "Captura"
+        "home" -> "Home"
         else -> control
     }
 }

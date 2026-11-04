@@ -69,7 +69,14 @@ export function labelOf(id) {
 // ------------------------------------------------------------------ virtual targets
 
 export const HANDS = ['left', 'right'];
-export const BUTTONS = { left: ['stickClick', 'x', 'y', 'menu'], right: ['stickClick', 'a', 'b', 'system'] };
+/** Two Joy-Con style controllers (same order as VirtualTargets.buttonControls in the app). */
+export const BUTTONS = {
+  left: ['stickClick', 'up', 'down', 'left', 'right', 'minus', 'capture'],
+  right: ['stickClick', 'a', 'b', 'x', 'y', 'plus', 'home'],
+};
+
+/** Targets of the earlier Quest layout -> Joy-Con layout (saved profiles keep working). */
+export const LEGACY_TARGETS = { 'left.x': 'right.x', 'left.y': 'right.y', 'left.menu': 'right.plus', 'right.system': 'right.home' };
 
 export const TARGETS = HANDS.flatMap((hand) => [
   { id: `${hand}.stick.x`, hand, control: 'stick', label: 'Joystick X', type: 'stick_axis', axis: 0 },
@@ -81,33 +88,41 @@ export const TARGETS = HANDS.flatMap((hand) => [
   { id: `${hand}.stickClick`, hand, control: 'stickClick', label: 'Clique do joystick', type: 'button' },
   ...(hand === 'left'
     ? [
-        { id: 'left.x', hand, control: 'x', label: 'X', type: 'button' },
-        { id: 'left.y', hand, control: 'y', label: 'Y', type: 'button' },
-        { id: 'left.menu', hand, control: 'menu', label: 'Menu', type: 'button' },
+        { id: 'left.up', hand, control: 'up', label: 'Seta ↑', type: 'button' },
+        { id: 'left.down', hand, control: 'down', label: 'Seta ↓', type: 'button' },
+        { id: 'left.left', hand, control: 'left', label: 'Seta ←', type: 'button' },
+        { id: 'left.right', hand, control: 'right', label: 'Seta →', type: 'button' },
+        { id: 'left.minus', hand, control: 'minus', label: '−', type: 'button' },
+        { id: 'left.capture', hand, control: 'capture', label: 'Captura', type: 'button' },
       ]
     : [
         { id: 'right.a', hand, control: 'a', label: 'A', type: 'button' },
         { id: 'right.b', hand, control: 'b', label: 'B', type: 'button' },
-        { id: 'right.system', hand, control: 'system', label: 'Sistema', type: 'button' },
+        { id: 'right.x', hand, control: 'x', label: 'X', type: 'button' },
+        { id: 'right.y', hand, control: 'y', label: 'Y', type: 'button' },
+        { id: 'right.plus', hand, control: 'plus', label: '+', type: 'button' },
+        { id: 'right.home', hand, control: 'home', label: 'Home', type: 'button' },
       ]),
-  { id: `${hand}.trigger`, hand, control: 'trigger', label: 'Gatilho', type: 'analog' },
-  { id: `${hand}.grip`, hand, control: 'grip', label: 'Grip', type: 'analog' },
+  { id: `${hand}.trigger`, hand, control: 'trigger', label: hand === 'left' ? 'ZL' : 'ZR', type: 'analog' },
+  { id: `${hand}.grip`, hand, control: 'grip', label: hand === 'left' ? 'L' : 'R', type: 'analog' },
 ]);
 
 const TARGET_BY_ID = new Map(TARGETS.map((t) => [t.id, t]));
 export const target = (id) => TARGET_BY_ID.get(id) || null;
 export const isCompatible = (kind, type) => (kind === 'relative' ? type === 'stick_axis' : true);
 
-function logLabel(control) {
+function logLabel(control, hand) {
   if (control === 'stickClick') return 'clique do joystick';
   if (['x', 'y', 'a', 'b'].includes(control)) return `botão ${control.toUpperCase()}`;
-  return { trigger: 'gatilho', grip: 'grip', menu: 'menu', system: 'sistema' }[control] || control;
+  if (control === 'trigger') return hand === 'left' ? 'ZL' : 'ZR';
+  if (control === 'grip') return hand === 'left' ? 'L' : 'R';
+  return { up: 'seta ↑', down: 'seta ↓', left: 'seta ←', right: 'seta →', minus: 'botão −', plus: 'botão +', capture: 'Captura', home: 'Home' }[control] || control;
 }
 
 const comma = (v) => v.toFixed(2).replace('.', ',');
 
 export function describeVirtual(e) {
-  const base = `${e.hand === 'left' ? 'Esquerdo' : 'Direito'} · ${logLabel(e.control)} ${e.pressed ? 'pressionado' : 'solto'}`;
+  const base = `Joy-Con ${e.hand === 'left' ? 'esquerdo' : 'direito'} · ${logLabel(e.control, e.hand)} ${e.pressed ? 'pressionado' : 'solto'}`;
   return e.value != null && e.pressed ? `${base} (${comma(e.value)})` : base;
 }
 
@@ -661,9 +676,10 @@ export function decodeStick(o, f) {
 export function decodeRule(o, index = 0) {
   if (!o || typeof o !== 'object') return null;
   const kind = kindOf(o.source);
-  const t = target(o.target);
+  const targetId = LEGACY_TARGETS[o.target] || o.target;
+  const t = target(targetId);
   if (!kind || !t || !isCompatible(kind, t.type)) return null;
-  const rule = { id: String(o.id || `m${index}`).slice(0, 64), source: o.source, target: o.target };
+  const rule = { id: String(o.id || `m${index}`).slice(0, 64), source: o.source, target: targetId };
   if (o.invert === true) rule.invert = true;
   if (o.threshold != null) rule.threshold = num(o.threshold, 0.5, 0.05, 0.95);
   if (o.scale != null && Number(o.scale) !== 1) rule.scale = num(o.scale, 1, 0.05, 10);

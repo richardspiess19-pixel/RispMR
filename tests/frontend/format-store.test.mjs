@@ -50,11 +50,12 @@ test('compatibility mirrors the native rule', () => {
 });
 
 test('protocol preview has the VRBQ shape', () => {
-  const p = f.protocolPreview({ v: { left: { x: 0.12345, y: 0, trigger: 1, grip: 0, buttons: { x: true } }, right: { x: 0, y: 0, buttons: { a: true } } } });
-  assert.deepEqual(Object.keys(p.left), ['stick', 'click', 'x', 'y', 'menu', 'trigger', 'grip']);
-  assert.deepEqual(Object.keys(p.right), ['stick', 'click', 'a', 'b', 'system', 'trigger', 'grip']);
+  const p = f.protocolPreview({ v: { left: { x: 0.12345, y: 0, trigger: 1, grip: 0, buttons: { up: true } }, right: { x: 0, y: 0, buttons: { a: true } } } });
+  assert.equal(p.v, 2);
+  assert.deepEqual(Object.keys(p.left), ['stick', 'click', 'up', 'down', 'left', 'right', 'minus', 'capture', 'trigger', 'grip']);
+  assert.deepEqual(Object.keys(p.right), ['stick', 'click', 'a', 'b', 'x', 'y', 'plus', 'home', 'trigger', 'grip']);
   assert.equal(p.left.stick[0], 0.1235);
-  assert.equal(p.left.x, true);
+  assert.equal(p.left.up, true);
   assert.equal(p.right.a, true);
 });
 

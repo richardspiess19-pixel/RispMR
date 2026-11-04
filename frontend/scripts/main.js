@@ -179,7 +179,7 @@ function route() {
     if (a.tagName === 'A') a.setAttribute('aria-current', a.dataset.nav === view.id ? 'page' : 'false');
   }
   window.scrollTo(0, 0);
-  document.title = `${view.title} · VR Box → Quest`;
+  document.title = `${view.title} · VR Box → Joy-Con`;
 }
 
 const call = (name, ...args) => {

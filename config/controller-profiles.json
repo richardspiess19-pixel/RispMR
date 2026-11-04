@@ -7,7 +7,7 @@
     {
       "id": "default-vr-box",
       "name": "VR Box padrão",
-      "description": "Divide os botões do VR Box entre os dois controles. O movimento do mouse vira o joystick esquerdo.",
+      "description": "Divide os botões do VR Box entre os dois Joy-Cons: A, B, C e D viram A, B, X e Y. O movimento do mouse vira o analógico esquerdo.",
       "mappings": [
         {
           "id": "d01",
@@ -22,12 +22,12 @@
         {
           "id": "d03",
           "source": "key:BUTTON_1",
-          "target": "left.x"
+          "target": "right.x"
         },
         {
           "id": "d04",
           "source": "key:BUTTON_2",
-          "target": "left.y"
+          "target": "right.y"
         },
         {
           "id": "d05",
@@ -62,12 +62,12 @@
         {
           "id": "d11",
           "source": "key:BUTTON_X",
-          "target": "left.x"
+          "target": "right.x"
         },
         {
           "id": "d12",
           "source": "key:BUTTON_Y",
-          "target": "left.y"
+          "target": "right.y"
         },
         {
           "id": "d13",
@@ -132,7 +132,7 @@
         {
           "id": "d25",
           "source": "key:BUTTON_START",
-          "target": "left.menu"
+          "target": "right.plus"
         },
         {
           "id": "d26",
@@ -192,12 +192,12 @@
         {
           "id": "d37",
           "source": "key:BUTTON_C",
-          "target": "left.y"
+          "target": "right.y"
         },
         {
           "id": "d38",
           "source": "key:BUTTON_SELECT",
-          "target": "left.menu"
+          "target": "right.plus"
         },
         {
           "id": "d39",
@@ -217,9 +217,9 @@
       ]
     },
     {
-      "id": "quest-touch-left",
-      "name": "Quest Touch esquerdo",
-      "description": "O VR Box inteiro vira o controle ESQUERDO.",
+      "id": "joycon-left",
+      "name": "Joy-Con esquerdo",
+      "description": "O VR Box inteiro vira o Joy-Con ESQUERDO (analógico, setas, −, L e ZL).",
       "mappings": [
         {
           "id": "l01",
@@ -244,32 +244,32 @@
         {
           "id": "l05",
           "source": "key:BUTTON_A",
-          "target": "left.x"
+          "target": "left.left"
         },
         {
           "id": "l06",
           "source": "key:BUTTON_B",
-          "target": "left.y"
+          "target": "left.up"
         },
         {
           "id": "l07",
           "source": "key:BUTTON_X",
-          "target": "left.x"
+          "target": "left.left"
         },
         {
           "id": "l08",
           "source": "key:BUTTON_Y",
-          "target": "left.y"
+          "target": "left.up"
         },
         {
           "id": "l09",
           "source": "key:BUTTON_1",
-          "target": "left.x"
+          "target": "left.left"
         },
         {
           "id": "l10",
           "source": "key:BUTTON_2",
-          "target": "left.y"
+          "target": "left.up"
         },
         {
           "id": "l11",
@@ -334,7 +334,7 @@
         {
           "id": "l23",
           "source": "key:BUTTON_START",
-          "target": "left.menu"
+          "target": "left.minus"
         },
         {
           "id": "l24",
@@ -344,12 +344,12 @@
         {
           "id": "l25",
           "source": "key:VOLUME_UP",
-          "target": "left.x"
+          "target": "left.left"
         },
         {
           "id": "l26",
           "source": "key:VOLUME_DOWN",
-          "target": "left.y"
+          "target": "left.up"
         },
         {
           "id": "l27",
@@ -359,9 +359,9 @@
       ]
     },
     {
-      "id": "quest-touch-right",
-      "name": "Quest Touch direito",
-      "description": "O VR Box inteiro vira o controle DIREITO.",
+      "id": "joycon-right",
+      "name": "Joy-Con direito",
+      "description": "O VR Box inteiro vira o Joy-Con DIREITO (analógico, A/B/X/Y, +, R e ZR).",
       "mappings": [
         {
           "id": "r01",

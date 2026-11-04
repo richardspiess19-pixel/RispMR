@@ -1,8 +1,13 @@
-# VR Box → Quest
+# VR Box → Joy-Con
 
 App Android que pega um controle Bluetooth **VR Box** (aquele controlinho que vem com os óculos
-VR de celular) e transforma os botões dele em dois controles no estilo **Meta Quest Touch** —
-esquerdo e direito, com joystick, gatilho, grip e botões A/B/X/Y.
+VR de celular) e transforma os botões dele em **dois Joy-Cons virtuais**, esquerdo e direito:
+
+- **Joy-Con esquerdo**: analógico, setas ↑ ↓ ← →, −, Captura, L e ZL.
+- **Joy-Con direito**: analógico, A, B, X, Y, +, Home, R e ZR.
+
+Por padrão, os botões A, B, C e D do VR Box viram A, B, X e Y, os gatilhos viram ZR e R, e o @ vira +.
+"Joy-Con" descreve o layout; o app não é da Nintendo nem se passa por um Joy-Con de verdade.
 
 Com o **Modo jogo**, o app cria um **controle de jogo virtual** (com o app
 [Shizuku](https://shizuku.rikka.app)) e o Android entrega esse controle para todos os jogos do
@@ -21,7 +26,7 @@ Detalhes da instalação, inclusive o aviso do Play Protect, em [docs/INSTALLATI
 
 ## Versão web (um arquivo HTML)
 
-`npm run build:web` gera `dist/vr-box-to-quest.html`, um arquivo único que abre no Chrome do
+`npm run build:web` gera `dist/vr-box-to-joycon.html`, um arquivo único que abre no Chrome do
 celular sem instalar nada. Ele lê o VR Box pelo navegador (modo gamepad pelo Gamepad API; modos
 mouse e teclado pelos eventos da página) e tem detecção, mapeamento, controles virtuais, teste e
 perfis (salvos no navegador, com exportar/importar). O **Modo jogo não existe na versão web**:
@@ -37,16 +42,16 @@ app se quiser usar nos jogos.
   zona morta, curva, suavização, retorno ao centro, inversão e limite.
 - Mostra os controles virtuais em tempo real e tem uma tela de teste com taxa e atraso.
 - Guarda perfis (criar, renomear, duplicar, exportar, importar).
-- **Modo jogo**: controle virtual para todos os jogos (Shizuku: lê o VR Box em `/dev/input` e cria
-  o controle em `/dev/uhid`).
+- **Modo jogo**: os dois Joy-Cons chegam nos jogos do celular juntos, como um controle de jogo
+  (Shizuku cria o controle em `/dev/uhid`; a acessibilidade lê o VR Box com o jogo aberto).
 - Opcional: manda o estado dos controles pela rede (UDP) para outros programas.
 - Modo demonstração, para testar sem o controle.
 
 ## O que não dá para fazer
 
-Um app comum de celular **não consegue** registrar controles Quest de verdade para outros jogos:
-quem cria controles no OpenXR é o sistema do headset. Para os jogos do celular, o app cria um
-controle de jogo comum (precisa do Shizuku, que dá a permissão do ADB). Explicação completa em [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
+Os jogos do celular recebem um **controle de jogo comum** com o layout dos dois Joy-Cons juntos
+(setas = D-pad, L/R, ZL/ZR, −/+, Home). O app não se passa por um Joy-Con da Nintendo: um Switch
+ou um PC não enxergam o VR Box como Joy-Con. Criar o controle precisa do Shizuku (permissão do ADB). Explicação completa em [docs/LIMITATIONS.md](docs/LIMITATIONS.md).
 
 ## Compilar
 

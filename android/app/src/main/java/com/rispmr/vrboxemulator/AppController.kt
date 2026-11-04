@@ -1127,7 +1127,7 @@ class AppController(private val activity: Activity, private val webView: WebView
             val text = diagnosticsText()
             runCatching {
                 val cm = activity.getSystemService(android.content.ClipboardManager::class.java)
-                cm?.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico VR Box → Quest", text))
+                cm?.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico VR Box → Joy-Con", text))
             }
             JSONObject().put("text", text)
         }
@@ -1336,7 +1336,7 @@ class AppController(private val activity: Activity, private val webView: WebView
             else @Suppress("DEPRECATION") pm.getPackageInfo(activity.packageName, 0)
         }.getOrNull()
         return JSONObject()
-            .put("app", "VR Box → Quest")
+            .put("app", "VR Box → Joy-Con")
             .put("version", pkg?.versionName ?: "?")
             .put("android", Build.VERSION.RELEASE)
             .put("sdk", Build.VERSION.SDK_INT)
@@ -1523,7 +1523,7 @@ class AppController(private val activity: Activity, private val webView: WebView
         val pkg = runCatching { activity.packageManager.getPackageInfo(activity.packageName, 0) }.getOrNull()
         val g = VirtualGamepadManager.status()
         val sb = StringBuilder()
-        sb.appendLine("VR Box → Quest ${pkg?.versionName ?: "?"} — diagnóstico")
+        sb.appendLine("VR Box → Joy-Con ${pkg?.versionName ?: "?"} — diagnóstico")
         sb.appendLine("Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.MANUFACTURER} ${Build.MODEL}")
         sb.appendLine("Shizuku: ${VirtualGamepadManager.shizukuInfo()}")
         sb.appendLine("Controle virtual: ${g.state.key}${if (g.message.isNotEmpty()) " — ${g.message}" else ""}")

@@ -19,8 +19,9 @@ class VrbqProtocolTest {
         timestampUs = 123_456_789L,
         demo = false,
         controllerConnected = true,
-        left = ProtocolHand(stickX = 0.5f, stickY = -0.25f, trigger = 0f, grip = 1f, stickClick = false, primary = true, secondary = false, menu = true),
-        right = ProtocolHand(stickX = -1f, stickY = 0.75f, trigger = 0.5f, grip = 0f, stickClick = true, primary = false, secondary = true, menu = false),
+        // left: arrow up (bit 1) + minus (bit 5); right: stick click (bit 0) + B (bit 2)
+        left = ProtocolHand(stickX = 0.5f, stickY = -0.25f, trigger = 0f, grip = 1f, buttons = (1 shl 1) or (1 shl 5)),
+        right = ProtocolHand(stickX = -1f, stickY = 0.75f, trigger = 0.5f, grip = 0f, buttons = 1 or (1 shl 2)),
     )
 
     private val fixtures = File(System.getProperty("vrbq.fixturesDir") ?: "../../integration/InputProtocol/fixtures")
@@ -31,11 +32,12 @@ class VrbqProtocolTest {
         try {
             Locale.setDefault(Locale.forLanguageTag("pt-BR")) // decimal comma locale
             val json = VrbqProtocol.encodeJson(sample)
-            assertEquals(File(fixtures, "sample-v1.json").readText().trim(), json)
+            assertEquals(File(fixtures, "sample-v2.json").readText().trim(), json)
             val o = JSONObject(json)
             assertEquals("vrbq", o.getString("proto"))
             assertEquals(0.5, o.getJSONObject("left").getJSONArray("stick").getDouble(0), 1e-9)
-            assertTrue(o.getJSONObject("left").getBoolean("x"))
+            assertTrue(o.getJSONObject("left").getBoolean("up"))
+            assertTrue(o.getJSONObject("left").getBoolean("minus"))
             assertTrue(o.getJSONObject("right").getBoolean("b"))
             assertTrue(o.getJSONObject("right").getBoolean("click"))
         } finally {
@@ -47,7 +49,7 @@ class VrbqProtocolTest {
     fun binaryEncodingMatchesTheFixtureAndRoundTrips() {
         val bytes = VrbqProtocol.encodeBinary(sample)
         assertEquals(VrbqProtocol.BINARY_SIZE, bytes.size)
-        assertArrayEquals(File(fixtures, "sample-v1.bin").readBytes(), bytes)
+        assertArrayEquals(File(fixtures, "sample-v2.bin").readBytes(), bytes)
         assertEquals(sample, VrbqProtocol.decodeBinary(bytes))
     }
 
@@ -63,11 +65,11 @@ class VrbqProtocolTest {
 
     @Test
     fun snapshotConversionUsesHandButtonOrder() {
-        val left = HandSnapshot(Hand.LEFT, 0f, 0f, 0f, 0f, 0f, 0f, mapOf("stickClick" to false, "x" to false, "y" to true, "menu" to false))
-        val right = HandSnapshot(Hand.RIGHT, 0f, 0f, 0f, 0f, 0f, 0f, mapOf("stickClick" to false, "a" to true, "b" to false, "system" to true))
+        val left = HandSnapshot(Hand.LEFT, 0f, 0f, 0f, 0f, 0f, 0f, mapOf("stickClick" to false, "up" to false, "down" to true, "capture" to true))
+        val right = HandSnapshot(Hand.RIGHT, 0f, 0f, 0f, 0f, 0f, 0f, mapOf("stickClick" to false, "a" to true, "b" to false, "home" to true))
         val f = ProtocolFrame.from(ControllerSnapshot(left, right, 1), 1, 2, demo = true, connected = true)
-        assertTrue(f.left.secondary && !f.left.primary)
-        assertTrue(f.right.primary && f.right.menu)
+        assertTrue(f.left.pressed(2) && f.left.pressed(6) && !f.left.pressed(1)) // ↓ and Captura
+        assertTrue(f.right.pressed(1) && f.right.pressed(6)) // A and Home
         assertEquals(1 or 2, VrbqProtocol.decodeBinary(VrbqProtocol.encodeBinary(f)).let { (if (it.demo) 1 else 0) or (if (it.controllerConnected) 2 else 0) })
     }
 }

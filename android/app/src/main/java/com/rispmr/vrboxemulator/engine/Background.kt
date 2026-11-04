@@ -46,7 +46,7 @@ object BackgroundConfigCodec {
 }
 
 /**
- * The mapping pipeline used while a game is open: physical events -> two virtual Quest
+ * The mapping pipeline used while a game is open: physical events -> two virtual Joy-Con
  * controllers -> virtual gamepad report. Same classes as the app, so it behaves the same.
  * Not thread safe: the caller confines it to one thread.
  */

@@ -7,7 +7,7 @@ import { confirmDialog, learnInput, pickSource, pickTarget } from '../ui.js';
 
 const SECTIONS = [
   { title: 'Botões', match: (t) => t.type === 'button' },
-  { title: 'Gatilho e grip', match: (t) => t.type === 'analog' },
+  { title: 'ZL/ZR e L/R', match: (t) => t.type === 'analog' },
   { title: 'Joystick', match: (t) => t.type === 'stick_axis' },
   { title: 'Direções do joystick (por botão)', match: (t) => t.type === 'stick_direction', collapsed: true },
 ];
@@ -31,7 +31,7 @@ export default {
           'div',
           {},
           h('h1', { class: 'page-title' }, 'Botões do controle'),
-          h('p', { class: 'page-sub' }, 'Escolha o que cada botão do VR Box faz nos controles virtuais do Quest. Dá para testar na hora; depois é só salvar.'),
+          h('p', { class: 'page-sub' }, 'Escolha o que cada botão do VR Box faz nos dois Joy-Cons virtuais. Dá para testar na hora; depois é só salvar.'),
         ),
       ),
       h(

@@ -23,7 +23,7 @@ Instalações por ADB não passam pela verificação.
 4. Rode:
 
    ```bash
-   adb install vr-box-to-quest.apk
+   adb install vr-box-to-joycon.apk
    ```
 
 ### 2. "Fluxo avançado" do Android (sem computador)
@@ -46,9 +46,9 @@ nela. No Brasil, o Play Protect pode barrar apps com acessibilidade instalados p
 pelo gerenciador de arquivos: **instalar por ADB evita o bloqueio**.
 
 Depois de instalar (Android 13 ou mais novo), a acessibilidade pode mostrar **"Configuração
-restrita"**. Tente ativar uma vez, depois vá em Configurações → Apps → VR Box → Quest → ⋮ →
+restrita"**. Tente ativar uma vez, depois vá em Configurações → Apps → VR Box → Joy-Con → ⋮ →
 **Permitir configurações restritas**, confirme com a senha, volte em Acessibilidade e ative
-"VR Box → Quest: Modo jogo". Sem a acessibilidade, o app tenta ler o VR Box pelo Shizuku
+"VR Box → Joy-Con: Modo jogo". Sem a acessibilidade, o app tenta ler o VR Box pelo Shizuku
 (experimental).
 
 Com a acessibilidade, o joystick do VR Box precisa mandar **setas/teclas** (modos teclado/música):
@@ -73,7 +73,7 @@ o app Android abre bloqueado, mostrando estes passos, e só libera depois que o 
 3. Em Opções do desenvolvedor, ative **Depuração por Wi-Fi**.
 4. No Shizuku, toque em **Parear**, digite o código da Depuração por Wi-Fi e depois em **Iniciar**.
 5. No app, toque em **Permitir**.
-6. **Iniciar emulação**: os jogos passam a ver o controle **"VR Box -> Quest (controle virtual)"**.
+6. **Iniciar emulação**: os jogos passam a ver o controle **"VR Box -> Joy-Con (controle virtual)"**.
 
 O Shizuku para quando o celular reinicia: repita o passo 4. Com o jogo na frente, o serviço do app
 no Shizuku lê o VR Box direto do kernel e o "segura" (EVIOCGRAB), então o jogo só vê o controle
@@ -115,7 +115,7 @@ No GitHub Actions, o release é assinado se existirem os secrets `KEYSTORE_BASE6
 
 ## Versão web (sem instalar)
 
-1. Gere o arquivo: `npm install && npm run build:web` → `dist/vr-box-to-quest.html`.
+1. Gere o arquivo: `npm install && npm run build:web` → `dist/vr-box-to-joycon.html`.
 2. Copie para o celular e abra no **Chrome** (pelo gerenciador de arquivos: Abrir com → Chrome).
 3. VR Box em modo gamepad: aperte um botão com a página aberta para o Chrome mostrar o controle.
    Em modo mouse/teclado: tela Controle → "Teclado e mouse" → Usar.

@@ -1,5 +1,12 @@
 # Análise técnica de viabilidade e limitações
 
+> **Desde a versão 1.0 o app se chama "VR Box → Joy-Con"** e monta dois Joy-Cons virtuais
+> (esquerdo: analógico, setas, −, Captura, L, ZL; direito: analógico, A/B/X/Y, +, Home, R, ZR).
+> Os jogos do celular recebem esses dois Joy-Cons juntos como um controle de jogo comum (seção
+> "Controle virtual com Shizuku"). O app não usa ids da Nintendo, então nenhum driver de Joy-Con
+> assume o controle virtual. A análise abaixo foi escrita para o objetivo original (controles Meta
+> Quest Touch) e continua valendo para o que é possível ou não no Android.
+
 Este documento responde, antes de qualquer promessa, ao que é **possível**, **possível com
 restrições** e **impossível** em um Android convencional para o objetivo "transformar um
 controle VR Box em dois controles Meta Quest Touch".
@@ -98,9 +105,9 @@ código com os privilégios do *shell* do ADB depois que o usuário o inicia pel
 O app sobe nele um serviço (`ShizukuUserService`) que abre `/dev/uhid`, a mesma interface do kernel
 que o comando `hid` do Android usa nos testes de compatibilidade, e cria um **gamepad HID
 padrão** (15 botões, dois analógicos, gatilhos L2/R2 analógicos). O kernel e o Android tratam esse
-dispositivo como um controle de verdade, então **todos os apps** o veem. Os controles virtuais
-Quest viram esse gamepad (A/B/X/Y, analógicos, L1/R1 = grips, L2/R2 = gatilhos, Start = Menu,
-Select = Sistema, L3/R3 = cliques). Riscos:
+dispositivo como um controle de verdade, então **todos os apps** o veem. Os dois Joy-Cons
+virtuais viram esse gamepad (A/B/X/Y, setas = D-pad, L/R = L1/R1, ZL/ZR = L2/R2, −/+ = Select/Start,
+Home = Mode, Captura = C, L3/R3 = cliques). Riscos:
 
 O mesmo serviço lê o VR Box em `/dev/input/eventN` (o *shell* tem acesso, como o `getevent`),
 encontrado pelo nome e pelos ids em `/sys/class/input`. Os códigos do kernel viram os nomes do
@@ -115,7 +122,7 @@ aberta, solta, e o app lê o controle normalmente. Riscos:
 - EVIOCGRAB usa o `Os.ioctlInt` oculto por reflexão (processos `app_process`, como o do Shizuku,
   não têm a checagem de API oculta). Se falhar, o jogo vê o VR Box e o controle virtual, e o app
   avisa.
-- É um gamepad Android comum, **não** controles Touch para OpenXR.
+- É um gamepad Android comum: nem controles Touch para OpenXR, nem um Joy-Con da Nintendo.
 
 ## 5. O que é impossível em um Android convencional
 
@@ -150,7 +157,7 @@ aberta, solta, e o app lê o controle normalmente. Riscos:
 
 ## Versão HTML dentro de um app conversor (WebView)
 
-Quando o `vr-box-to-quest.html` é transformado em APK por um conversor de sites, a página roda
+Quando o `vr-box-to-joycon.html` é transformado em APK por um conversor de sites, a página roda
 numa WebView e só enxerga o que a WebView repassa para o JavaScript:
 
 | Situação | Por quê | Saída |

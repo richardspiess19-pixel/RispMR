@@ -258,7 +258,7 @@ export default {
       render(
         aboutBody,
         h('dt', {}, 'App'),
-        h('dd', {}, `VR Box → Quest ${i?.version || ''}`),
+        h('dd', {}, `VR Box → Joy-Con ${i?.version || ''}`),
         h('dt', {}, 'Android'),
         h('dd', {}, i ? `${i.android} (API ${i.sdk})` : 'Navegador'),
         h('dt', {}, 'Celular'),

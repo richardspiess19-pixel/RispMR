@@ -92,12 +92,12 @@ export async function promptDialog(title, label, initial = '', okLabel = 'OK') {
 
 const GROUPS = [
   { title: 'Botões', types: ['button'] },
-  { title: 'Gatilho e grip', types: ['analog'] },
+  { title: 'ZL/ZR e L/R', types: ['analog'] },
   { title: 'Joystick', types: ['stick_axis'] },
   { title: 'Direções do joystick', types: ['stick_direction'] },
 ];
 
-/** Lets the user choose a virtual Quest input. Resolves with a target id or null. */
+/** Lets the user choose a virtual Joy-Con input. Resolves with a target id or null. */
 export function pickTarget(catalog, { sourceKind = 'digital', title = 'O que esse botão faz?', sourceLabel } = {}) {
   return new Promise((resolve) => {
     let closeFn = null;

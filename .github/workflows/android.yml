@@ -35,14 +35,14 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: vr-box-to-quest-html
-          path: dist/vr-box-to-quest.html
+          name: vr-box-to-joycon-html
+          path: dist/vr-box-to-joycon.html
 
       - name: Protocol reference decoders
         run: |
           python3 -m unittest discover -s integration/InputProtocol/receiver
           cc -std=c99 -Wall -Wextra -Werror integration/InputProtocol/c/test_vrbq.c -o /tmp/test_vrbq
-          /tmp/test_vrbq integration/InputProtocol/fixtures/sample-v1.bin
+          /tmp/test_vrbq integration/InputProtocol/fixtures/sample-v2.bin
 
       - name: Unit tests, lint and APK
         working-directory: android

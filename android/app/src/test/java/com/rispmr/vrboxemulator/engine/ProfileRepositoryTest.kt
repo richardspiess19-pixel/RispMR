@@ -23,7 +23,7 @@ class ProfileRepositoryTest {
     fun firstLaunchSeedsTheFourInitialProfiles() {
         val storage = MemoryStorage()
         val r = repo(storage)
-        assertEquals(listOf("VR Box padrão", "Quest Touch esquerdo", "Quest Touch direito", "Perfil personalizado"), r.all.map { it.name })
+        assertEquals(listOf("VR Box padrão", "Joy-Con esquerdo", "Joy-Con direito", "Perfil personalizado"), r.all.map { it.name })
         assertEquals("default-vr-box", r.active().id)
         assertTrue("seed is persisted", storage.writes > 0)
         assertTrue(r.all.all { it.builtin })
@@ -33,12 +33,12 @@ class ProfileRepositoryTest {
     fun profilesSurviveRestartThroughStorage() {
         val storage = FileTextStorage(File(tmp.root, "profiles.json"))
         val r1 = repo(storage)
-        val created = r1.create("My Layout", baseId = "quest-touch-left")
+        val created = r1.create("My Layout", baseId = "joycon-left")
         r1.setActive(created.id)
         val r2 = repo(storage)
         assertEquals(created.id, r2.active().id)
         assertEquals("My Layout", r2.active().name)
-        assertEquals(r1.get("quest-touch-left")!!.mappings, r2.active().mappings)
+        assertEquals(r1.get("joycon-left")!!.mappings, r2.active().mappings)
         assertFalse(File(tmp.root, "profiles.json.tmp").exists())
     }
 
@@ -74,21 +74,21 @@ class ProfileRepositoryTest {
     fun deletingTheActiveProfileActivatesAnother() {
         val r = repo()
         r.delete("default-vr-box")
-        assertEquals("quest-touch-left", r.active().id)
+        assertEquals("joycon-left", r.active().id)
     }
 
     @Test
     fun exportImportRoundTrip() {
         val r = repo()
-        val text = r.exportJson("quest-touch-right")
+        val text = r.exportJson("joycon-right")
         val json = JSONObject(text)
         assertEquals("vrbq-profile", json.getString("type"))
         val imported = r.importJson(text)
         assertTrue(imported.warnings.isEmpty())
-        val original = r.get("quest-touch-right")!!
+        val original = r.get("joycon-right")!!
         assertEquals(original.mappings, imported.profile.mappings)
         assertEquals(original.right, imported.profile.right)
-        assertEquals("Quest Touch direito (2)", imported.profile.name)
+        assertEquals("Joy-Con direito (2)", imported.profile.name)
         assertFalse(imported.profile.builtin)
     }
 
@@ -103,7 +103,7 @@ class ProfileRepositoryTest {
                 assertNotNull(e.message)
             }
         }
-        val partial = """{"name":"Partial","mappings":[{"source":"key:BUTTON_A","target":"right.a"},{"source":"mouse:x","target":"right.a"},{"source":"<script>","target":"left.x"}]}"""
+        val partial = """{"name":"Partial","mappings":[{"source":"key:BUTTON_A","target":"right.a"},{"source":"mouse:x","target":"right.a"},{"source":"<script>","target":"left.up"}]}"""
         val result = r.importJson(partial)
         assertEquals(1, result.profile.mappings.size)
         assertEquals(2, result.warnings.size)
@@ -129,9 +129,9 @@ class ProfileRepositoryTest {
         assertEquals(TestConfig.defaults().initialById("default-vr-box")!!.mappings, restored.mappings)
 
         val custom = r.create("Mine")
-        r.update(r.get("quest-touch-left")!!.copy(name = "Changed"))
+        r.update(r.get("joycon-left")!!.copy(name = "Changed"))
         r.restoreDefaults()
-        assertEquals("Quest Touch esquerdo", r.get("quest-touch-left")!!.name)
+        assertEquals("Joy-Con esquerdo", r.get("joycon-left")!!.name)
         assertNotNull("custom profiles are kept", r.get(custom.id))
     }
 
@@ -156,7 +156,7 @@ class ProfileRepositoryTest {
     @Test
     fun encodeDecodeIsLossless() {
         val p = TestConfig.defaults().initialById("default-vr-box")!!.copy(
-            mappings = listOf(MappingRule("m1", "axis:X", "left.x", invert = true, threshold = 0.3f, scale = 2f)),
+            mappings = listOf(MappingRule("m1", "axis:X", "left.up", invert = true, threshold = 0.3f, scale = 2f)),
         )
         val back = ProfileCodec.decode(ProfileCodec.encode(p)).profile
         assertEquals(p, back)

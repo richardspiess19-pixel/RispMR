@@ -26,16 +26,16 @@ class DefaultConfigTest {
     @Test
     fun initialProfilesMatchTheSpecification() {
         val d = TestConfig.defaults()
-        assertEquals(listOf("VR Box padrão", "Quest Touch esquerdo", "Quest Touch direito", "Perfil personalizado"), d.initial.map { it.name })
-        val left = d.initialById("quest-touch-left")!!
+        assertEquals(listOf("VR Box padrão", "Joy-Con esquerdo", "Joy-Con direito", "Perfil personalizado"), d.initial.map { it.name })
+        val left = d.initialById("joycon-left")!!
         assertTrue(left.isConfigured(Hand.LEFT))
         assertTrue("left profile only drives the left controller", !left.isConfigured(Hand.RIGHT))
-        val right = d.initialById("quest-touch-right")!!
+        val right = d.initialById("joycon-right")!!
         assertTrue(right.isConfigured(Hand.RIGHT) && !right.isConfigured(Hand.LEFT))
         assertTrue(d.initialById("custom-profile")!!.mappings.isEmpty())
         val def = d.initialById("default-vr-box")!!
         // Examples from the specification.
-        for ((s, t) in listOf("mouse:btn:primary" to "right.a", "mouse:btn:secondary" to "right.b", "key:BUTTON_1" to "left.x", "key:BUTTON_2" to "left.y", "mouse:x" to "left.stick.x")) {
+        for ((s, t) in listOf("mouse:btn:primary" to "right.a", "mouse:btn:secondary" to "right.b", "key:BUTTON_1" to "right.x", "key:BUTTON_2" to "right.y", "mouse:x" to "left.stick.x")) {
             assertTrue("$s -> $t", def.mappings.any { it.source == s && it.target == t })
         }
     }

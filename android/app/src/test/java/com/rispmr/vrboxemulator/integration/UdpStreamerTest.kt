@@ -61,7 +61,7 @@ class UdpStreamerTest {
             assertEquals(VrbqProtocol.BINARY_SIZE, bytes.size)
             val f = VrbqProtocol.decodeBinary(bytes)
             assertTrue(f.demo)
-            assertTrue(f.right.primary)
+            assertTrue(f.right.pressed(1)) // A
             assertEquals(1f, f.left.trigger, 1e-6f)
         }
     }

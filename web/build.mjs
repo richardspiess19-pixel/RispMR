@@ -1,4 +1,4 @@
-// Builds dist/vr-box-to-quest.html: the whole interface + the browser backend in ONE file
+// Builds dist/vr-box-to-joycon.html: the whole interface + the browser backend in ONE file
 // (scripts, styles, fonts, logo and default profiles inlined). Open it in Chrome.
 //
 //   npm run build:web
@@ -11,7 +11,7 @@ import { build } from 'esbuild';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(here, '..');
 const fe = path.join(root, 'frontend');
-const out = path.join(root, 'dist', 'vr-box-to-quest.html');
+const out = path.join(root, 'dist', 'vr-box-to-joycon.html');
 
 const read = (p) => fs.readFileSync(p, 'utf8');
 const b64 = (p) => fs.readFileSync(p).toString('base64');

@@ -44,7 +44,7 @@ class InputCatalogTest {
     @Test
     fun targetCatalogCoversBothQuestControllers() {
         val ids = VirtualTargets.all.map { it.id }.toSet()
-        for (id in listOf("left.stick.x", "left.stickClick", "left.x", "left.y", "left.grip", "left.trigger", "left.menu", "right.stick.y", "right.stickClick", "right.a", "right.b", "right.grip", "right.trigger", "right.system")) {
+        for (id in listOf("left.stick.x", "left.stickClick", "left.up", "left.down", "left.left", "left.right", "left.minus", "left.capture", "left.grip", "left.trigger", "right.stick.y", "right.stickClick", "right.a", "right.b", "right.x", "right.y", "right.plus", "right.home", "right.grip", "right.trigger")) {
             assertTrue(id, id in ids)
         }
         assertFalse(VirtualTargets.isCompatible(SourceKind.RELATIVE, TargetType.BUTTON))

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">VR Box → Quest</string>
-    <string name="game_service_label">VR Box → Quest: Modo jogo</string>
+    <string name="app_name">VR Box → Joy-Con</string>
+    <string name="game_service_label">VR Box → Joy-Con: Modo jogo</string>
     <string name="game_service_description">Lê os botões do VR Box enquanto o jogo está aberto e manda para o controle virtual que o jogo enxerga. O serviço só lê o controle VR Box que você escolheu no app, não lê o conteúdo da tela, não toca na tela e não guarda nem envia nada. Só funciona enquanto a emulação estiver ligada no app.</string>
 </resources>
