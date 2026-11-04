@@ -207,6 +207,17 @@ object VirtualGamepadManager {
         }.getOrNull()
     }
 
+    /** The service's own view (for "Copiar diagnóstico"), or a short reason when it is not running. */
+    fun diagnose(): String {
+        val s = service ?: return "{\"service\":\"not connected\",\"binding\":$binding,\"wanted\":$wanted,\"created\":$created}"
+        return runCatching { s.diagnose() }.getOrElse { "{\"service\":\"error ${it.javaClass.simpleName}: ${it.message}\"}" }
+    }
+
+    /** Shizuku itself: version and uid it runs with, for the diagnostics. */
+    fun shizukuInfo(): String = runCatching {
+        if (!Shizuku.pingBinder()) "não está rodando" else "versão ${Shizuku.getVersion()}, uid ${Shizuku.getUid()}, permissão ${if (hasPermission()) "sim" else "não"}"
+    }.getOrDefault("indisponível")
+
     /** Asks Shizuku for permission (shows Shizuku's dialog). Returns false when Shizuku is not running. */
     fun requestPermission(): Boolean {
         if (!runCatching { Shizuku.pingBinder() }.getOrDefault(false)) return false

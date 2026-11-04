@@ -91,6 +91,9 @@ async function run(label, { mock, width, height }) {
     await page.screenshot({ path: path.join(outDir, `${label}-game-test.png`), fullPage: true });
     await page.getByRole('button', { name: 'Parar teste' }).click();
     await page.waitForTimeout(150);
+    await page.getByRole('button', { name: 'Copiar diagnóstico' }).click();
+    await page.waitForTimeout(150);
+    if (!(await page.locator('.diag').innerText()).includes('diagnóstico')) errors.push(`[${label}] diagnostics text not shown`);
     await page.screenshot({ path: path.join(outDir, `${label}-game-gamepad.png`), fullPage: true });
     await page.evaluate(() => (location.hash = '#/detect'));
     await page.waitForTimeout(200);

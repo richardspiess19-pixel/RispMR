@@ -57,6 +57,7 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
     private var lastReport: ByteArray? = null
     private var error = ""
     private var events = 0L
+    private var grabError: String? = null
     private var found = 0
     private var foundGrabbed = false
     private var tickScheduled = false
@@ -115,6 +116,47 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
     override fun status(): String = statusText
 
     override fun uid(): Int = Os.getuid()
+
+    override fun diagnose(): String = onEngine {
+        val c = config
+        val nodesJson = JSONArray()
+        val files = File("/dev/input").listFiles { f -> f.name.startsWith("event") }?.sortedBy { it.name } ?: emptyList()
+        for (f in files) {
+            val sys = "/sys/class/input/${f.name}/device"
+            val name = read("$sys/name")
+            val vendor = Evdev.hex(read("$sys/id/vendor"))
+            val product = Evdev.hex(read("$sys/id/product"))
+            val matches = c != null && name != null && DeviceGroup.baseName(name) == c.device.name &&
+                (c.device.vendorId == 0 || vendor == c.device.vendorId) && (c.device.productId == 0 || product == c.device.productId)
+            nodesJson.put(
+                JSONObject()
+                    .put("path", f.path)
+                    .put("name", name ?: JSONObject.NULL)
+                    .put("id", "%04x:%04x".format(vendor, product))
+                    .put("canRead", f.canRead())
+                    .put("matches", matches)
+                    .put("open", nodes.containsKey(f.path))
+                    .put("grabbed", nodes[f.path]?.grabbed ?: false),
+            )
+        }
+        val uhidFile = File("/dev/uhid")
+        JSONObject()
+            .put("uid", Os.getuid())
+            .put("context", read("/proc/self/attr/current") ?: JSONObject.NULL)
+            .put("groups", read("/proc/self/status")?.lineSequence()?.firstOrNull { it.startsWith("Groups:") }?.removePrefix("Groups:")?.trim() ?: JSONObject.NULL)
+            .put("is64", Process.is64Bit())
+            .put("uhidExists", uhidFile.exists())
+            .put("uhidOpen", uhid != null)
+            .put("device", c?.let { "${it.device.name} %04x:%04x".format(it.device.vendorId, it.device.productId) } ?: JSONObject.NULL)
+            .put("mappings", c?.profile?.mappings?.size ?: 0)
+            .put("reading", reading)
+            .put("events", events)
+            .put("lastReport", lastReport?.joinToString(" ") { "%02x".format(it) } ?: JSONObject.NULL)
+            .put("grabError", grabError ?: JSONObject.NULL)
+            .put("error", error)
+            .put("inputs", nodesJson)
+            .toString()
+    }
 
     override fun destroy() {
         stop()
@@ -266,7 +308,8 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
             if (name == VirtualGamepad.NAME) return@filter false
             val vendor = Evdev.hex(read("$sys/id/vendor"))
             val product = Evdev.hex(read("$sys/id/product"))
-            name == c.device.name && (c.device.vendorId == 0 || vendor == c.device.vendorId) && (c.device.productId == 0 || product == c.device.productId)
+            // Every interface of the controller: "VR BOX", "VR BOX Mouse", "VR BOX Consumer Control"...
+            DeviceGroup.baseName(name) == c.device.name && (c.device.vendorId == 0 || vendor == c.device.vendorId) && (c.device.productId == 0 || product == c.device.productId)
         }.sorted()
     }
 
@@ -325,8 +368,10 @@ class ShizukuUserService : IVirtualGamepad.Stub() {
                 return true
             } catch (e: Exception) {
                 Log.w(TAG, "EVIOCGRAB via ${m.toGenericString()} failed", e)
+                grabError = "${m.parameterTypes.size} args: ${(e.cause ?: e).javaClass.simpleName} ${(e.cause ?: e).message}"
             }
         }
+        if (grabError == null) grabError = "ioctlInt not found"
         return false
     }
 

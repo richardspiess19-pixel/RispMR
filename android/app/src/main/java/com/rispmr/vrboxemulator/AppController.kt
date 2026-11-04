@@ -1088,6 +1088,14 @@ class AppController(private val activity: Activity, private val webView: WebView
             if (emulationRunning) applyVirtualGamepad()
             statusJson()
         }
+        on("app.diagnostics") {
+            val text = diagnosticsText()
+            runCatching {
+                val cm = activity.getSystemService(android.content.ClipboardManager::class.java)
+                cm?.setPrimaryClip(android.content.ClipData.newPlainText("Diagnóstico VR Box → Quest", text))
+            }
+            JSONObject().put("text", text)
+        }
         on("gamepad.test") { args ->
             val on = args.optBoolean("on", true)
             if (on && (!emulationRunning || !VirtualGamepadManager.isActive)) {
@@ -1467,6 +1475,29 @@ class AppController(private val activity: Activity, private val webView: WebView
         o.put("dirty", dirty && p.id == working.id)
         o.put("baseName", profiles.baseOf(p).name)
         return o
+    }
+
+    /** Plain text the user pastes in a conversation: everything needed to see where it breaks. */
+    private fun diagnosticsText(): String {
+        val pkg = runCatching { activity.packageManager.getPackageInfo(activity.packageName, 0) }.getOrNull()
+        val g = VirtualGamepadManager.status()
+        val sb = StringBuilder()
+        sb.appendLine("VR Box → Quest ${pkg?.versionName ?: "?"} — diagnóstico")
+        sb.appendLine("Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}), ${Build.MANUFACTURER} ${Build.MODEL}")
+        sb.appendLine("Shizuku: ${VirtualGamepadManager.shizukuInfo()}")
+        sb.appendLine("Controle virtual: ${g.state.key}${if (g.message.isNotEmpty()) " — ${g.message}" else ""}")
+        sb.appendLine("Emulação: ${if (emulationRunning) "ligada" else "parada"}, Modo jogo: ${if (settings.game.enabled) "ligado" else "desligado"}, teste: $selfTest (${selfTestEvents} sinais)")
+        sb.appendLine("Controle escolhido: ${settings.lastDeviceKey ?: "nenhum"}")
+        for (grp in registry.groups(includeNonCandidates = true, includeInternal = false)) {
+            sb.appendLine("  • ${grp.name} %04x:%04x — ${grp.devices.joinToString { "${it.name} (0x%x)".format(it.sources) }}".format(grp.vendorId, grp.productId))
+        }
+        val stick = working.mappings.filter { it.target.contains(".stick") }.joinToString { "${it.source}→${it.target.substringAfter('.')}${if (it.invert) "(inv)" else ""}" }
+        sb.appendLine("Perfil: ${working.name}, ${working.mappings.size} regras; joystick: ${stick.ifEmpty { "nenhuma" }}")
+        sb.appendLine("Scan codes: ${scanCodes.entries.take(20).joinToString { "${it.key}=${it.value}" }.ifEmpty { "nenhum" }}")
+        sb.appendLine("Serviço: ${VirtualGamepadManager.diagnose()}")
+        sb.appendLine("Últimos eventos:")
+        for (e in log.recent(15)) sb.appendLine("  ${e.category}: ${e.text}")
+        return sb.toString()
     }
 
     private fun round(v: Float): Double = (v * 10000f).roundToInt() / 10000.0

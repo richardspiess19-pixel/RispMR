@@ -41,6 +41,7 @@ export default {
     const enableRow = h('div');
     const playBody = h('div', { class: 'stack stack--sm' });
     const testBody = h('div', { class: 'stack stack--sm' });
+    const diagBox = h('pre', { class: 'diag hidden' });
     const testLeft = createStickView({ label: 'Analógico esquerdo', size: 130 });
     const testRight = createStickView({ label: 'Analógico direito', size: 130 });
     const testInfo = h('p', { class: 'mono small' }, '');
@@ -67,9 +68,25 @@ export default {
         h('p', { class: 'muted small' }, 'Os botões do VR Box viram os controles virtuais pelo seu mapeamento (tela Configurar ou Botões), e deles vão para o controle virtual.'),
       ),
       h('section', { class: 'card' }, h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Jogar')), playBody),
+      h(
+        'section',
+        { class: 'card' },
+        h('div', { class: 'card__head' }, h('h2', { class: 'card__title' }, 'Não funcionou?')),
+        h('p', { class: 'text-2' }, 'Inicie a emulação, abra o jogo, volte aqui e toque em Copiar diagnóstico. Depois cole o texto na conversa com quem está te ajudando.'),
+        h('div', { class: 'row' }, h('button', { class: 'btn btn--sm', type: 'button', onClick: () => copyDiagnostics() }, icon('copy'), 'Copiar diagnóstico')),
+        diagBox,
+      ),
     );
 
     const cfg = () => ctx.store.state.settings?.game;
+
+    async function copyDiagnostics() {
+      const r = await ctx.run('app.diagnostics');
+      if (!r) return;
+      diagBox.classList.remove('hidden');
+      diagBox.textContent = r.text;
+      ctx.toast('Diagnóstico copiado. Cole na conversa.');
+    }
 
     async function save(next) {
       const r = await ctx.run('game.update', next);

@@ -25,4 +25,7 @@ interface IVirtualGamepad {
 
     // Linux uid of the service: 2000 = shell (ADB), 0 = root.
     int uid() = 6;
+
+    // JSON for "Copiar diagnóstico": what the service can see and open.
+    String diagnose() = 7;
 }

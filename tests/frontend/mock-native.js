@@ -195,6 +195,7 @@
       return status();
     },
     'gamepad.retry': () => status(),
+    'app.diagnostics': () => ({ text: 'VR Box → Quest 0.6.2 — diagnóstico\nControle virtual: active' }),
     'gamepad.test': (args) => {
       state.selfTest = args.on !== false;
       return status();

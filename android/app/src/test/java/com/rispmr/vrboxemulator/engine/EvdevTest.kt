@@ -158,4 +158,23 @@ class EvdevTest {
         assertNull(DeviceIdentity.fromKey(null))
         assertEquals("VR BOX#05ac:022c", DeviceGroup.keyOf("VR BOX", 0x05ac, 0x022c))
     }
+
+    @Test
+    fun interfacesOfOneControllerAreOneDevice() {
+        // Linux names each HID application of the VR Box: they are one controller.
+        for (n in listOf("VR BOX", "VR BOX Mouse", "VR BOX Keyboard", "VR BOX Consumer Control", "VR BOX System Control")) {
+            assertEquals(n, "VR BOX", DeviceGroup.baseName(n))
+        }
+        assertEquals("Mouse", DeviceGroup.baseName("Mouse"))
+        assertEquals("Gamepad X", DeviceGroup.baseName("Gamepad X"))
+        val info = { name: String, id: Int -> InputDeviceInfo(id = id, name = name, descriptor = "d$id", vendorId = 0x05ac, productId = 0x022c, sources = 0x101, keyboardType = 1, isVirtual = false, isExternal = true, controllerNumber = 0, axes = emptyList(), declaredKeys = emptyList()) }
+        val registry = DeviceRegistry()
+        registry.put(info("VR BOX Keyboard", 5))
+        registry.put(info("VR BOX Mouse", 6))
+        registry.put(info("VR BOX Consumer Control", 7))
+        val groups = registry.groups(includeNonCandidates = true)
+        assertEquals(1, groups.size)
+        assertEquals("VR BOX", groups[0].name)
+        assertEquals(3, groups[0].devices.size)
+    }
 }

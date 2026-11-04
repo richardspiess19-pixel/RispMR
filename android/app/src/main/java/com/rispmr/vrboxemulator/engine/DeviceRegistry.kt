@@ -132,7 +132,26 @@ data class DeviceGroup(val key: String, val name: String, val vendorId: Int, val
     }
 
     companion object {
-        fun keyOf(d: InputDeviceInfo) = keyOf(d.name, d.vendorId, d.productId)
+        /** All interfaces of one controller ("VR BOX", "VR BOX Mouse"...) share one key. */
+        fun keyOf(d: InputDeviceInfo) = keyOf(baseName(d.name), d.vendorId, d.productId)
+
+        /**
+         * Linux splits a Bluetooth controller into one input device per HID application and adds
+         * the application to the name (`hid-input.c`): "VR BOX Keyboard", "VR BOX Mouse",
+         * "VR BOX Consumer Control"... Android shows each as its own device. The base name joins
+         * them back into one controller.
+         */
+        fun baseName(name: String): String {
+            for (suffix in HID_SUFFIXES) {
+                if (name.length > suffix.length + 1 && name.endsWith(" $suffix")) return name.dropLast(suffix.length + 1)
+            }
+            return name
+        }
+
+        private val HID_SUFFIXES = listOf(
+            "System Multi Axis Controller", "Wireless Radio Control", "Consumer Control", "System Control",
+            "Touchscreen", "Touchpad", "Keyboard", "Keypad", "Mouse", "Pen",
+        )
 
         fun keyOf(name: String, vendorId: Int, productId: Int) = "$name#%04x:%04x".format(Locale.ROOT, vendorId, productId)
     }
@@ -198,7 +217,7 @@ class DeviceRegistry {
 
     fun groups(includeNonCandidates: Boolean = false, includeInternal: Boolean = false): List<DeviceGroup> =
         devices.values.groupBy { DeviceGroup.keyOf(it) }
-            .map { (key, list) -> DeviceGroup(key, list.first().name, list.first().vendorId, list.first().productId, list) }
+            .map { (key, list) -> DeviceGroup(key, DeviceGroup.baseName(list.first().name), list.first().vendorId, list.first().productId, list) }
             .filter { includeNonCandidates || it.isCandidate }
             .filter { includeInternal || it.external != false }
             .sortedWith(compareByDescending<DeviceGroup> { it.likelyVrBox }.thenBy { it.name.lowercase(Locale.ROOT) })
